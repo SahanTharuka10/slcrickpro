@@ -256,6 +256,12 @@ const DB = {
         syncToDB('tournament', t);
     },
     deleteTournament(id) {
+        // Cascade delete all matches belonging to this tournament
+        let mArr = this.getMatches();
+        mArr = mArr.filter(m => m.tournamentId !== id);
+        this.saveMatches(mArr);
+
+        // Delete the tournament record
         let arr = this.getTournaments();
         arr = arr.filter(t => t.id !== id);
         this.saveTournaments(arr);
