@@ -107,6 +107,7 @@
                 id="btn-tab-requests">Inbox</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('matches')" id="btn-tab-matches">System
                 Matches</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('tournaments')" id="btn-tab-tournaments">Tournaments</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players">Players</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
                 Data</button>
@@ -137,6 +138,13 @@
             <h3 class="section-hd" style="margin-bottom:8px">Manage Matches</h3>
             <p style="color:var(--c-muted);margin-bottom:24px">Force-remove ongoing matches from the system.</p>
             <div id="matches-list"></div>
+        </div>
+
+        <!-- Tournaments Tab -->
+        <div id="tab-tournaments" class="admin-panel" style="display:none">
+            <h3 class="section-hd" style="margin-bottom:8px">Manage Tournaments</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">End or remove tournaments from the website.</p>
+            <div id="tournaments-list"></div>
         </div>
 
         <!-- Store Tab -->

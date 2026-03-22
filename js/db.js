@@ -255,6 +255,17 @@ const DB = {
         this.saveTournaments(arr);
         syncToDB('tournament', t);
     },
+    deleteTournament(id) {
+        let arr = this.getTournaments();
+        arr = arr.filter(t => t.id !== id);
+        this.saveTournaments(arr);
+        this.deleteTournamentFromCloud(id);
+    },
+    deleteTournamentFromCloud(id) {
+        if (!BACKEND_BASE_URL) return;
+        fetch(BACKEND_BASE_URL + '/sync/tournaments/' + id, { method: 'DELETE' })
+            .catch(() => {});
+    },
     createTournament(cfg) {
         const t = {
             id: 'TOURN-' + Date.now(),

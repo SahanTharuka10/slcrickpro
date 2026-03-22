@@ -36,11 +36,13 @@ function switchAdminTab(tabName) {
 
     document.getElementById('btn-tab-requests').className = 'btn btn-sm ' + (tabName === 'requests' ? 'btn-primary' : 'btn-ghost');
     document.getElementById('btn-tab-matches').className = 'btn btn-sm ' + (tabName === 'matches' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-tournaments').className = 'btn btn-sm ' + (tabName === 'tournaments' ? 'btn-primary' : 'btn-ghost');
     document.getElementById('btn-tab-players').className = 'btn btn-sm ' + (tabName === 'players' ? 'btn-primary' : 'btn-ghost');
     document.getElementById('btn-tab-store').className = 'btn btn-sm ' + (tabName === 'store' ? 'btn-primary' : 'btn-ghost');
 
     if (tabName === 'requests') renderRequests();
     if (tabName === 'matches') renderSystemMatches();
+    if (tabName === 'tournaments') renderTournamentsAdmin();
     if (tabName === 'players') renderPlayersAdmin();
     if (tabName === 'store') renderStoreItems();
 }
@@ -179,6 +181,56 @@ function renderSystemMatches() {
         </div>`;
     }).join('');
 }
+
+function renderTournamentsAdmin() {
+    const container = document.getElementById('tournaments-list');
+    const tournaments = DB.getTournaments();
+
+    if (!tournaments.length) {
+        container.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">🏆</div>
+          <div class="empty-state-title">No Tournaments</div>
+          <div class="empty-state-sub">There are no tournaments currently in the system.</div>
+        </div>`;
+        return;
+    }
+
+    container.innerHTML = tournaments.map(t => {
+        const statusColor = t.status === 'active' ? '#00e676' : '#ffc107';
+        const statusLabel = t.status === 'active' ? 'Active' : 'Completed';
+
+        return `<div class="request-card">
+            <div class="req-info">
+                <h3>🏆 ${t.name}</h3>
+                <p><strong>Status:</strong> <span style="color:${statusColor}">${statusLabel}</span> · <strong>Teams:</strong> ${t.teams.length}</p>
+                <p><strong>ID:</strong> <span style="font-family: monospace; font-size:11px">${t.id}</span></p>
+            </div>
+            <div class="req-actions">
+                ${t.status === 'active' ? `<button class="btn btn-amber btn-sm" onclick="endTournamentAdmin('${t.id}')">🏁 End</button>` : ''}
+                <button class="btn btn-red btn-sm" onclick="deleteTournamentAdmin('${t.id}')">🗑️ Delete</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function endTournamentAdmin(id) {
+    if (!confirm('Are you sure you want to end this tournament? It will be marked as completed.')) return;
+    const t = DB.getTournament(id);
+    if (t) {
+        t.status = 'completed';
+        DB.saveTournament(t);
+        showToast('✅ Tournament marked as completed', 'success');
+        renderTournamentsAdmin();
+    }
+}
+
+function deleteTournamentAdmin(id) {
+    if (!confirm('Are you strictly sure you want to delete this tournament? All related data will be removed.')) return;
+    DB.deleteTournament(id);
+    showToast('✅ Tournament deleted completely', 'success');
+    renderTournamentsAdmin();
+}
+
 async function reSyncAllStats() {
     if (!confirm("This will recalculate ALL player and team statistics from the entire match history. Continue?")) return;
 

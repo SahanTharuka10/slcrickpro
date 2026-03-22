@@ -42,7 +42,13 @@ This backend server is designed to sync cricket data from the SLCRICKPRO app. It
 - `POST /stats/update` - Update career stats for one player
 - `POST /stats/bulk-update` - Bulk update stats after tournament
 - `GET /stats/players` - Get all players with career stats (for rankings)
-- `POST /team-stats/update` - Update team standings
-- `GET /team-stats` - Get team standings (for rankings)
+- `POST /team-stats/update` - Update team career stats
+- `GET /team-stats` - Get team career stats (for rankings)
+- `POST /sync/products` - Register/Update a product
+- `GET /sync/products` - List all products
+- `DELETE /sync/products/:id` - Delete a product
+- `POST /sync/match` - Sync live match data
+- `POST /sync/tournament` - Sync tournament structure
+- `GET /health` - Check database connection status
 
 Your app will now seamlessly sync players, teams, and stats into your MongoDB Atlas database!
