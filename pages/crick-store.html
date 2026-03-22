@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crick Store – SLCRICKPRO</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/store.css" />
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb2"></div>
+    </div>
+
+    <div class="sub-header">
+        <button class="back-btn" id="store-back-btn" onclick="handleStoreBack()">← Home</button>
+        <div class="sub-header-title">🛒 Crick Store</div>
+        <div style="margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div
+                style="background:rgba(233,30,156,0.1); color:#f06292; padding:8px 16px; border-radius:12px; font-size:13px; font-weight:700; border: 1px solid rgba(233,30,156,0.2);">
+                📞 Orders & Inquiries: 077 248 1483
+            </div>
+            <input type="text" class="form-input" id="store-search" placeholder="🔍 Search..."
+                style="width:180px;padding:8px 12px;font-size:13px" oninput="renderProducts()" />
+            <button class="cart-btn" onclick="openCart()" id="cart-btn">
+                🛒 <span id="cart-count">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN STORE VIEW -->
+    <div id="store-main" class="content-container">
+        <div class="category-chips" id="category-chips">
+            <button class="cat-chip active" onclick="filterCat('all',this)">All</button>
+            <button class="cat-chip" onclick="filterCat('bat',this)">🏏 Bats</button>
+            <button class="cat-chip" onclick="filterCat('ball',this)">🎾 Balls</button>
+            <button class="cat-chip" onclick="filterCat('gear',this)">🛡️ Gear</button>
+            <button class="cat-chip" onclick="filterCat('equipment',this)">🗂️ Stumps</button>
+            <button class="cat-chip" onclick="filterCat('bag',this)">🎒 Bags</button>
+            <button class="cat-chip" onclick="filterCat('shoes',this)">👟 Shoes</button>
+            <button class="cat-chip" onclick="filterCat('service',this)">⭐ Services</button>
+        </div>
+        <div class="products-grid" id="products-grid"></div>
+    </div>
+
+    <!-- PRODUCT DETAIL VIEW -->
+    <div id="product-detail-view" class="content-container" style="display:none;max-width:680px">
+        <div class="card" id="product-detail-content"></div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="modal-overlay" id="modal-cart" style="display:none" onclick="closeCart(event)">
+        <div class="modal-box" style="max-width:520px;width:100%" onclick="event.stopPropagation()">
+            <div class="modal-title">🛒 Shopping Cart</div>
+            <div class="modal-sub" id="cart-total-display"></div>
+            <div id="cart-items-list" style="margin:16px 0;max-height:340px;overflow-y:auto"></div>
+            <div id="checkout-form" style="display:none">
+                <hr style="border-color:var(--c-border);margin:12px 0">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Your Name *</label>
+                        <input type="text" class="form-input" id="buyer-name" placeholder="Full name..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="text" class="form-input" id="buyer-phone" placeholder="07X XXXXXXX" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Delivery Address</label>
+                    <textarea class="form-textarea" id="buyer-addr" placeholder="Street, City..." rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Special Notes / Service Details</label>
+                    <textarea class="form-textarea" id="buyer-note"
+                        placeholder="e.g. Jersey size L, printing name: Kamal, #7..." rows="2"></textarea>
+                </div>
+                <div
+                    style="background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,0.8)">
+                    📞 We will call you to confirm your order and arrange payment / delivery.
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeCart()">Close</button>
+                <button class="btn btn-amber" id="checkout-btn" onclick="proceedCheckout()">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <!-- Clear old products cache on first load (only if no admin-saved products exist) -->
+    <script>
+        if (!localStorage.getItem('cricpro_products_v2')) {
+            const existingSecure = localStorage.getItem('cricpro_products');
+            // Only wipe if there are no secure-stored products (admin-added products use SECURE_ prefix)
+            if (!existingSecure || !existingSecure.startsWith('SECURE_')) {
+                localStorage.removeItem('cricpro_products');
+            }
+        }
+    </script>
+    <script src="../js/db.js"></script>
+    <script src="../js/store.js"></script>
+    <script>
+        function handleStoreBack() {
+            if (document.getElementById('product-detail-view').style.display !== 'none') {
+                closeProductDetail();
+            } else {
+                history.back();
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+/* Ranking Page */
+.team-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.team-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r);
+    padding: 22px;
+}
+
+.team-card-name {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+.team-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.team-stat-key {
+    color: var(--c-muted);
+}
+
+.team-stat-val {
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.rank-medal {
+    font-size: 20px;
+    margin-right: 4px;
+}

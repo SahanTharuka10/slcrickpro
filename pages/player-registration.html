@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Player Registration – SLCRICKPRO | Live Cricket Stats</title>
+    <meta name="description" content="Register as a player on SLCRICKPRO to track your cricket stats, join teams, and participate in tournaments. Get your own Player ID today!" />
+    <meta name="keywords" content="cricket player registration, slcrick pro registration, cricket stats ID, join cricket team, cricket player database" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/registration.css" />
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb2"></div>
+    </div>
+
+    <div class="sub-header">
+        <button class="back-btn" onclick="history.back()">← Home</button>
+        <div class="sub-header-title">📋 Player Registration</div>
+    </div>
+
+    <div class="content-container">
+        <div class="tab-bar" style="max-width:500px;margin-bottom:28px">
+            <button class="tab-btn active" id="tab-reg" onclick="switchTab('reg')">➕ Register Player</button>
+            <button class="tab-btn" id="tab-players" onclick="switchTab('players')">👥 All Players</button>
+            <button class="tab-btn" id="tab-teams" onclick="switchTab('teams')">🏟️ Teams</button>
+            <button class="tab-btn" id="tab-lookup" onclick="switchTab('lookup')">🔍 Lookup</button>
+        </div>
+
+        <!-- REGISTER PLAYER -->
+        <div id="panel-reg">
+            <div class="reg-layout">
+                <div>
+                    <!-- Personal Info -->
+                    <div class="card" style="margin-bottom:20px">
+                        <div class="card-head">👤 Personal Information</div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" class="form-input" id="reg-name" placeholder="Player full name"
+                                    maxlength="40" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Date of Birth</label>
+                                <input type="date" class="form-input" id="reg-dob" />
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label">Phone</label>
+                                <input type="text" class="form-input" id="reg-phone" placeholder="07X XXXXXXX" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-textarea" id="reg-address" placeholder="Home address..."
+                                rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Cricket Info -->
+                    <div class="card" style="margin-bottom:20px">
+                        <div class="card-head">🏏 Cricket Information</div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Team / Club</label>
+                                <div style="display:flex;gap:8px">
+                                    <select class="form-select" id="reg-team" style="flex:1">
+                                        <option value="">Select team...</option>
+                                    </select>
+                                    <input type="text" class="form-input" id="reg-team-custom"
+                                        placeholder="Or type team..." style="flex:1" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Playing Role</label>
+                                <select class="form-select" id="reg-role">
+                                    <option value="batsman">Batsman</option>
+                                    <option value="bowler">Bowler</option>
+                                    <option value="allrounder">All-Rounder</option>
+                                    <option value="wicketkeeper">Wicket Keeper</option>
+                                    <option value="wk-batsman">WK-Batsman</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Batting Style</label>
+                                <select class="form-select" id="reg-bat-style">
+                                    <option value="Right-hand">Right-hand Bat</option>
+                                    <option value="Left-hand">Left-hand Bat</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bowling Style</label>
+                                <select class="form-select" id="reg-bowl-style">
+                                    <option value="Right-arm Fast">Right-arm Fast</option>
+                                    <option value="Right-arm Medium">Right-arm Medium</option>
+                                    <option value="Right-arm Off-spin">Right-arm Off-spin</option>
+                                    <option value="Right-arm Leg-spin">Right-arm Leg-spin</option>
+                                    <option value="Left-arm Fast">Left-arm Fast</option>
+                                    <option value="Left-arm Medium">Left-arm Medium</option>
+                                    <option value="Left-arm Spin">Left-arm Spin</option>
+                                    <option value="N/A">Does Not Bowl</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Jersey Number (Optional)</label>
+                            <input type="number" class="form-input" id="reg-jersey" placeholder="e.g. 7" min="1"
+                                max="99" style="width:140px" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ID Preview -->
+                <div>
+                    <div class="player-id-preview" id="id-preview">
+                        <div class="id-header">
+                            <span class="id-logo">🏏 SLCRICKPRO</span>
+                            <span class="id-type">PLAYER ID</span>
+                        </div>
+                        <div class="id-body">
+                            <div class="id-avatar" id="preview-avatar">?</div>
+                            <div class="id-info">
+                                <div class="id-number" id="preview-pid">CP-???</div>
+                                <div class="id-name" id="preview-name">Player Name</div>
+                                <div class="id-role" id="preview-role">Role · Team</div>
+                                <div class="id-style" id="preview-style">Right-hand Bat · Right-arm Fast</div>
+                            </div>
+                        </div>
+                        <div class="id-footer">
+                            <span id="preview-date">Issued: --</span>
+                            <span id="preview-jersey">#--</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-green btn-full" style="margin-top:16px" onclick="registerPlayer()">
+                        🎽 Register &amp; Issue Player ID
+                    </button>
+                    <button class="btn btn-ghost btn-full" style="margin-top:10px" onclick="clearForm()">
+                        🗑️ Clear Form
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL PLAYERS -->
+        <div id="panel-players" style="display:none">
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+                <div class="section-hd" style="margin:0">👥 Player Database</div>
+                <div style="display:flex;gap:10px">
+                    <input type="text" class="form-input" id="player-search" placeholder="🔍 Search..."
+                        style="width:200px;padding:8px 12px;font-size:13px" oninput="renderPlayerList()" />
+                    <button class="btn btn-ghost btn-sm" onclick="exportPlayers()">📥 Export</button>
+                </div>
+            </div>
+            <div class="stat-grid" style="margin-bottom:24px" id="player-stat-boxes"></div>
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Player ID</th>
+                            <th>Name</th>
+                            <th>Team</th>
+                            <th>Role</th>
+                            <th>Jersey</th>
+                            <th>Age</th>
+                            <th>Since</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="player-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TEAMS -->
+        <div id="panel-teams" style="display:none">
+            <div class="grid-2">
+                <div>
+                    <div class="section-hd">Register New Team</div>
+                    <div class="card">
+                        <div class="form-group">
+                            <label class="form-label">Team Name *</label>
+                            <input type="text" class="form-input" id="team-name"
+                                placeholder="e.g. Lions Cricket Club" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Home Ground</label>
+                            <input type="text" class="form-input" id="team-ground" placeholder="e.g. Colombo Ground" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Captain Name</label>
+                            <input type="text" class="form-input" id="team-captain" placeholder="Captain's name..." />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Manager Name</label>
+                            <input type="text" class="form-input" id="team-manager" placeholder="Manager's name..." />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Manager Contact Number</label>
+                            <input type="text" class="form-input" id="team-contact" placeholder="07X XXXXXXX" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Founded Year</label>
+                            <input type="number" class="form-input" id="team-year" placeholder="e.g. 2018" min="1900"
+                                max="2030" />
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="registerTeam()">
+                            🏟️ Register Team
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="section-hd">Registered Teams</div>
+                    <div id="teams-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOOKUP -->
+        <div id="panel-lookup" style="display:none">
+            <div class="section-hd">🔍 Player Lookup</div>
+            <div class="card" style="max-width:500px;margin-bottom:24px">
+                <div class="form-group">
+                    <label class="form-label">Enter Player ID</label>
+                    <div style="display:flex;gap:10px">
+                        <input type="text" class="form-input" id="lookup-pid" placeholder="e.g. CP-001"
+                            style="text-transform:uppercase" />
+                        <button class="btn btn-primary" onclick="lookupPlayerById()">🔍 Find</button>
+                    </div>
+                </div>
+            </div>
+            <div id="lookup-result"></div>
+        </div>
+    </div>
+
+    <!-- Player Detail Modal -->
+    <div class="modal-overlay" id="modal-player" style="display:none" onclick="closePlayerModal(event)">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div id="player-modal-content"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script src="../js/db.js"></script>
+    <script src="../js/registration.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,177 @@
+/* Registration CSS */
+.reg-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .reg-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Player ID Card */
+.player-id-preview {
+    background: linear-gradient(145deg, #0d1f3c, #162a4a);
+    border: 1px solid rgba(0, 188, 212, 0.35);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 188, 212, 0.15);
+    position: relative;
+}
+
+.player-id-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #00bcd4, #1de9b6, #7c4dff);
+}
+
+.id-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: rgba(0, 188, 212, 0.08);
+    border-bottom: 1px solid rgba(0, 188, 212, 0.15);
+}
+
+.id-logo {
+    font-size: 15px;
+    font-weight: 800;
+    color: #00bcd4;
+}
+
+.id-type {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.id-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+}
+
+.id-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bcd4, #7c4dff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 900;
+    flex-shrink: 0;
+    border: 2px solid rgba(0, 188, 212, 0.4);
+}
+
+.id-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    color: #00bcd4;
+}
+
+.id-name {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 4px 0 2px;
+}
+
+.id-role {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.id-style {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 2px;
+}
+
+.id-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Teams list */
+.team-list-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.team-list-name {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.team-list-info {
+    font-size: 12px;
+    color: var(--c-muted);
+    margin-top: 3px;
+}
+
+/* Lookup result */
+.lookup-card {
+    background: var(--c-surface);
+    border: 1px solid rgba(0, 188, 212, 0.3);
+    border-radius: var(--r);
+    padding: 28px;
+    max-width: 500px;
+}
+
+.lookup-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 900;
+    color: #00bcd4;
+}
+
+.lookup-name {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 6px 0;
+}
+
+.lookup-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--c-border);
+}
+
+.lookup-row:last-child {
+    border-bottom: none;
+}
+
+.lookup-key {
+    color: var(--c-muted);
+    font-size: 13px;
+}
+
+.lookup-val {
+    font-size: 14px;
+    font-weight: 600;
+}

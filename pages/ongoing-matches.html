@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ongoing Matches – SLCRICKPRO</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/ongoing.css" />
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb2"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="sub-header">
+        <button class="back-btn" onclick="history.back()">← Home</button>
+        <div class="sub-header-title">📡 Ongoing Matches</div>
+        <div class="header-right-group">
+            <button class="btn btn-sm btn-ghost" onclick="refreshAll()">🔄 Refresh</button>
+            <div class="live-badge" style="font-size:12px;padding:5px 14px;">
+                <span class="live-dot"></span> LIVE
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="content-container">
+        <div class="tab-bar" style="max-width:600px">
+            <button class="tab-btn active" id="tab-live" onclick="switchTab('live')">🔴 Live Matches</button>
+            <button class="tab-btn" id="tab-tournament" onclick="switchTab('tournament')">🏆 Tournament</button>
+            <button class="tab-btn" id="tab-recent" onclick="switchTab('recent')">📋 Completed</button>
+        </div>
+
+        <!-- LIVE MATCHES -->
+        <div id="panel-live">
+            <div id="live-matches-grid" class="matches-grid"></div>
+        </div>
+
+        <!-- TOURNAMENT PANEL -->
+        <div id="panel-tournament" style="display:none">
+            <div class="section-hd">Current Tournament</div>
+            <div id="tournament-selector" class="tournament-selector-row"></div>
+            <div id="tournament-details"></div>
+        </div>
+
+        <!-- COMPLETED -->
+        <div id="panel-recent" style="display:none">
+            <div id="recent-matches-grid" class="matches-grid"></div>
+        </div>
+    </div>
+
+    <!-- Live Match Detail Modal -->
+    <div class="modal-overlay" id="match-detail-modal" style="display:none" onclick="closeMatchDetail(event)">
+        <div class="modal-box" style="max-width:700px;width:100%" onclick="event.stopPropagation()">
+            <div class="scorecard-close-btn" onclick="closeMatchDetail()">✕</div>
+            <div id="match-detail-content"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../js/db.js?v=2"></script>
+    <script src="../js/ongoing.js?v=2"></script>
+</body>
+
+</html>

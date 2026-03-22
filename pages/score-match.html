@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Score New Match – SLCRICKPRO</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/scorer.css" />
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb2"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="sub-header" id="app-header">
+        <button class="back-btn" onclick="handleBack()">← Home</button>
+        <div class="sub-header-title" id="header-title">🏏 Score New Match</div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center" id="header-actions"></div>
+    </div>
+
+    <!-- ===== SETUP SCREEN ===== -->
+    <div id="screen-setup" class="scorer-screen active">
+        <div class="content-container" style="max-width:720px">
+            <!-- Match Type Selection -->
+            <div style="text-align:center;margin-bottom:36px">
+                <div class="hero-badge" style="margin-bottom:16px">Choose Match Type</div>
+                <div class="match-type-selector" id="match-type-selector">
+                    <button class="type-btn active" id="type-single" onclick="selectMatchType('single')">
+                        <span class="type-icon">🎯</span>
+                        <span class="type-label">Single Match</span>
+                        <span class="type-sub">Quick match, no tournament</span>
+                    </button>
+                    <button class="type-btn" id="type-tournament" onclick="selectMatchType('tournament')">
+                        <span class="type-icon">🏆</span>
+                        <span class="type-label">Tournament Match</span>
+                        <span class="type-sub">Schedule in a tournament with password</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tournament section (hidden by default) -->
+            <div id="tournament-setup-section" style="display:none" class="card" style="margin-bottom:20px">
+                <div class="card-head">Tournament Settings</div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Create New / Select Tournament</label>
+                        <select class="form-select" id="tournament-select" onchange="onTournamentSelect(this.value)">
+                            <option value="new">➕ Create New Tournament</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Match Password (for resuming)</label>
+                        <input type="password" class="form-input" id="match-password" placeholder="Set a password..." />
+                    </div>
+                </div>
+                <div id="new-tournament-form">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Tournament Name</label>
+                            <input type="text" class="form-input" id="tourn-name"
+                                placeholder="e.g. Village Premier League" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Format</label>
+                            <select class="form-select" id="tourn-format">
+                                <option value="league">League (Round-robin)</option>
+                                <option value="knockout">Knockout</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tournament Type</label>
+                            <select class="form-select" id="tourn-type" onchange="toggleOfficialSettings(this.value)">
+                                <option value="unofficial">Unofficial</option>
+                                <option value="official">Official (Pre-scheduled & Ranked)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Number of Matches (incl. Semis & Final)</label>
+                        <input type="number" class="form-input" id="tourn-match-count" value="10" min="1" max="100" />
+                    </div>
+                    <div class="form-group" id="official-settings" style="display:none">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-input" id="tourn-start-date" style="margin-bottom:10px" />
+
+                        <label class="form-label">1st Place Cash Prize</label>
+                        <input type="text" class="form-input" id="tourn-prize-1" placeholder="e.g. Rs. 100000"
+                            style="margin-bottom:10px" />
+
+                        <label class="form-label">2nd Place Cash Prize</label>
+                        <input type="text" class="form-input" id="tourn-prize-2" placeholder="e.g. Rs. 50000"
+                            style="margin-bottom:10px" />
+
+                        <label class="form-label">3rd Place Cash Prize</label>
+                        <input type="text" class="form-input" id="tourn-prize-3" placeholder="e.g. Rs. 25000" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Teams (one per line)</label>
+                    <textarea class="form-textarea" id="tourn-teams"
+                        placeholder="Team Alpha&#10;Team Beta&#10;Team Gamma&#10;Team Delta" rows="4"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Match Settings Card -->
+        <div class="card">
+            <div class="card-head" id="match-config-head">Match Configuration</div>
+            <div class="grid-2" id="teams-grid">
+                <div class="form-group">
+                    <label class="form-label">Team 1 Name</label>
+                    <input type="text" class="form-input" id="team1-name" placeholder="e.g. Lions CC" maxlength="25" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Team 2 Name</label>
+                    <input type="text" class="form-input" id="team2-name" placeholder="e.g. Tigers CC" maxlength="25" />
+                </div>
+            </div>
+            <div class="grid-2" id="overs-grid">
+                <div class="form-group">
+                    <label class="form-label">Total Overs</label>
+                    <input type="number" class="form-input" id="setup-overs" value="20" min="1" max="50" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Balls per Over</label>
+                    <input type="number" class="form-input" id="setup-bpo" value="6" min="4" max="8" />
+                </div>
+            </div>
+            <div class="grid-2" id="venue-grid">
+                <div class="form-group">
+                    <label class="form-label">Players per Side</label>
+                    <input type="number" class="form-input" id="setup-pps" value="11" min="2" max="11" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Venue (Optional)</label>
+                    <input type="text" class="form-input" id="setup-venue" placeholder="e.g. Home Ground" />
+                </div>
+            </div>
+            <!-- Toss -->
+            <div class="grid-2" id="toss-grid">
+                <div class="form-group">
+                    <label class="form-label">Toss Winner</label>
+                    <select class="form-select" id="setup-toss">
+                        <option value="team1">Team 1</option>
+                        <option value="team2">Team 2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Chose to</label>
+                    <select class="form-select" id="setup-decision">
+                        <option value="bat">Bat First</option>
+                        <option value="field">Field First</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-full" id="start-btn" onclick="startNewMatch()" style="margin-top:10px">
+                🏏 Start Match
+            </button>
+        </div>
+
+        <!-- Resume Match Card -->
+        <div class="card" style="margin-top:20px" id="resume-section">
+            <div class="card-head">Resume Existing Match</div>
+            <div id="resume-matches-list"></div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ===== LOGIN SCREEN (tournament password) ===== -->
+    <div id="screen-login" class="scorer-screen" style="display:none">
+        <div class="content-container" style="max-width:440px;text-align:center;padding-top:80px">
+            <div style="font-size:64px;margin-bottom:16px">🔐</div>
+            <h2 id="login-match-title" style="font-size:22px;font-weight:800;margin-bottom:8px">Resume Match</h2>
+            <p style="color:var(--c-muted);margin-bottom:28px">This match is password protected</p>
+            <div class="form-group">
+                <input type="password" class="form-input" id="login-password" placeholder="Enter match password..." />
+            </div>
+            <button class="btn btn-primary btn-full" onclick="loginToMatch()">🔓 Unlock Match</button>
+            <button class="btn btn-ghost btn-full" style="margin-top:10px" onclick="showScreen('setup')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ===== SCORING SCREEN ===== -->
+    <div id="screen-scoring" class="scorer-screen" style="display:none">
+        <!-- Scoreboard top banner -->
+        <div class="score-banner">
+            <div class="score-banner-inner">
+                <div class="sb-team">
+                    <div class="sb-team-name" id="sb-batting-team">Team 1</div>
+                    <div class="sb-score" id="sb-score">0/0</div>
+                    <div class="sb-overs" id="sb-overs">0.0 ov</div>
+                </div>
+                <div class="sb-center">
+                    <div class="sb-crr-label">CRR</div>
+                    <div class="sb-crr-val" id="sb-crr">0.00</div>
+                </div>
+                <div class="sb-team" style="text-align:right">
+                    <div class="sb-team-name" id="sb-bowling-team">Team 2</div>
+                    <div id="sb-target-area"></div>
+                </div>
+            </div>
+            <div class="over-balls-strip" id="over-balls-strip">
+                <!-- balls for current over rendered here -->
+            </div>
+        </div>
+
+        <!-- Two-column content -->
+        <div class="scorer-layout" id="scorer-layout">
+            <!-- LEFT: Stats panels -->
+            <div class="stats-column">
+
+                <!-- Batting -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">⚾ Batting</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Batsman</th>
+                                <th>R</th>
+                                <th>B</th>
+                                <th>4s</th>
+                                <th>6s</th>
+                                <th>SR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="bat-row-0">
+                                <td class="striker-name"><span id="bat0-name">-</span> <span onclick="editPlayerName('batsman', 0)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                <td id="bat0-runs">0</td>
+                                <td id="bat0-balls">0</td>
+                                <td id="bat0-4s">0</td>
+                                <td id="bat0-6s">0</td>
+                                <td id="bat0-sr">0.0</td>
+                            </tr>
+                            <tr id="bat-row-1">
+                                <td><span id="bat1-name">-</span> <span onclick="editPlayerName('batsman', 1)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                <td id="bat1-runs">0</td>
+                                <td id="bat1-balls">0</td>
+                                <td id="bat1-4s">0</td>
+                                <td id="bat1-6s">0</td>
+                                <td id="bat1-sr">0.0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Bowling -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">⚾ Bowling</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Bowler</th>
+                                <th>O</th>
+                                <th>M</th>
+                                <th>R</th>
+                                <th>W</th>
+                                <th>Econ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bowling-table-body">
+                            <tr>
+                                <td><span id="bowler-name">-</span> <span onclick="editPlayerName('bowler', null)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                <td id="bowler-overs">0</td>
+                                <td id="bowler-maidens">0</td>
+                                <td id="bowler-runs">0</td>
+                                <td id="bowler-wkts">0</td>
+                                <td id="bowler-econ">0.0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Partnership & FoW -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">🤝 Partnership</div>
+                    <div style="display:flex;gap:24px;padding:8px 0">
+                        <div class="stat-box" style="flex:1">
+                            <div class="stat-val" id="partner-runs">0</div>
+                            <div class="stat-lbl">Runs</div>
+                        </div>
+                        <div class="stat-box" style="flex:1">
+                            <div class="stat-val" id="partner-balls">0</div>
+                            <div class="stat-lbl">Balls</div>
+                        </div>
+                        <div class="stat-box" style="flex:1">
+                            <div class="stat-val" id="partner-sr">0.0</div>
+                            <div class="stat-lbl">SR</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fall of Wickets -->
+                <div class="card">
+                    <div class="card-head">💥 Fall of Wickets</div>
+                    <div id="fow-list" style="font-size:12px;color:var(--c-muted)">No wickets yet</div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Input controls -->
+            <div class="input-column">
+
+                <!-- Striker toggle -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">On Strike</div>
+                    <div class="striker-toggle" id="striker-toggle">
+                        <button class="striker-opt active" id="striker-opt-0" onclick="setStriker(0)">
+                            <span class="striker-indicator">🏏</span>
+                            <span id="striker-opt-label-0">Batter 1</span>
+                        </button>
+                        <button class="striker-opt" id="striker-opt-1" onclick="setStriker(1)">
+                            <span id="striker-opt-label-1">Batter 2</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ball buttons -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">Record Ball</div>
+                    <div class="ball-grid">
+                        <button class="ball-btn b-dot" onclick="recordBall({type:'dot',runs:0})">
+                            <span class="ball-n">●</span><span class="ball-l">Dot</span>
+                        </button>
+                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:1})">
+                            <span class="ball-n">1</span><span class="ball-l">Single</span>
+                        </button>
+                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:2})">
+                            <span class="ball-n">2</span><span class="ball-l">Double</span>
+                        </button>
+                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:3})">
+                            <span class="ball-n">3</span><span class="ball-l">Triple</span>
+                        </button>
+                        <button class="ball-btn b-four" onclick="recordBall({type:'four',runs:4})">
+                            <span class="ball-n">4</span><span class="ball-l">Four</span>
+                        </button>
+                        <button class="ball-btn b-six" onclick="recordBall({type:'six',runs:6})">
+                            <span class="ball-n">6</span><span class="ball-l">Six</span>
+                        </button>
+                        <button class="ball-btn b-wide" onclick="recordExtra('wide')">
+                            <span class="ball-n">Wd</span><span class="ball-l">Wide</span>
+                        </button>
+                        <button class="ball-btn b-noball" onclick="openNoballModal()">
+                            <span class="ball-n">Nb</span><span class="ball-l">No Ball</span>
+                        </button>
+                        <button class="ball-btn b-bye" onclick="openByeModal()">
+                            <span class="ball-n">By</span><span class="ball-l">Bye</span>
+                        </button>
+                        <button class="ball-btn b-legbye" onclick="openLegByeModal()">
+                            <span class="ball-n">Lb</span><span class="ball-l">Leg Bye</span>
+                        </button>
+                        <button class="ball-btn b-wicket" onclick="openWicketModal()">
+                            <span class="ball-n">W</span><span class="ball-l">Wicket!</span>
+                        </button>
+                        <button class="ball-btn b-five" onclick="recordBall({type:'run',runs:5})">
+                            <span class="ball-n">5</span><span class="ball-l">Five</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Undo / Redo -->
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-head">History</div>
+                    <div style="display:flex;gap:10px">
+                        <button class="btn btn-ghost btn-full" onclick="undoAction()" id="undo-btn">↩ Undo</button>
+                        <button class="btn btn-ghost btn-full" onclick="redoAction()" id="redo-btn">↪ Redo</button>
+                    </div>
+                    <div id="last-ball-info"
+                        style="font-size:12px;color:var(--c-muted);margin-top:8px;text-align:center"></div>
+                </div>
+
+                <!-- Publish & Controls -->
+                <div class="card">
+                    <div class="card-head">Match Controls</div>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        <label class="toggle-row" id="publish-toggle-row">
+                            <span class="toggle-label">📡 Publish Live Score</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="publish-toggle" onchange="togglePublish(this.checked)" />
+                                <span class="toggle-knob"></span>
+                            </label>
+                        </label>
+                        <button class="btn btn-ghost btn-full btn-sm" onclick="openScorecard()">📋 Full
+                            Scorecard</button>
+                        <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp;
+                            Save</button>
+                        <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End
+                            Innings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOURNAMENT SUMMARY SCREEN ===== -->
+    <div id="screen-tournament-summary" class="scorer-screen" style="display:none">
+        <div class="sub-header">
+            <button class="back-btn" onclick="showScreen('setup')">← Back to Setup</button>
+            <div class="sub-header-title" id="ts-title">🏆 Tournament Summary</div>
+        </div>
+        <div class="content-container" style="max-width:720px; margin: 0 auto;">
+            
+            <div class="card" style="margin-bottom:20px; text-align: center; display: flex; justify-content: center; gap: 10px;">
+                 <button class="btn btn-primary" onclick="openTournamentMatchesModal(currentMatch.tournamentId)">📅 Match Schedule</button>
+                 <button class="btn btn-ghost" onclick="location.href='../index.html'">🏠 Home</button>
+            </div>
+
+            <!-- Points Table -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-head">🏆 Points Table</div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead><tr><th>Team</th><th>P</th><th>W</th><th>L</th><th>T</th><th>Pts</th><th>NRR</th></tr></thead>
+                        <tbody id="ts-points-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Batting Performance -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-head">🏏 Top Batsmen</div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead><tr><th>Player</th><th>Matches</th><th>Runs</th><th>HS</th><th>Avg SR</th></tr></thead>
+                        <tbody id="ts-batting-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bowling Performance -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-head">⚾ Top Bowlers</div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead><tr><th>Player</th><th>Matches</th><th>Wickets</th><th>Econ</th></tr></thead>
+                        <tbody id="ts-bowling-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Request Tournament Modal -->
+    <div class="modal-overlay" id="modal-request" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">📝</div>
+            <div class="modal-title">Request Official Tournament</div>
+            <div class="modal-sub" id="request-match-title" style="font-weight:700;color:var(--c-amber)"></div>
+            <p style="color:var(--c-muted);font-size:13px;margin-bottom:16px">This tournament requires admin approval.
+                Enter
+                your name and a password that you will use to unlock ALL its matches.</p>
+
+            <input type="hidden" id="req-match-id" />
+
+            <div class="form-group">
+                <label class="form-label">Your Name</label>
+                <input type="text" class="form-input" id="req-name" placeholder="Enter your full name..." />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Organizer Contact Number</label>
+                <input type="text" class="form-input" id="req-phone" placeholder="Enter phone number..." />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password (Keep this safe)</label>
+                <input type="password" class="form-input" id="req-password" placeholder="Set a match password..." />
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-request')">Cancel</button>
+                <button class="btn btn-amber" onclick="submitMatchRequest()">Request Tournament</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tournament Matches Hub Modal -->
+    <div class="modal-overlay" id="modal-tournament-matches" style="display:none;z-index:9999">
+        <div class="modal-box" style="max-width:500px">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="modal-title" id="tm-title">Tournament Name</div>
+                <button class="btn btn-sm btn-green" id="btn-add-tourn-match" style="padding: 4px 8px;">➕ Add Match</button>
+            </div>
+            <div id="tm-list"
+                style="margin-top:16px;max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+            </div>
+            <div class="modal-actions" style="flex-direction:column; gap:10px">
+                <button class="btn btn-red btn-full" id="btn-end-tournament" style="display:none">🏆 End Tournament</button>
+                <button class="btn btn-ghost btn-full" onclick="closeModal('modal-tournament-matches')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wicket Modal -->
+    <div class="modal-overlay" id="modal-wicket" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">❌</div>
+            <div class="modal-title">Wicket!</div>
+            <div class="modal-sub">Select the dismissed batsman and wicket type</div>
+
+            <div class="form-group">
+                <label class="form-label">Dismissed Batsman</label>
+                <div id="wicket-dismissed-opts" style="display:flex;flex-direction:column;gap:8px">
+                    <label class="radio-card"><input type="radio" name="dismissed" value="0" checked /> <span
+                            id="wk-bat-name-0">Batter 1</span></label>
+                    <label class="radio-card"><input type="radio" name="dismissed" value="1" /> <span
+                            id="wk-bat-name-1">Batter 2</span></label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Wicket Type</label>
+                <select class="form-select" id="wicket-type">
+                    <option value="Bowled">Bowled</option>
+                    <option value="Caught">Caught</option>
+                    <option value="LBW">LBW</option>
+                    <option value="Run Out">Run Out</option>
+                    <option value="Stumped">Stumped</option>
+                    <option value="Hit Wicket">Hit Wicket</option>
+                    <option value="C&B">Caught &amp; Bowled</option>
+                    <option value="Obstructing">Obstructing Field</option>
+                    <option value="Timed Out">Timed Out</option>
+                    <option value="Handled Ball">Handled Ball</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Runs scored on wicket ball</label>
+                <div style="display:flex;gap:8px">
+                    <button class="wr-btn active" data-val="0" onclick="selectWicketRuns(this)">0</button>
+                    <button class="wr-btn" data-val="1" onclick="selectWicketRuns(this)">1</button>
+                    <button class="wr-btn" data-val="2" onclick="selectWicketRuns(this)">2</button>
+                    <button class="wr-btn" data-val="3" onclick="selectWicketRuns(this)">3</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Fielder / Catcher (Optional)</label>
+                <input type="text" class="form-input" id="wicket-fielder" placeholder="Fielder name..." />
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-wicket')">Cancel</button>
+                <button class="btn btn-red" onclick="confirmWicket()">Confirm Wicket</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Batsman Modal -->
+    <div class="modal-overlay" id="modal-new-batsman" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">🏏</div>
+            <div class="modal-title">New Batsman</div>
+            <div class="modal-sub" id="new-batsman-sub">Enter batsman details</div>
+
+            <div class="form-group">
+                <label class="form-label">Player ID (Optional – auto-fill from database)</label>
+                <div style="display:flex;gap:8px">
+                    <input type="text" class="form-input" id="new-bat-pid" placeholder="e.g. CP-001" />
+                    <button class="btn btn-ghost" onclick="lookupPlayer()" style="flex-shrink:0">🔍 Find</button>
+                </div>
+                <div id="player-lookup-result" style="margin-top:8px;font-size:13px;color:#00e676"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Batsman Name</label>
+                <input type="text" class="form-input" id="new-bat-name" placeholder="Enter name..." maxlength="25"
+                    list="db-players-list" />
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-green btn-full" onclick="confirmNewBatsman()">✅ Add to Crease</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open Batsmen Modal (At Match Start) -->
+    <div class="modal-overlay" id="modal-open-batsmen" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">🏏</div>
+            <div class="modal-title">Opening Batsmen</div>
+            <div class="modal-sub">Enter both opening batsmen details</div>
+
+            <!-- Striker -->
+            <div class="form-group" style="padding-bottom:12px;border-bottom:1px solid var(--c-border)">
+                <label class="form-label" style="color:var(--c-amber)">Striker</label>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input type="text" class="form-input" id="open-bat1-pid" placeholder="Player ID (Optional)"
+                        style="width:120px" />
+                    <button class="btn btn-ghost btn-sm" onclick="lookupPlayerOpen(1)">🔍</button>
+                    <input type="text" class="form-input" id="open-bat1-name" placeholder="Name..." style="flex:1"
+                        list="db-players-list" />
+                </div>
+            </div>
+
+            <!-- Non-Striker -->
+            <div class="form-group" style="padding-bottom:12px">
+                <label class="form-label" style="color:var(--c-amber)">Non-Striker</label>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input type="text" class="form-input" id="open-bat2-pid" placeholder="Player ID (Optional)"
+                        style="width:120px" />
+                    <button class="btn btn-ghost btn-sm" onclick="lookupPlayerOpen(2)">🔍</button>
+                    <input type="text" class="form-input" id="open-bat2-name" placeholder="Name..." style="flex:1"
+                        list="db-players-list" />
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-green btn-full" onclick="confirmOpenBatsmen()">✅ Start Innings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Bowler Modal -->
+    <div class="modal-overlay" id="modal-new-bowler" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">⚾</div>
+            <div class="modal-title">New Bowler</div>
+            <div class="modal-sub">Select bowler for the next over</div>
+
+            <div class="form-group">
+                <label class="form-label">Player ID (Optional)</label>
+                <div style="display:flex;gap:8px">
+                    <input type="text" class="form-input" id="new-bowl-pid" placeholder="e.g. CP-001" />
+                    <button class="btn btn-ghost" onclick="lookupBowler()" style="flex-shrink:0">🔍 Find</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Bowler Name</label>
+                <input type="text" class="form-input" id="new-bowl-name" placeholder="Enter bowler name..."
+                    maxlength="25" list="db-players-list" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Recent Bowlers</label>
+                <div id="recent-bowlers-opts" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary btn-full" onclick="confirmNewBowler()">✅ Start Bowling</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bye/LegBye Runs Modal -->
+    <div class="modal-overlay" id="modal-bye" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title" id="bye-modal-title">Bye Runs</div>
+            <div class="modal-sub">How many runs?</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
+                <button class="wr-btn" data-val="1" onclick="selectByeRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">1</button>
+                <button class="wr-btn" data-val="2" onclick="selectByeRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">2</button>
+                <button class="wr-btn" data-val="3" onclick="selectByeRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">3</button>
+                <button class="wr-btn" data-val="4" onclick="selectByeRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">4</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-bye')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmBye()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Ball Runs Modal -->
+    <div class="modal-overlay" id="modal-noball" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">No Ball Runs</div>
+            <div class="modal-sub">Extra runs from the bat?</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
+                <button class="wr-btn" data-val="0" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">0</button>
+                <button class="wr-btn" data-val="1" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">1</button>
+                <button class="wr-btn" data-val="2" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">2</button>
+                <button class="wr-btn" data-val="3" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">3</button>
+                <button class="wr-btn" data-val="4" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">4</button>
+                <button class="wr-btn" data-val="6" onclick="selectNoballRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">6</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-noball')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmNoball()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Innings End Modal -->
+    <div class="modal-overlay" id="modal-innings-end" style="display:none">
+        <div class="modal-box">
+            <div style="font-size:64px;text-align:center;margin-bottom:12px">🏏</div>
+            <div class="modal-title" id="innings-end-title">Innings Complete!</div>
+            <div id="innings-end-summary" style="color:var(--c-muted);margin:12px 0;font-size:15px"></div>
+            <div class="modal-actions">
+                <button class="btn btn-primary btn-full" id="innings-end-btn" onclick="proceedAfterInnings()">Start 2nd
+                    Innings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Result Modal -->
+    <div class="modal-overlay" id="modal-result" style="display:none">
+        <div class="modal-box" style="text-align:center">
+            <div style="font-size:72px;margin-bottom:12px">🏆</div>
+            <div class="modal-title" id="result-title">Match Complete!</div>
+            <div style="font-size:28px;font-weight:900;color:#ffc107;margin:16px 0" id="result-winner"></div>
+            <div style="color:var(--c-muted);margin-bottom:20px" id="result-summary"></div>
+            <div id="result-mom"
+                style="background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.3);border-radius:12px;padding:14px;margin-bottom:20px">
+            </div>
+
+            <button class="btn btn-green btn-full" onclick="printScorecard()" style="margin-bottom:10px">📄 Get Summary
+                PDF</button>
+
+            <div class="modal-actions" style="justify-content:center">
+                <button class="btn btn-ghost" onclick="closeModal('modal-result');showScreen('setup')">Back to
+                    Setup</button>
+                <button class="btn btn-primary" onclick="location.href='../index.html'">🏠 Home</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scorecard Modal -->
+    <div class="modal-overlay" id="modal-scorecard" style="display:none" onclick="closeModal('modal-scorecard')">
+        <div class="modal-box" style="max-width:700px;width:100%;max-height:85vh;overflow-y:auto"
+            onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                <div class="modal-title">📋 Full Scorecard</div>
+                <div>
+                    <button class="btn btn-green btn-sm" onclick="window.print()" style="margin-right:10px">📄 Print /
+                        PDF</button>
+                    <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-scorecard')">✕ Close</button>
+                </div>
+            </div>
+            <div id="scorecard-content"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <datalist id="db-players-list"></datalist>
+
+    <script src="../js/db.js"></script>
+    <script src="../js/scorer.js"></script>
+</body>
+
+</html>

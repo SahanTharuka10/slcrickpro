@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live TV Overlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/overlay.css" />
+    <link rel="stylesheet" href="../css/overlay.css" />
+    <style>
+        .tv-controls {
+            position: fixed;
+            bottom: 15px;
+            left: 20px;
+            z-index: 10000;
+        }
+        .btn-tv-main {
+            background: #e61b4d;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(230,27,77,0.4);
+            transition: transform 0.2s;
+            font-family: inherit;
+        }
+        .btn-tv-main:hover { transform: scale(1.05); }
+        .shortcut-menu {
+            position: fixed;
+            bottom: 60px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .shortcut-menu .btn-tv {
+            background: transparent;
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .shortcut-menu .btn-tv:hover { background: rgba(255,255,255,0.1); }
+        .overlay-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 9998;
+            display: none;
+        }
+        .side-player-popup {
+            position: fixed;
+            right: 50px;
+            bottom: 120px;
+            width: 320px;
+            background: linear-gradient(135deg, #1b1642 0%, #292265 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 9997;
+            display: none;
+            border: 2px solid #e61b4d;
+            font-family: 'Outfit', sans-serif;
+            animation: slideInRight 0.3s ease forwards;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .player-row-clickable {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .player-row-clickable:hover {
+            background: rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="tv-controls" class="tv-controls">
+        <button onclick="toggleShortcutMenu()" class="btn-tv-main" id="btn-shortcut-menu">🛠️ Menu</button>
+    </div>
+
+    <div id="shortcut-menu" class="shortcut-menu" style="display:none">
+        <button onclick="closeOverlayPopup(); toggleShortcutMenu();" class="btn-tv">🔴 Live TV</button>
+        <button onclick="hideSidePlayer(); toggleShortcutMenu();" class="btn-tv">❌ Hide Side Stats</button>
+        <button onclick="showOverlayPopup('match_players'); toggleShortcutMenu();" class="btn-tv" id="btn-match-players">👥 Match Players</button>
+        <button onclick="showOverlayPopup('fixtures'); toggleShortcutMenu();" class="btn-tv" id="btn-fix" style="display:none">📅 Tourn Fixtures</button>
+        <button onclick="showOverlayPopup('batting'); toggleShortcutMenu();" class="btn-tv" id="btn-bat" style="display:none">🏏 Tourn Batters</button>
+        <button onclick="showOverlayPopup('bowling'); toggleShortcutMenu();" class="btn-tv" id="btn-bowl" style="display:none">🎳 Tourn Bowlers</button>
+        <button onclick="showOverlayPopup('matchstats'); toggleShortcutMenu();" class="btn-tv" id="btn-match-stats-menu">📊 Match Stats</button>
+    </div>
+    
+    <div id="side-player-popup" class="side-player-popup"></div>
+    <div id="overlay-popup" class="overlay-popup"></div>
+    <div id="overlay-container" class="overlay-container">
+        <!-- Inner overlay injected by JS -->
+    </div>
+
+    <script src="../js/db.js"></script>
+    <script src="../js/overlay.js"></script>
+</body>
+
+</html>

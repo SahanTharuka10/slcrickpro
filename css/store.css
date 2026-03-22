@@ -1,0 +1,239 @@
+/* Store CSS v2 */
+.cart-btn {
+    background: linear-gradient(135deg, #e91e9c, #9c27b0);
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+}
+
+.cart-btn:hover {
+    opacity: 0.88;
+}
+
+#cart-count {
+    background: #fff;
+    color: #e91e9c;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.category-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.cat-chip {
+    padding: 8px 18px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--c-border);
+    color: var(--c-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cat-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.cat-chip.active {
+    background: rgba(233, 30, 156, 0.15);
+    border-color: rgba(233, 30, 156, 0.5);
+    color: #f06292;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r);
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.35);
+    border-color: rgba(233, 30, 156, 0.35);
+}
+
+/* Product image area */
+.product-img-wrap {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.03);
+    position: relative;
+}
+
+.product-img {
+    max-width: 100%;
+    max-height: 160px;
+    object-fit: contain;
+    transition: transform 0.3s;
+}
+
+.product-card:hover .product-img {
+    transform: scale(1.06);
+}
+
+.product-emoji-wrap {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+}
+
+.product-info {
+    padding: 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}
+
+.product-name {
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.product-desc {
+    font-size: 12px;
+    color: var(--c-muted);
+    margin-bottom: 8px;
+    flex: 1;
+    line-height: 1.5;
+}
+
+.star-rating {
+    color: #ffc107;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.product-price {
+    font-size: 18px;
+    font-weight: 900;
+    color: #e91e9c;
+    margin-bottom: 10px;
+}
+
+.product-action {
+    display: flex;
+    gap: 8px;
+}
+
+.product-card .btn {
+    flex: 1;
+    font-size: 12px;
+    padding: 9px;
+}
+
+/* Cart items */
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.cart-item-emoji {
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.cart-item-price {
+    font-size: 12px;
+    color: var(--c-muted);
+}
+
+.cart-item-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.qty-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--c-border);
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.qty-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.cart-item-qty {
+    font-size: 16px;
+    font-weight: 800;
+    min-width: 24px;
+    text-align: center;
+}

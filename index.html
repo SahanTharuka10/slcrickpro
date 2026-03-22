@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SLCRICKPRO – Live Cricket Score & Tournament Manager</title>
+  <meta name="description"
+    content="Experience real-time live cricket scores and professional tournament management with SLCRICKPRO. The ultimate hub for cricket stats, player registration, and live match tracking." />
+  <meta name="keywords" content="cricket score, live score, slcrick pro, slcrickpro, cricket tournament manager, live cricket stats, online scoring app, sl match hub, cricpro live" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+  <!-- Animated Background -->
+  <div class="bg-canvas">
+    <div class="bg-orb orb1"></div>
+    <div class="bg-orb orb2"></div>
+    <div class="bg-orb orb3"></div>
+    <div class="bg-orb orb4"></div>
+    <div class="cricket-field-lines"></div>
+  </div>
+
+  <!-- Particles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🏏</div>
+        <div class="logo-text">
+          <span class="logo-name">SLCRICKPRO</span>
+          <span class="logo-tag">Cricket Management System</span>
+        </div>
+      </div>
+      <div class="header-info">
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span>LIVE</span>
+        </div>
+        <div class="current-time" id="current-time">--:--</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-badge">🏆 Professional Cricket Platform</div>
+      <h1 class="hero-title">
+        Manage Every <span class="gradient-text">Cricket</span><br />
+        Moment in Real‑Time
+      </h1>
+      <p class="hero-sub">Ball-by-ball scoring · Live tournaments · Player registry · Rankings</p>
+    </div>
+  </section>
+
+  <!-- Main Navigation Cards -->
+  <main class="main-nav">
+    <div class="nav-grid">
+
+      <!-- 1. Ongoing Matches -->
+      <a href="pages/ongoing-matches.html" class="nav-card card-ongoing">
+        <div class="card-glow"></div>
+        <div class="card-number">01</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">📡</div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Ongoing Matches</h2>
+          <p class="card-desc">Live scores, ball-by-ball updates and tournament standings</p>
+        </div>
+        <div class="card-footer">
+          <span class="live-indicator">
+            <span class="pulse-dot"></span>Live Now
+          </span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">🏟️</div>
+      </a>
+
+      <!-- 2. Score New Match -->
+      <a href="pages/score-match.html" class="nav-card card-score">
+        <div class="card-glow"></div>
+        <div class="card-number">02</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">🏏</div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Score New Match</h2>
+          <p class="card-desc">Start tournament or single match scoring with live publish</p>
+        </div>
+        <div class="card-footer">
+          <span class="card-tag">Tournament & Single</span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">🎯</div>
+      </a>
+
+      <!-- 3. Player & Team Ranking -->
+      <a href="pages/ranking.html" class="nav-card card-ranking">
+        <div class="card-glow"></div>
+        <div class="card-number">03</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">🏆</div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Player &amp; Team Ranking</h2>
+          <p class="card-desc">Leaderboards, batting, bowling stats and team standings</p>
+        </div>
+        <div class="card-footer">
+          <span class="card-tag">Updated Live</span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">📊</div>
+      </a>
+
+      <!-- 4. Crick Store -->
+      <a href="pages/crick-store.html" class="nav-card card-store">
+        <div class="card-glow"></div>
+        <div class="card-number">04</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">🛒</div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Crick Store</h2>
+          <p class="card-desc">Equipment, jerseys, gear and cricket merchandise</p>
+        </div>
+        <div class="card-footer">
+          <span class="card-tag">Shop Now</span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">🧢</div>
+      </a>
+
+      <!-- 5. Player Registration -->
+      <a href="pages/player-registration.html" class="nav-card card-register">
+        <div class="card-glow"></div>
+        <div class="card-number">05</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">📋</div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Player Registration</h2>
+          <p class="card-desc">Register players &amp; teams, issue Player IDs and manage database</p>
+        </div>
+        <div class="card-footer">
+          <span class="card-tag">Issue Player ID</span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">🎽</div>
+      </a>
+
+    </div>
+  </main>
+
+  <!-- Live Ticker -->
+  <div class="ticker-bar">
+    <div class="ticker-label">🔴 LIVE</div>
+    <div class="ticker-track">
+      <div class="ticker-content" id="ticker-content">
+        Loading live scores...
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <p>© 2026 SLCRICKPRO · Built with ❤️ for cricket lovers</p>
+  </footer>
+
+  <script src="js/db.js"></script>
+  <script src="js/home.js"></script>
+</body>
+
+</html>

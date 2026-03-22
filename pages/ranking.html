@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Player & Team Ranking – SLCRICKPRO</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/ranking.css" />
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb3"></div>
+    </div>
+
+    <div class="sub-header">
+        <button class="back-btn" onclick="history.back()">← Home</button>
+        <div class="sub-header-title">🏆 Rankings</div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <select class="form-select" id="team-filter" onchange="renderAll()"
+                style="width:160px;padding:8px 12px;font-size:13px">
+                <option value="">All Teams</option>
+            </select>
+            <input type="text" class="form-input" id="search-player" placeholder="🔍 Search player..."
+                style="width:180px;padding:8px 12px;font-size:13px" oninput="renderAll()" />
+        </div>
+    </div>
+
+    <div class="content-container">
+        <!-- Main tabs -->
+        <div class="tab-bar" style="max-width:620px;margin-bottom:28px">
+            <button class="tab-btn active" id="tab-batting" onclick="switchTab('batting')">🏏 Batting</button>
+            <button class="tab-btn" id="tab-bowling" onclick="switchTab('bowling')">🎳 Bowling</button>
+            <button class="tab-btn" id="tab-allround" onclick="switchTab('allround')">⭐ All-Round</button>
+            <button class="tab-btn" id="tab-teams" onclick="switchTab('teams')">🏟️ Teams</button>
+        </div>
+
+        <!-- BATTING -->
+        <div id="panel-batting">
+            <div class="section-hd">🏏 Batting Rankings</div>
+            <div class="card">
+                <div
+                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+                    <div class="card-head" style="margin:0">Top Batsmen</div>
+                    <select class="form-select" id="bat-sort" onchange="renderAll()"
+                        style="width:160px;padding:8px 12px;font-size:13px">
+                        <option value="runs">Sort by Runs</option>
+                        <option value="avg">Sort by Average</option>
+                        <option value="sr">Sort by Strike Rate</option>
+                        <option value="hs">Sort by High Score</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>M</th>
+                                <th>Inn</th>
+                                <th>Runs</th>
+                                <th>HS</th>
+                                <th>Avg</th>
+                                <th>SR</th>
+                                <th>30s</th>
+                                <th>50s</th>
+                                <th>4s</th>
+                                <th>6s</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batting-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOWLING -->
+        <div id="panel-bowling" style="display:none">
+            <div class="section-hd">🎳 Bowling Rankings</div>
+            <div class="card">
+                <div
+                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+                    <div class="card-head" style="margin:0">Top Bowlers</div>
+                    <select class="form-select" id="bowl-sort" onchange="renderAll()"
+                        style="width:160px;padding:8px 12px;font-size:13px">
+                        <option value="wickets">Sort by Wickets</option>
+                        <option value="econ">Sort by Economy</option>
+                        <option value="avg">Sort by Average</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>M</th>
+                                <th>Wkts</th>
+                                <th>Overs</th>
+                                <th>Runs</th>
+                                <th>Econ</th>
+                                <th>Avg</th>
+                                <th>Maidens</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bowling-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL-ROUND -->
+        <div id="panel-allround" style="display:none">
+            <div class="section-hd">⭐ All-Round Performance</div>
+            <div class="card">
+                <div class="card-head">All-Rounders (Combined Index)</div>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>Runs</th>
+                                <th>Wickets</th>
+                                <th>4s</th>
+                                <th>6s</th>
+                                <th>Bat SR</th>
+                                <th>Economy</th>
+                                <th>Index</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allround-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEAMS -->
+        <div id="panel-teams" style="display:none">
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+                <div class="section-hd" style="margin:0">🏟️ Team Rankings</div>
+                <select class="form-select" id="team-sort" onchange="renderAll()"
+                    style="width:160px;padding:8px 12px;font-size:13px">
+                    <option value="prizes">Sort by Prizes</option>
+                    <option value="wins">Sort by Wins</option>
+                    <option value="matches">Sort by Matches</option>
+                </select>
+            </div>
+            <div id="team-cards-grid" class="team-cards-grid"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script src="../js/db.js"></script>
+    <script src="../js/ranking.js"></script>
+</body>
+
+</html>

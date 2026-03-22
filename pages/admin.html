@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel – SLCRICKPRO | Manage Tournaments & Players</title>
+    <meta name="description" content="Official SLCRICKPRO Admin Panel for managing cricket tournament requests, match schedules, and player records." />
+    <meta name="keywords" content="cricket admin, tournament management, manage cricket matches, verify cricket players" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="../css/main.css" />
+    <style>
+        .admin-section {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .request-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-sm);
+            padding: 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .req-info h3 {
+            margin-bottom: 6px;
+            font-size: 18px;
+            color: var(--c-amber);
+        }
+
+        .req-info p {
+            font-size: 14px;
+            color: var(--c-muted);
+        }
+
+        .req-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .product-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-sm);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card img {
+            max-width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: var(--r-sm);
+            margin-bottom: 12px;
+            background: #000;
+        }
+
+        .product-card h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="bg-orb orb3"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="sub-header">
+        <button class="back-btn" onclick="location.href='../index.html'">← Home</button>
+        <div class="sub-header-title">📥 Admin Inbox</div>
+    </div>
+
+    <div id="login-section" class="admin-section" style="max-width:400px;text-align:center;padding-top:80px">
+        <div style="font-size:64px;margin-bottom:16px">🔐</div>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Admin Admin</h2>
+        <p style="color:var(--c-muted);margin-bottom:28px">Enter credentials to access the inbox</p>
+
+        <div class="form-group" style="text-align:left">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="admin-username" placeholder="Username" />
+        </div>
+        <div class="form-group" style="text-align:left">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="admin-password" placeholder="Password" />
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="loginAdmin()">Login</button>
+    </div>
+
+    <div id="admin-content-section" class="admin-section" style="display:none">
+
+        <div class="admin-tabs"
+            style="display:flex; gap:10px; margin-bottom: 24px; border-bottom: 1px solid var(--c-border); padding-bottom: 10px;">
+            <button class="btn btn-primary btn-sm" onclick="switchAdminTab('requests')"
+                id="btn-tab-requests">Inbox</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('matches')" id="btn-tab-matches">System
+                Matches</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players">Players</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
+                Data</button>
+            <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
+        </div>
+
+        <!-- Requests Tab -->
+        <div id="tab-requests" class="admin-panel active">
+            <h3 class="section-hd" style="margin-bottom:8px">Tournament Requests</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">Review and approve requests</p>
+            <div id="requests-list"></div>
+        </div>
+
+        <!-- Players Tab -->
+        <div id="tab-players" class="admin-panel" style="display:none">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                <div>
+                    <h3 class="section-hd" style="margin-bottom:8px">Player Management</h3>
+                    <p style="color:var(--c-muted);margin-bottom:0;">View and delete players from the system.</p>
+                </div>
+                <input type="text" class="form-input" id="admin-player-search" placeholder="🔍 Search players..." style="width:250px" oninput="renderPlayersAdmin()" />
+            </div>
+            <div id="admin-players-list"></div>
+        </div>
+
+        <!-- Matches Tab -->
+        <div id="tab-matches" class="admin-panel" style="display:none">
+            <h3 class="section-hd" style="margin-bottom:8px">Manage Matches</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">Force-remove ongoing matches from the system.</p>
+            <div id="matches-list"></div>
+        </div>
+
+        <!-- Store Tab -->
+        <div id="tab-store" class="admin-panel" style="display:none">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                <div>
+                    <h3 class="section-hd" style="margin-bottom:8px">Maintenance & Store</h3>
+                    <p style="color:var(--c-muted);margin-bottom:0;">Rebuild database stats or manage store
+                        products.</p>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-amber btn-sm" onclick="reSyncAllStats()">🔄 Re-sync All Stats</button>
+                    <button class="btn btn-green" onclick="openAddProduct()">➕ Add Product</button>
+                </div>
+            </div>
+            <div id="store-list"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+        </div>
+    </div>
+
+    <!-- Product Add Modal -->
+    <div class="modal-overlay" id="modal-add-product" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Add Store Item</div>
+
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" id="add-prod-name" placeholder="e.g. Cricket Ball" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Price (LKR)</label>
+                <input type="number" class="form-input" id="add-prod-price" placeholder="e.g. 500" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Stock</label>
+                <input type="number" class="form-input" id="add-prod-stock" placeholder="e.g. 10" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-input" id="add-prod-category">
+                    <option value="bat">🏏 Bats</option>
+                    <option value="ball">🎾 Balls</option>
+                    <option value="gear">🛡️ Gear</option>
+                    <option value="equipment">🗂️ Stumps / Equipment</option>
+                    <option value="bag">🎒 Bags</option>
+                    <option value="shoes">👟 Shoes</option>
+                    <option value="service">⭐ Services</option>
+                    <option value="misc">📦 Misc</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Fallback Emoji</label>
+                <input type="text" class="form-input" id="add-prod-emoji" placeholder="e.g. 🏏" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Image URL or Upload</label>
+                <input type="text" class="form-input" id="add-prod-img" placeholder="https://example.com/image.jpg" />
+                <input type="file" id="add-prod-file" accept="image/*" style="margin-top:8px"
+                    onchange="encodeProductImage(this, 'add-prod-img')" />
+                <div style="font-size: 12px; color: var(--c-muted); margin-top: 4px;">Leave blank to use default
+                    fallback emoji.</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description / Details</label>
+                <textarea class="form-input" id="add-prod-desc" rows="3" placeholder="Product details..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-add-product')">Cancel</button>
+                <button class="btn btn-green" onclick="saveNewProduct()">Add Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Edit Modal -->
+    <div class="modal-overlay" id="modal-edit-product" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Edit Store Item</div>
+            <input type="hidden" id="edit-prod-id" />
+
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" id="edit-prod-name" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Price (LKR)</label>
+                <input type="number" class="form-input" id="edit-prod-price" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Stock</label>
+                <input type="number" class="form-input" id="edit-prod-stock" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Image URL or Upload</label>
+                <input type="text" class="form-input" id="edit-prod-img" placeholder="https://example.com/image.jpg" />
+                <input type="file" id="edit-prod-file" accept="image/*" style="margin-top:8px"
+                    onchange="encodeProductImage(this, 'edit-prod-img')" />
+                <div style="font-size: 12px; color: var(--c-muted); margin-top: 4px;">Leave blank to use default
+                    fallback emoji.</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-edit-product')">Cancel</button>
+                <button class="btn btn-green" onclick="saveProductEdit()">Save Product</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../js/db.js"></script>
+    <script src="../js/admin.js"></script>
+</body>
+
+</html>
