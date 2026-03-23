@@ -53,11 +53,29 @@ function startInstantNRR() {
 
 function renderNRRMatches() {
     const container = document.getElementById('nrr-match-list');
-    container.innerHTML = nrrState.matches.map((m, idx) => {
+    let html = nrrState.matches.map((m, idx) => {
         const statusClass = m.played ? 'btn-green' : 'btn-ghost';
         const label = m.played ? `${m.r1}-${m.r2}` : `Match ${idx + 1}`;
         return `<button class="btn ${statusClass} btn-sm" onclick="openNRRMatchModal(${idx})">${label}</button>`;
     }).join('');
+    
+    // Add Match button
+    html += `<button class="btn btn-amber btn-sm" onclick="addNRRMatch()">➕ Add Match</button>`;
+    container.innerHTML = html;
+}
+
+function addNRRMatch() {
+    const idx = nrrState.matches.length;
+    nrrState.matches.push({
+        id: idx,
+        team1: nrrState.teams[0],
+        team2: nrrState.teams[1],
+        r1: 0, o1: nrrState.oversPerMatch, w1: 0, ao1: false,
+        r2: 0, o2: nrrState.oversPerMatch, w2: 0, ao2: false,
+        played: false
+    });
+    renderNRRMatches();
+    showToast("✅ Extra match added", "success");
 }
 
 function openNRRMatchModal(idx) {
@@ -99,11 +117,21 @@ function saveNRRMatch() {
     }
     
     m.r1 = parseInt(document.getElementById('nrr-m-r1').value) || 0;
-    m.o1 = parseFloat(document.getElementById('nrr-m-o1').value) || 0;
+    const o1Val = parseFloat(document.getElementById('nrr-m-o1').value) || 0;
+    if (!isValidOvers(o1Val)) {
+        showToast("❌ Invalid Overs (e.g. 1.6 is invalid, use 2.0)", "error");
+        return;
+    }
+    m.o1 = o1Val;
     m.ao1 = document.getElementById('nrr-m-ao1').checked;
     
     m.r2 = parseInt(document.getElementById('nrr-m-r2').value) || 0;
-    m.o2 = parseFloat(document.getElementById('nrr-m-o2').value) || 0;
+    const o2Val = parseFloat(document.getElementById('nrr-m-o2').value) || 0;
+    if (!isValidOvers(o2Val)) {
+        showToast("❌ Invalid Overs (e.g. 1.6 is invalid, use 2.0)", "error");
+        return;
+    }
+    m.o2 = o2Val;
     m.ao2 = document.getElementById('nrr-m-ao2').checked;
     
     m.played = true;
@@ -171,4 +199,12 @@ function resetInstantNRR() {
 
 function printInstantNRR() {
     window.print();
+}
+
+/**
+ * Validates cricket overs (decimal part should be .0 to .5)
+ */
+function isValidOvers(val) {
+    const frac = Math.round((val % 1) * 10);
+    return frac >= 0 && frac <= 5;
 }
