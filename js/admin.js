@@ -51,6 +51,10 @@ function switchAdminTab(tab) {
     }
 }
 
+function renderStoreAdmin() {
+    renderStoreItems();
+}
+
 function renderRequests() {
     const container = document.getElementById('requests-list');
     const reqs = DB.getRequests();

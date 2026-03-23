@@ -78,30 +78,39 @@ function addNRRMatch() {
     showToast("✅ Extra match added", "success");
 }
 
+function populateNRRTeamsSelection() {
+    const t1Sel = document.getElementById('nrr-m-t1');
+    const t2Sel = document.getElementById('nrr-m-t2');
+    const opts = nrrState.teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    t1Sel.innerHTML = opts;
+    t2Sel.innerHTML = opts;
+}
+
 function openNRRMatchModal(idx) {
     const m = nrrState.matches[idx];
     document.getElementById('nrr-modal-title').textContent = `Match ${idx + 1} Result`;
     document.getElementById('nrr-current-match-idx').value = idx;
     
-    const t1Sel = document.getElementById('nrr-m-t1');
-    const t2Sel = document.getElementById('nrr-m-t2');
-    
-    const opts = nrrState.teams.map(t => `<option value="${t}">${t}</option>`).join('');
-    t1Sel.innerHTML = opts;
-    t2Sel.innerHTML = opts;
-    
-    t1Sel.value = m.team1;
-    t2Sel.value = m.team2;
-    
+    populateNRRTeamsSelection();
+    document.getElementById('nrr-m-t1').value = m.team1;
+    document.getElementById('nrr-m-t2').value = m.team2;
     document.getElementById('nrr-m-r1').value = m.r1;
-    document.getElementById('nrr-m-o1').value = m.o1 === 0 ? 20 : m.o1;
-    document.getElementById('nrr-m-ao1').checked = m.ao1;
-    
     document.getElementById('nrr-m-r2').value = m.r2;
-    document.getElementById('nrr-m-o2').value = m.o2 === 0 ? 20 : m.o2;
+
+    // Split decimal overs back to Overs and Balls
+    const ov1 = Math.floor(m.o1);
+    const bl1 = Math.round((m.o1 % 1) * 10);
+    document.getElementById('nrr-m-ov1').value = ov1;
+    document.getElementById('nrr-m-bl1').value = bl1;
+    document.getElementById('nrr-m-ao1').checked = m.ao1;
+
+    const ov2 = Math.floor(m.o2);
+    const bl2 = Math.round((m.o2 % 1) * 10);
+    document.getElementById('nrr-m-ov2').value = ov2;
+    document.getElementById('nrr-m-bl2').value = bl2;
     document.getElementById('nrr-m-ao2').checked = m.ao2;
     
-    openModal('modal-nrr-match-entry');
+    showModal('modal-nrr-match-entry');
 }
 
 function saveNRRMatch() {
@@ -117,21 +126,31 @@ function saveNRRMatch() {
     }
     
     m.r1 = parseInt(document.getElementById('nrr-m-r1').value) || 0;
-    const o1Val = parseFloat(document.getElementById('nrr-m-o1').value) || 0;
-    if (!isValidOvers(o1Val)) {
-        showToast("❌ Invalid Overs (e.g. 1.6 is invalid, use 2.0)", "error");
+    const ov1 = parseInt(document.getElementById('nrr-m-ov1').value) || 0;
+    const bl1 = parseInt(document.getElementById('nrr-m-bl1').value) || 0;
+    if (bl1 < 0 || bl1 > 5) {
+        showToast("❌ Team 1 final over balls must be 0 to 5", "error");
         return;
     }
-    m.o1 = o1Val;
+    if (ov1 < 0 || ov1 > nrrState.oversPerMatch) {
+        showToast(`❌ Team 1 completed overs must be 0 to ${nrrState.oversPerMatch}`, "error");
+        return;
+    }
+    m.o1 = ov1 + (bl1 / 10);
     m.ao1 = document.getElementById('nrr-m-ao1').checked;
     
     m.r2 = parseInt(document.getElementById('nrr-m-r2').value) || 0;
-    const o2Val = parseFloat(document.getElementById('nrr-m-o2').value) || 0;
-    if (!isValidOvers(o2Val)) {
-        showToast("❌ Invalid Overs (e.g. 1.6 is invalid, use 2.0)", "error");
+    const ov2 = parseInt(document.getElementById('nrr-m-ov2').value) || 0;
+    const bl2 = parseInt(document.getElementById('nrr-m-bl2').value) || 0;
+    if (bl2 < 0 || bl2 > 5) {
+        showToast("❌ Team 2 final over balls must be 0 to 5", "error");
         return;
     }
-    m.o2 = o2Val;
+    if (ov2 < 0 || ov2 > nrrState.oversPerMatch) {
+        showToast(`❌ Team 2 completed overs must be 0 to ${nrrState.oversPerMatch}`, "error");
+        return;
+    }
+    m.o2 = ov2 + (bl2 / 10);
     m.ao2 = document.getElementById('nrr-m-ao2').checked;
     
     m.played = true;

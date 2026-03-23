@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel – SLCRICKPRO | Manage Tournaments & Players</title>
     <meta name="description" content="Official SLCRICKPRO Admin Panel for managing cricket tournament requests, match schedules, and player records." />
-    <meta name="keywords" content="cricket admin, tournament management, manage cricket matches, verify cricket players" />
+    <meta name="keywords" content="slcrickpro admin, softball cricket admin, cricket admin, tournament management, manage cricket matches, verify cricket players" />
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet" />
@@ -80,6 +80,10 @@
     <div class="sub-header">
         <button class="back-btn" onclick="location.href='../index.html'">← Home</button>
         <div class="sub-header-title">📥 Admin Inbox</div>
+        <div class="header-info" style="display:flex; align-items:center; gap:10px">
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()"
+                style="width:32px; height:32px; font-size:14px">☀️</button>
+        </div>
     </div>
 
     <div id="login-section" class="admin-section" style="max-width:400px;text-align:center;padding-top:80px">
@@ -222,14 +226,6 @@
                              </label>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Top Batsman (Player ID)</label>
-                        <input type="text" class="form-input" id="ame-inn1-topBat" placeholder="CP0001" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Top Batsman Runs</label>
-                        <input type="number" class="form-input" id="ame-inn1-topBatRuns" value="0" />
-                    </div>
                 </div>
                 <!-- Innings 2 -->
                 <div class="card">
@@ -259,14 +255,35 @@
                              </label>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Top Bowler (Player ID)</label>
-                        <input type="text" class="form-input" id="ame-inn2-topBowl" placeholder="CP0001" />
+                </div>
+            </div>
+
+            <div class="grid-2" style="gap:24px; margin-top:24px">
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-amber)">Team 1 Player Data</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                        <label class="form-label" style="margin:0">Batters (max 5)</label>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="addAMEPlayerRow('team1', 'bat')">+ Add Batter</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Top Bowler Wkts/Runs</label>
-                        <input type="text" class="form-input" id="ame-inn2-topBowlStats" placeholder="3/15" />
+                    <div id="ame-team1-batters"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 8px">
+                        <label class="form-label" style="margin:0">Bowlers (max 5)</label>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="addAMEPlayerRow('team1', 'bowl')">+ Add Bowler</button>
                     </div>
+                    <div id="ame-team1-bowlers"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-amber)">Team 2 Player Data</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                        <label class="form-label" style="margin:0">Batters (max 5)</label>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="addAMEPlayerRow('team2', 'bat')">+ Add Batter</button>
+                    </div>
+                    <div id="ame-team2-batters"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 8px">
+                        <label class="form-label" style="margin:0">Bowlers (max 5)</label>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="addAMEPlayerRow('team2', 'bowl')">+ Add Bowler</button>
+                    </div>
+                    <div id="ame-team2-bowlers"></div>
                 </div>
             </div>
 

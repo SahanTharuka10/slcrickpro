@@ -47,7 +47,7 @@ function renderProducts() {
 
   grid.innerHTML = filtered.map(p => {
     const inCart = cart[p.id] || 0;
-    const isImg = p.img && p.img.startsWith('http');
+    const isImg = !!p.img && (/^https?:\/\//i.test(p.img) || /^data:image\//i.test(p.img) || p.img.startsWith('/'));
     const imgEl = isImg
       ? `<img src="${p.img}" alt="${p.name}" class="product-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="product-emoji-wrap" style="display:none">${p.imgFallback || '🏏'}</div>`
       : `<div class="product-emoji-wrap">${p.img || p.imgFallback || '🏏'}</div>`;
@@ -81,7 +81,7 @@ function openProductDetail(id) {
   const p = DB.getProducts().find(x => x.id === id);
   if (!p) return;
 
-  const isImg = p.img && p.img.startsWith('http');
+  const isImg = !!p.img && (/^https?:\/\//i.test(p.img) || /^data:image\//i.test(p.img) || p.img.startsWith('/'));
   const imgEl = isImg
     ? `<img src="${p.img}" alt="${p.name}" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div style="display:none;font-size:80px;justify-content:center;margin-bottom:20px">${p.imgFallback || '🏏'}</div>`
     : `<div style="font-size:80px;text-align:center;margin-bottom:20px">${p.img || p.imgFallback || '🏏'}</div>`;

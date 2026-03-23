@@ -12,6 +12,25 @@ const DB_KEYS = {
     SETTINGS: 'cricpro_settings',
 };
 
+// SLCRICKPRO – Theme Logic (Global)
+(function() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.add('light-mode');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = '🌙';
+        });
+    }
+})();
+
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+}
+
 const DB = {
 
     // ---------- SECURE STORAGE ----------
@@ -351,8 +370,10 @@ const DB = {
     getProducts() {
         return this._secureGet(DB_KEYS.PRODUCTS, []);
     },
-    saveProducts(arr) {
+    saveProducts(arr, options = {}) {
         this._secureSet(DB_KEYS.PRODUCTS, arr);
+        // Skip cloud push when data came from cloud polling to avoid sync loops.
+        if (options.skipSync) return;
         // Sync every product to MongoDB so all devices see updates
         arr.forEach(p => syncProductToDB(p));
     },
@@ -630,6 +651,7 @@ if ('serviceWorker' in navigator) {
 // ============================================================
 function pullLiveUpdates() {
     if (!BACKEND_BASE_URL) return;
+    if (document.hidden) return;
     const isScorer = window.location.pathname.includes('score-match.html') || window.location.pathname.includes('admin.html');
 
     // ── Players ──────────────────────────────────────────────
@@ -677,7 +699,7 @@ function pullLiveUpdates() {
         .then(data => {
             if (data && Array.isArray(data) && data.length > 0) {
                 const mapped = data.map(p => ({ ...p, id: p.id || p._id }));
-                DB.saveProducts(mapped);
+                DB.saveProducts(mapped, { skipSync: true });
                 // If the store page is open, re-render
                 if (typeof renderProducts === 'function') renderProducts();
             }
@@ -686,7 +708,7 @@ function pullLiveUpdates() {
     if (isScorer) window.hasFetchedCloudOnce = true;
 }
 
-// All pages poll every 5s to stay in sync
-setInterval(pullLiveUpdates, 5000);
+// All pages poll every 12s to stay in sync with lower UI/network overhead.
+setInterval(pullLiveUpdates, 12000);
 // Everyone grabs an initial clone on page boot
 setTimeout(pullLiveUpdates, 500);
