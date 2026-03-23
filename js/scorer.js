@@ -45,11 +45,15 @@ function selectMatchType(type) {
     currentMatchType = type;
     document.getElementById('type-single').classList.toggle('active', type === 'single');
     document.getElementById('type-tournament').classList.toggle('active', type === 'tournament');
+    document.getElementById('type-instant-nrr').classList.toggle('active', type === 'instant-nrr');
+    
     document.getElementById('tournament-setup-section').style.display = type === 'tournament' ? '' : 'none';
 
     if (type === 'tournament') {
         const val = document.getElementById('tournament-select') ? document.getElementById('tournament-select').value : 'new';
         onTournamentSelect(val);
+    } else if (type === 'instant-nrr') {
+        showScreen('instant-nrr');
     } else {
         toggleMatchConfig(true);
     }

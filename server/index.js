@@ -359,6 +359,28 @@ app.get('/sync/tournaments', async (req, res) => {
     }
 });
 
+// Delete a match from cloud
+app.delete('/sync/matches/:id', async (req, res) => {
+    try {
+        await ensureDB();
+        await Match.findByIdAndDelete(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to delete match' });
+    }
+});
+
+// Delete a tournament from cloud
+app.delete('/sync/tournaments/:id', async (req, res) => {
+    try {
+        await ensureDB();
+        await Tournament.findByIdAndDelete(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to delete tournament' });
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  PRODUCTS
 // ═══════════════════════════════════════════════════════════════════════════

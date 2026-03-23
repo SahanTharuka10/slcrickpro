@@ -30,21 +30,25 @@ function showAdminContent() {
     switchAdminTab('requests');
 }
 
-function switchAdminTab(tabName) {
+function switchAdminTab(tab) {
     document.querySelectorAll('.admin-panel').forEach(p => p.style.display = 'none');
-    document.getElementById('tab-' + tabName).style.display = 'block';
+    document.getElementById('tab-' + tab).style.display = 'block';
 
-    document.getElementById('btn-tab-requests').className = 'btn btn-sm ' + (tabName === 'requests' ? 'btn-primary' : 'btn-ghost');
-    document.getElementById('btn-tab-matches').className = 'btn btn-sm ' + (tabName === 'matches' ? 'btn-primary' : 'btn-ghost');
-    document.getElementById('btn-tab-tournaments').className = 'btn btn-sm ' + (tabName === 'tournaments' ? 'btn-primary' : 'btn-ghost');
-    document.getElementById('btn-tab-players').className = 'btn btn-sm ' + (tabName === 'players' ? 'btn-primary' : 'btn-ghost');
-    document.getElementById('btn-tab-store').className = 'btn btn-sm ' + (tabName === 'store' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-requests').className = 'btn btn-sm ' + (tab === 'requests' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-matches').className = 'btn btn-sm ' + (tab === 'matches' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-tournaments').className = 'btn btn-sm ' + (tab === 'tournaments' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-players').className = 'btn btn-sm ' + (tab === 'players' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-store').className = 'btn btn-sm ' + (tab === 'store' ? 'btn-primary' : 'btn-ghost');
+    document.getElementById('btn-tab-match-entry').className = 'btn btn-sm ' + (tab === 'match-entry' ? 'btn-primary' : 'btn-ghost');
 
-    if (tabName === 'requests') renderRequests();
-    if (tabName === 'matches') renderSystemMatches();
-    if (tabName === 'tournaments') renderTournamentsAdmin();
-    if (tabName === 'players') renderPlayersAdmin();
-    if (tabName === 'store') renderStoreItems();
+    if (tab === 'requests') renderRequests();
+    if (tab === 'matches') renderSystemMatches();
+    if (tab === 'tournaments') renderTournamentsAdmin();
+    if (tab === 'players') renderPlayersAdmin();
+    if (tab === 'store') renderStoreAdmin();
+    if (tab === 'match-entry') {
+        if (typeof initMatchEntryTab === 'function') initMatchEntryTab();
+    }
 }
 
 function renderRequests() {

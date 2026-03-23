@@ -166,6 +166,13 @@ const DB = {
                 this.saveTournament(t);
             }
         });
+        // Sync deletion to cloud
+        this.deleteMatchFromCloud(id);
+    },
+    deleteMatchFromCloud(id) {
+        if (!BACKEND_BASE_URL) return;
+        fetch(BACKEND_BASE_URL + '/sync/matches/' + id, { method: 'DELETE' })
+            .catch(() => {});
     },
     createMatch(config) {
         const match = {
@@ -258,8 +265,12 @@ const DB = {
     deleteTournament(id) {
         // Cascade delete all matches belonging to this tournament
         let mArr = this.getMatches();
+        const matchesToDelete = mArr.filter(m => m.tournamentId === id);
         mArr = mArr.filter(m => m.tournamentId !== id);
         this.saveMatches(mArr);
+        
+        // Sync match deletions to cloud
+        matchesToDelete.forEach(m => this.deleteMatchFromCloud(m.id));
 
         // Delete the tournament record
         let arr = this.getTournaments();

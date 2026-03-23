@@ -111,6 +111,7 @@
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players">Players</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
                 Data</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry">Match Entry</button>
             <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
         </div>
 
@@ -162,6 +163,116 @@
             </div>
             <div id="store-list"
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+        </div>
+
+        <!-- Match Entry Tab -->
+        <div id="tab-match-entry" class="admin-panel" style="display:none">
+            <h3 class="section-hd" style="margin-bottom:8px">Official Match Input</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">Manually enter full match results to update system rankings.</p>
+            
+            <div class="card" style="margin-bottom:24px">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Team 1</label>
+                        <select class="form-select" id="ame-t1"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Team 2</label>
+                        <select class="form-select" id="ame-t2"></select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Match Name / Round</label>
+                        <input type="text" class="form-input" id="ame-name" placeholder="e.g. Final, League Match" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Overs</label>
+                        <input type="number" class="form-input" id="ame-overs" value="20" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="gap:24px">
+                <!-- Innings 1 -->
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-amber)">Innings 1</div>
+                    <div class="form-group">
+                        <label class="form-label">Batting Team</label>
+                        <select class="form-select" id="ame-inn1-bat" onchange="updateAMETeams(1)"></select>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Score</label>
+                            <input type="number" class="form-input" id="ame-inn1-runs" value="0" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Wickets</label>
+                            <input type="number" class="form-input" id="ame-inn1-wkts" value="0" />
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Overs Played</label>
+                            <input type="number" step="0.1" class="form-input" id="ame-inn1-ovPlayed" value="20" />
+                        </div>
+                        <div class="form-group" style="padding-top:30px">
+                             <label class="radio-card" style="padding:8px">
+                                <input type="checkbox" id="ame-inn1-ao" /> All Out?
+                             </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Top Batsman (Player ID)</label>
+                        <input type="text" class="form-input" id="ame-inn1-topBat" placeholder="CP0001" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Top Batsman Runs</label>
+                        <input type="number" class="form-input" id="ame-inn1-topBatRuns" value="0" />
+                    </div>
+                </div>
+                <!-- Innings 2 -->
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-amber)">Innings 2</div>
+                    <div class="form-group">
+                        <label class="form-label">Batting Team</label>
+                        <p id="ame-inn2-bat-name" style="padding:10px; background:rgba(255,255,255,0.05); border-radius:4px">--</p>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Score</label>
+                            <input type="number" class="form-input" id="ame-inn2-runs" value="0" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Wickets</label>
+                            <input type="number" class="form-input" id="ame-inn2-wkts" value="0" />
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Overs Played</label>
+                            <input type="number" step="0.1" class="form-input" id="ame-inn2-ovPlayed" value="20" />
+                        </div>
+                        <div class="form-group" style="padding-top:30px">
+                             <label class="radio-card" style="padding:8px">
+                                <input type="checkbox" id="ame-inn2-ao" /> All Out?
+                             </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Top Bowler (Player ID)</label>
+                        <input type="text" class="form-input" id="ame-inn2-topBowl" placeholder="CP0001" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Top Bowler Wkts/Runs</label>
+                        <input type="text" class="form-input" id="ame-inn2-topBowlStats" placeholder="3/15" />
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:24px">
+                <button class="btn btn-primary btn-full" onclick="saveOfficialMatchAdmin()">🚀 Save & Update Rankings</button>
+            </div>
         </div>
     </div>
 
@@ -255,6 +366,7 @@
 
     <script src="../js/db.js"></script>
     <script src="../js/admin.js"></script>
+    <script src="../js/admin-match-input.js"></script>
 </body>
 
 </html>

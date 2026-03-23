@@ -42,6 +42,11 @@
                         <span class="type-label">Tournament Match</span>
                         <span class="type-sub">Schedule in a tournament with password</span>
                     </button>
+                    <button class="type-btn" id="type-instant-nrr" onclick="selectMatchType('instant-nrr')">
+                        <span class="type-icon">⚡</span>
+                        <span class="type-label">Instant NRR Generator</span>
+                        <span class="type-sub">Quick NRR calc (No DB save)</span>
+                    </button>
                 </div>
             </div>
 
@@ -446,7 +451,121 @@
         </div>
     </div>
 
+    <!-- ===== INSTANT NRR GENERATOR SCREEN ===== -->
+    <div id="screen-instant-nrr" class="scorer-screen" style="display:none">
+        <div class="sub-header">
+            <button class="back-btn" onclick="showScreen('setup')">← Back</button>
+            <div class="sub-header-title">⚡ Instant NRR Generator</div>
+        </div>
+        <div class="content-container" style="max-width:800px; margin: 0 auto; padding-top: 20px;">
+            <div id="nrr-config-step">
+                <div class="card">
+                    <div class="card-head">⚡ Setup Tournament</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Number of Teams</label>
+                            <input type="number" class="form-input" id="nrr-team-count" value="2" min="2" max="20" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Number of Matches</label>
+                            <input type="number" class="form-input" id="nrr-match-count" value="2" min="1" max="50" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Overs per Match</label>
+                            <input type="number" class="form-input" id="nrr-overs-per-match" value="20" min="1" max="50" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tournament Name</label>
+                        <input type="text" class="form-input" id="nrr-tourn-name" placeholder="Quick Tournament" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teams (one per line)</label>
+                        <textarea class="form-textarea" id="nrr-teams" placeholder="Team A&#10;Team B" rows="4"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="startInstantNRR()">Generate Match List</button>
+                    <button class="btn btn-ghost btn-full" style="margin-top:10px" onclick="showScreen('setup')">Cancel</button>
+                </div>
+            </div>
+
+            <div id="nrr-work-step" style="display:none">
+                <div class="card" style="margin-bottom:20px">
+                    <div class="card-head" id="nrr-work-title">Match Schedule</div>
+                    <p style="color:var(--c-muted);font-size:12px;margin-bottom:12px">Click a match to enter results</p>
+                    <div id="nrr-match-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px"></div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px">
+                    <div class="card-head">🏆 Live Standings</div>
+                    <div style="overflow-x:auto">
+                        <table class="data-table">
+                            <thead><tr><th>Team</th><th>P</th><th>W</th><th>L</th><th>T</th><th>Pts</th><th>NRR</th></tr></thead>
+                            <tbody id="nrr-standings-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px">
+                    <button class="btn btn-green btn-full" onclick="printInstantNRR()">📄 Get Result PDF</button>
+                    <button class="btn btn-red" onclick="resetInstantNRR()">🗑️ Reset All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALS -->
+
+    <!-- Instant NRR Match Entry Modal -->
+    <div class="modal-overlay" id="modal-nrr-match-entry" style="display:none">
+        <div class="modal-box" style="max-width:500px">
+            <div class="modal-title" id="nrr-modal-title">Match Result</div>
+            <input type="hidden" id="nrr-current-match-idx" />
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top:16px">
+                <!-- Team 1 -->
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Team 1</label>
+                        <select class="form-select" id="nrr-m-t1"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Runs Scored</label>
+                        <input type="number" class="form-input" id="nrr-m-r1" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Overs Played</label>
+                        <input type="number" step="0.1" class="form-input" id="nrr-m-o1" value="20" />
+                        <label class="radio-card" style="margin-top:5px; padding:6px; font-size:11px">
+                            <input type="checkbox" id="nrr-m-ao1" /> All Out?
+                        </label>
+                    </div>
+                </div>
+                <!-- Team 2 -->
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Team 2</label>
+                        <select class="form-select" id="nrr-m-t2"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Runs Scored</label>
+                        <input type="number" class="form-input" id="nrr-m-r2" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Overs Played</label>
+                        <input type="number" step="0.1" class="form-input" id="nrr-m-o2" value="20" />
+                        <label class="radio-card" style="margin-top:5px; padding:6px; font-size:11px">
+                            <input type="checkbox" id="nrr-m-ao2" /> All Out?
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-nrr-match-entry')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveNRRMatch()">✅ Save Result</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Request Tournament Modal -->
     <div class="modal-overlay" id="modal-request" style="display:none">
@@ -756,6 +875,7 @@
 
     <script src="../js/db.js"></script>
     <script src="../js/scorer.js"></script>
+    <script src="../js/instant-nrr.js"></script>
 </body>
 
 </html>
