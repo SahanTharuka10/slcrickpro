@@ -110,7 +110,12 @@ function openNRRMatchModal(idx) {
     document.getElementById('nrr-m-bl2').value = bl2;
     document.getElementById('nrr-m-ao2').checked = m.ao2;
     
-    showModal('modal-nrr-match-entry');
+    if (typeof openModal === 'function') {
+        openModal('modal-nrr-match-entry');
+    } else {
+        const el = document.getElementById('modal-nrr-match-entry');
+        if (el) el.style.display = 'flex';
+    }
 }
 
 function saveNRRMatch() {

@@ -217,9 +217,15 @@
                     </div>
                     <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">Overs Played</label>
-                            <input type="number" step="0.1" class="form-input" id="ame-inn1-ovPlayed" value="20" />
+                            <label class="form-label">Completed Overs</label>
+                            <input type="number" class="form-input" id="ame-inn1-ovPlayed" value="20" min="0" />
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Balls in Final Over (0-5)</label>
+                            <input type="number" class="form-input" id="ame-inn1-ovBalls" value="0" min="0" max="5" />
+                        </div>
+                    </div>
+                    <div class="grid-2">
                         <div class="form-group" style="padding-top:30px">
                              <label class="radio-card" style="padding:8px">
                                 <input type="checkbox" id="ame-inn1-ao" /> All Out?
@@ -246,9 +252,15 @@
                     </div>
                     <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">Overs Played</label>
-                            <input type="number" step="0.1" class="form-input" id="ame-inn2-ovPlayed" value="20" />
+                            <label class="form-label">Completed Overs</label>
+                            <input type="number" class="form-input" id="ame-inn2-ovPlayed" value="20" min="0" />
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Balls in Final Over (0-5)</label>
+                            <input type="number" class="form-input" id="ame-inn2-ovBalls" value="0" min="0" max="5" />
+                        </div>
+                    </div>
+                    <div class="grid-2">
                         <div class="form-group" style="padding-top:30px">
                              <label class="radio-card" style="padding:8px">
                                 <input type="checkbox" id="ame-inn2-ao" /> All Out?

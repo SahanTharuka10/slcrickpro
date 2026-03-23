@@ -127,16 +127,26 @@ async function saveOfficialMatchAdmin() {
 
     const r1 = parseInt(document.getElementById('ame-inn1-runs').value) || 0;
     const w1 = parseInt(document.getElementById('ame-inn1-wkts').value) || 0;
-    const o1 = parseFloat(document.getElementById('ame-inn1-ovPlayed').value) || 0;
+    const o1 = parseInt(document.getElementById('ame-inn1-ovPlayed').value) || 0;
+    const ob1 = parseInt(document.getElementById('ame-inn1-ovBalls').value) || 0;
     const ao1 = document.getElementById('ame-inn1-ao').checked;
 
     const r2 = parseInt(document.getElementById('ame-inn2-runs').value) || 0;
     const w2 = parseInt(document.getElementById('ame-inn2-wkts').value) || 0;
-    const o2 = parseFloat(document.getElementById('ame-inn2-ovPlayed').value) || 0;
+    const o2 = parseInt(document.getElementById('ame-inn2-ovPlayed').value) || 0;
+    const ob2 = parseInt(document.getElementById('ame-inn2-ovBalls').value) || 0;
     const ao2 = document.getElementById('ame-inn2-ao').checked;
 
     if (t1 === t2) {
         showToast('❌ Select different teams', 'error');
+        return;
+    }
+    if (ob1 < 0 || ob1 > 5 || ob2 < 0 || ob2 > 5) {
+        showToast('❌ Balls in final over must be between 0 and 5', 'error');
+        return;
+    }
+    if (o1 < 0 || o1 > overs || o2 < 0 || o2 > overs) {
+        showToast(`❌ Completed overs must be between 0 and ${overs}`, 'error');
         return;
     }
 
@@ -150,8 +160,8 @@ async function saveOfficialMatchAdmin() {
         ? `${b1} won by ${r1 - r2} runs`
         : (r2 > r1 ? `${b2} won by ${w2 < 10 ? (10 - w2) + ' wickets' : 'runs'}` : 'Match Tied');
 
-    const inn1Balls = Math.floor(o1) * 6 + Math.round((o1 % 1) * 10);
-    const inn2Balls = Math.floor(o2) * 6 + Math.round((o2 % 1) * 10);
+    const inn1Balls = (o1 * 6) + ob1;
+    const inn2Balls = (o2 * 6) + ob2;
 
     const inn1Batters = b1 === t1 ? team1Batters : team2Batters;
     const inn1Bowlers = b1 === t1 ? team2Bowlers : team1Bowlers;
