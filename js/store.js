@@ -63,7 +63,7 @@ function renderProducts() {
     const fallbackSvg = fallbacks[p.category] || fallbacks.equipment;
     
     const imgEl = isImg
-      ? `<img src="${p.img}" alt="${p.name}" class="product-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="product-svg-wrap" style="display:none">${fallbackSvg}</div>`
+      ? `<img src="${p.img}" alt="" class="product-img" /><div class="product-svg-wrap" style="display:none">${fallbackSvg}</div>`
       : `<div class="product-svg-wrap">${fallbackSvg}</div>`;
 
     const catColor = { bat: '#7c4dff', ball: '#00bcd4', gear: '#ff6d3b', bag: '#00e676', shoes: '#ffd700', equipment: '#ff4081', service: '#e91e9c' };
@@ -95,6 +95,8 @@ function openProductDetail(id) {
   const p = DB.getProducts().find(x => x.id === id);
   if (!p) return;
 
+  const inCart = (typeof cart !== 'undefined' ? cart[p.id] : 0) || 0;
+
   // Professional SVG fallbacks based on category (consistent with grid)
   const fallbacks = {
     bat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/><path d="m15 5 3 3"/><path d="m7 16-4 4"/></svg>`,
@@ -112,8 +114,8 @@ function openProductDetail(id) {
   const cc = catColor[p.category] || '#888';
 
   const imgEl = isImg
-    ? `<img src="${p.img}" alt="${p.name}" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div style="display:none;justify-content:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`
-    : `<div style="text-align:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`;
+    ? `<img src="${p.img}" alt="" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" /><div class="product-svg-wrap" style="display:none;justify-content:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`
+    : `<div class="product-svg-wrap" style="text-align:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`;
 
   const detailsHtml = p.details
     ? `<div class="detail-section" style="border-top:1px solid var(--c-border);margin-top:16px;padding-top:16px">

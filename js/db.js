@@ -593,6 +593,20 @@ function formatEcon(runs, balls, bpo = 6) {
     return ((runs / balls) * bpo).toFixed(1);
 }
 
+// Global Image Error Handler (for SVG fallbacks)
+window.addEventListener('error', function(e) {
+    if (e.target.tagName && e.target.tagName.toLowerCase() === 'img') {
+        const img = e.target;
+        // Hide the broken image
+        img.style.display = 'none';
+        // If there's a professional SVG fallback next to it, show it
+        const fallback = img.nextElementSibling;
+        if (fallback && (fallback.classList.contains('product-svg-wrap') || fallback.classList.contains('svg-fallback-wrap'))) {
+            fallback.style.display = 'flex';
+        }
+    }
+}, true); // Use capture phase to catch all errors
+
 function timeSince(ts) {
     const d = (Date.now() - ts) / 1000;
     if (d < 60) return Math.round(d) + 's ago';
