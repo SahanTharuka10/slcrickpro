@@ -8,16 +8,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'text/plain' }));
 
-// ─── Security Middleware (Hand-rolled Helmet) ─────────────────
-app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    res.setHeader('Content-Security-Policy', "default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;");
-    next();
-});
-
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const playerSchema = new mongoose.Schema({
@@ -140,18 +130,10 @@ ensureDB().catch(() => {});
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function parseBody(req) {
-    if (!req.body) return null;
     let payload = req.body;
     if (typeof payload === 'string') {
-        try { 
-            payload = JSON.parse(payload); 
-        } catch (e) { 
-            console.warn("Malformed JSON received");
-            return null; 
-        }
+        try { payload = JSON.parse(payload); } catch (e) { return null; }
     }
-    // Basic structural check (every valid sync payload or model action usually has data or an ID)
-    if (typeof payload !== 'object' || payload === null) return null;
     return payload;
 }
 

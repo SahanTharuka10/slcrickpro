@@ -108,26 +108,13 @@
     transform: scale(1.06);
 }
 
-.product-svg-wrap {
+.product-emoji-wrap {
     height: 100%;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
-}
-
-.svg-fallback {
-    width: 80px;
-    height: 80px;
-    opacity: 0.5;
-    stroke: currentColor;
-    transition: transform 0.3s;
-}
-
-.product-card:hover .svg-fallback {
-    transform: scale(1.1) rotate(5deg);
-    opacity: 0.8;
+    font-size: 72px;
 }
 
 .product-info {
