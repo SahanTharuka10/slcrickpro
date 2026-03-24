@@ -47,10 +47,24 @@ function renderProducts() {
 
   grid.innerHTML = filtered.map(p => {
     const inCart = cart[p.id] || 0;
+    
+    // Professional SVG fallbacks based on category
+    const fallbacks = {
+      bat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/><path d="m15 5 3 3"/><path d="m7 16-4 4"/></svg>`,
+      ball: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20"/><path d="M2 12a14.5 14.5 0 0 0 20 0"/></svg>`,
+      gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+      shoes: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M3 13V8a2 2 0 0 1 2-2h4l4 2 4 1h4v4l-4 4H5a2 2 0 0 1-2-2Z"/><path d="M11 9v2"/></svg>`,
+      bag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M14 2H10a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M8 6h8"/><path d="M8 10h8"/></svg>`,
+      equipment: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M8 2v20"/><path d="M12 2v20"/><path d="M16 2v20"/><path d="M4 6h16"/><path d="M4 18h16"/></svg>`,
+      service: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="svg-fallback"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"/></svg>`
+    };
+
     const isImg = !!p.img && (/^https?:\/\//i.test(p.img) || /^data:image\//i.test(p.img) || p.img.startsWith('/'));
+    const fallbackSvg = fallbacks[p.category] || fallbacks.equipment;
+    
     const imgEl = isImg
-      ? `<img src="${p.img}" alt="${p.name}" class="product-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="product-emoji-wrap" style="display:none">${p.imgFallback || '🏏'}</div>`
-      : `<div class="product-emoji-wrap">${p.img || p.imgFallback || '🏏'}</div>`;
+      ? `<img src="${p.img}" alt="${p.name}" class="product-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="product-svg-wrap" style="display:none">${fallbackSvg}</div>`
+      : `<div class="product-svg-wrap">${fallbackSvg}</div>`;
 
     const catColor = { bat: '#7c4dff', ball: '#00bcd4', gear: '#ff6d3b', bag: '#00e676', shoes: '#ffd700', equipment: '#ff4081', service: '#e91e9c' };
     const cc = catColor[p.category] || '#888';
@@ -81,14 +95,25 @@ function openProductDetail(id) {
   const p = DB.getProducts().find(x => x.id === id);
   if (!p) return;
 
-  const isImg = !!p.img && (/^https?:\/\//i.test(p.img) || /^data:image\//i.test(p.img) || p.img.startsWith('/'));
-  const imgEl = isImg
-    ? `<img src="${p.img}" alt="${p.name}" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div style="display:none;font-size:80px;justify-content:center;margin-bottom:20px">${p.imgFallback || '🏏'}</div>`
-    : `<div style="font-size:80px;text-align:center;margin-bottom:20px">${p.img || p.imgFallback || '🏏'}</div>`;
+  // Professional SVG fallbacks based on category (consistent with grid)
+  const fallbacks = {
+    bat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/><path d="m15 5 3 3"/><path d="m7 16-4 4"/></svg>`,
+    ball: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20"/><path d="M2 12a14.5 14.5 0 0 0 20 0"/></svg>`,
+    gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    shoes: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M3 13V8a2 2 0 0 1 2-2h4l4 2 4 1h4v4l-4 4H5a2 2 0 0 1-2-2Z"/><path d="M11 9v2"/></svg>`,
+    bag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M14 2H10a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M8 6h8"/><path d="M8 10h8"/></svg>`,
+    equipment: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M8 2v20"/><path d="M12 2v20"/><path d="M16 2v20"/><path d="M4 6h16"/><path d="M4 18h16"/></svg>`,
+    service: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:120px;height:120px;opacity:0.6"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"/></svg>`
+  };
 
-  const inCart = cart[p.id] || 0;
+  const isImg = !!p.img && (/^https?:\/\//i.test(p.img) || /^data:image\//i.test(p.img) || p.img.startsWith('/'));
+  const fallbackSvg = fallbacks[p.category] || fallbacks.equipment;
   const catColor = { bat: '#7c4dff', ball: '#00bcd4', gear: '#ff6d3b', bag: '#00e676', shoes: '#ffd700', equipment: '#ff4081', service: '#e91e9c' };
   const cc = catColor[p.category] || '#888';
+
+  const imgEl = isImg
+    ? `<img src="${p.img}" alt="${p.name}" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div style="display:none;justify-content:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`
+    : `<div style="text-align:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`;
 
   const detailsHtml = p.details
     ? `<div class="detail-section" style="border-top:1px solid var(--c-border);margin-top:16px;padding-top:16px">
