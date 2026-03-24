@@ -67,7 +67,7 @@ function toggleOfficialSettings(val) {
 function populateTournamentDropdown() {
     const sel = document.getElementById('tournament-select');
     if (!sel) return;
-    sel.innerHTML = '<option value="new">➕ Create New Tournament</option>';
+    sel.innerHTML = '<option value="new">Create New Tournament</option>';
     DB.getTournaments().forEach(t => {
         sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
@@ -88,7 +88,7 @@ function toggleMatchConfig(show) {
     if (toss) toss.style.display = show ? '' : 'none';
 
     if (head) head.textContent = show ? 'Match Configuration' : 'Tournament Base Settings';
-    if (btn) btn.innerHTML = show ? '🏏 Start Match' : '🏆 Create Tournament';
+    if (btn) btn.innerHTML = show ? 'Start Match' : 'Create Tournament';
 }
 
 function renderResumeMatches() {
@@ -116,15 +116,15 @@ function renderResumeMatches() {
     tourns.forEach(t => {
         let actionBtn = '';
         if (t.status === 'requested') {
-            actionBtn = `<button class="btn btn-ghost btn-sm" disabled>⏳ Pending Approval</button>`;
+            actionBtn = `<button class="btn btn-ghost btn-sm" disabled>Pending Approval</button>`;
         } else if (t.status === 'approved' || t.status === 'active') {
-            actionBtn = `<button class="btn btn-green btn-sm" onclick="openTournamentHub('${t.id}')">🔓 Open Tournament</button>`;
+            actionBtn = `<button class="btn btn-green btn-sm" onclick="openTournamentHub('${t.id}')">Open Tournament</button>`;
         }
 
         const locked = (t.password || t.status === 'approved' || (t.isOfficial && t.status === 'active')) ? '🔒 ' : '';
         html += `<div class="resume-card">
       <div class="resume-card-info">
-        <h4>${locked}🏆 ${t.name}</h4>
+        <h4>${locked}Tournament: ${t.name}</h4>
         <p>${t.isOfficial ? 'Official' : 'Unofficial'} Tournament · ${t.matches.length} matches</p>
       </div>
       ${actionBtn}
@@ -135,7 +135,7 @@ function renderResumeMatches() {
         const inn = m.innings ? m.innings[m.currentInnings] : null;
         const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : m.status.toUpperCase();
         const locked = m.password ? '🔒 ' : '';
-        const tName = m.type === 'tournament' ? '🏆 ' + (m.tournamentName || 'Tournament') : 'Single Match';
+        const tName = m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match';
 
         html += `<div class="resume-card">
       <div class="resume-card-info">
@@ -153,7 +153,7 @@ function submitMatchRequest() {
     const name = document.getElementById('req-name').value.trim();
     const pw = document.getElementById('req-password').value.trim();
     const phone = document.getElementById('req-phone') ? document.getElementById('req-phone').value.trim() : '';
-    if (!name || !pw) { showToast('❌ Name and Password are required!', 'error'); return; }
+    if (!name || !pw) { showToast('Name and Password are required!', 'error'); return; }
 
     if (_pendingTournPayload) {
         const tourn = DB.createTournament(_pendingTournPayload);
@@ -165,7 +165,7 @@ function submitMatchRequest() {
 
         _pendingTournPayload = null;
         closeModal('modal-request');
-        showToast('✅ Tournament request sent to Admin!');
+        showToast('Tournament request sent to Admin!');
         renderResumeMatches();
         populateTournamentDropdown();
     }
@@ -187,7 +187,7 @@ function openTournamentHub(id) {
 
     currentTournament = t;
     if (t.password) {
-        document.getElementById('login-match-title').textContent = `🏆 ${t.name}`;
+        document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
         document.getElementById('login-password').value = '';
         showScreen('login');
     } else {
@@ -278,7 +278,7 @@ function endTournamentManually(tournId) {
     if (t) {
         t.status = 'completed';
         DB.saveTournament(t);
-        showToast('🏆 Tournament marked as COMPLETED!', 'success');
+        showToast('Tournament marked as COMPLETED!', 'success');
         closeModal('modal-tournament-matches');
         // Optionally refresh summary if applicable
         if (typeof currentTournamentId !== 'undefined' && currentTournamentId === tournId) {
@@ -311,14 +311,14 @@ function loginToMatch() {
     const pw = document.getElementById('login-password').value.trim();
 
     if (currentTournament) {
-        if (pw !== currentTournament.password) { showToast('❌ Wrong password!', 'error'); return; }
+        if (pw !== currentTournament.password) { showToast('Wrong password!', 'error'); return; }
         openTournamentMatchesModal(currentTournament.id);
         currentTournament = null;
         return;
     }
 
     if (!currentMatch) return;
-    if (pw !== currentMatch.password) { showToast('❌ Wrong password!', 'error'); return; }
+    if (pw !== currentMatch.password) { showToast('Wrong password!', 'error'); return; }
     loadMatch(currentMatch);
 }
 
@@ -336,8 +336,8 @@ function startNewMatch() {
                 const tournType = document.getElementById('tourn-type') ? document.getElementById('tourn-type').value : 'unofficial';
                 const format = document.getElementById('tourn-format').value;
 
-                if (!tName) { showToast('❌ Enter tournament name', 'error'); return; }
-                if (teamLines.length < 2) { showToast('❌ Enter at least 2 teams', 'error'); return; }
+                if (!tName) { showToast('Enter tournament name', 'error'); return; }
+                if (teamLines.length < 2) { showToast('Enter at least 2 teams', 'error'); return; }
 
                 if (tournType === 'official') {
                     const matchCount = parseInt(document.getElementById('tourn-match-count')?.value) || 10;
@@ -353,7 +353,7 @@ function startNewMatch() {
 
                     document.getElementById('req-name').value = '';
                     document.getElementById('req-password').value = '';
-                    document.getElementById('request-match-title').textContent = '🏆 ' + tName;
+                    document.getElementById('request-match-title').textContent = tName;
                     openModal('modal-request');
                     return;
                 } else {
@@ -362,7 +362,7 @@ function startNewMatch() {
                         name: tName, format, overs, ballsPerOver: bpo,
                         teams: teamLines, isOfficial: false, matchCount: matchCount // Changed to include matchCount
                     });
-                    showToast(`✅ Tournament "${tName}" created!`, 'success');
+                    showToast(`Tournament "${tName}" created!`, 'success');
                     populateTournamentDropdown();
                     renderResumeMatches();
                     document.getElementById('tournament-select').value = tourn.id;
@@ -379,7 +379,7 @@ function startNewMatch() {
     }
 
     if (existingOfficialTournamentId) {
-        showToast('ℹ️ Official Tournament selected! Matches are already scheduled below. Please request to score them.', 'default');
+        showToast('Official Tournament selected! Matches are already scheduled below. Please request to score them.', 'default');
         return;
     }
 
@@ -388,7 +388,7 @@ function startNewMatch() {
 
     const t1 = document.getElementById('team1-name').value.trim();
     const t2 = document.getElementById('team2-name').value.trim();
-    if (!t1 || !t2) { showToast('❌ Enter both team names', 'error'); return; }
+    if (!t1 || !t2) { showToast('Enter both team names', 'error'); return; }
 
     const pps = parseInt(document.getElementById('setup-pps').value) || 11;
     const venue = document.getElementById('setup-venue').value.trim();
@@ -476,8 +476,7 @@ function updateHeaderActions() {
     const m = currentMatch;
     if (!m) { el.innerHTML = ''; return; }
     el.innerHTML = `
-    <span class="badge badge-${m.type === 'tournament' ? 'amber' : 'blue'}">${m.type === 'tournament' ? '🏆 ' + (m.tournamentName || 'Tournament') : '🎯 Single'}</span>
-    <span class="badge badge-${m.status === 'live' ? 'green' : 'amber'}">${m.status === 'live' ? '🔴 LIVE' : '⏸ Paused'}</span>`;
+    <span class="badge badge-${m.status === 'live' ? 'green' : 'amber'}">${m.status === 'live' ? 'LIVE' : 'Paused'}</span>`;
 }
 
 function editPlayerName(role, idx) {
@@ -495,7 +494,7 @@ function editPlayerName(role, idx) {
             bat.name = newName.trim();
             saveMatchState();
             renderScoring();
-            showToast('✅ Batsman name updated!', 'success');
+            showToast('Batsman name updated!', 'success');
         }
     } else if (role === 'bowler') {
         if (inn.currentBowlerIdx === null) return;
@@ -505,7 +504,7 @@ function editPlayerName(role, idx) {
             bowl.name = newName.trim();
             saveMatchState();
             renderScoring();
-            showToast('✅ Bowler name updated!', 'success');
+            showToast('Bowler name updated!', 'success');
         }
     }
 }
@@ -1124,7 +1123,7 @@ function checkEndOfOver(inn) {
 
         saveAndRender();
         const overNum = inn.balls / bpo;
-        showToast(`✅ Over ${overNum} complete!`);
+        showToast(`Over ${overNum} complete!`);
 
         // Check if innings ended to prevent showing bowler modal
         let isEnd = (inn.balls >= m.overs * bpo) || (inn.wickets >= (m.playersPerSide - 1));
@@ -1244,7 +1243,7 @@ function showMatchResult() {
         }
     }
 
-    document.getElementById('result-winner').textContent = winner ? `🎉 ${winner}` : '🤝 Tie!';
+    document.getElementById('result-winner').textContent = winner ? `${winner}` : 'Tie!';
     document.getElementById('result-summary').textContent = resultText;
 
     // Player of Match
@@ -1253,7 +1252,7 @@ function showMatchResult() {
     const mom = allBats[0];
     if (mom) {
         document.getElementById('result-mom').innerHTML = `
-      <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:0.08em;mb:6px">⭐ Player of the Match</div>
+      <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:0.08em;mb:6px">Player of the Match</div>
       <div style="font-size:18px;font-weight:800">${mom.name}</div>
       <div style="font-size:13px;color:var(--c-muted)">${mom.runs || 0} runs off ${mom.balls || 0} balls · SR ${formatSR(mom.runs || 0, mom.balls || 0)}</div>`;
     }
@@ -1261,7 +1260,7 @@ function showMatchResult() {
     const mrBackBtn = document.querySelector('#modal-result .btn-ghost');
     if (mrHomeBtn && mrBackBtn) {
         if (m.tournamentId) {
-            mrHomeBtn.innerHTML = '🏆 Tournament Summary';
+            mrHomeBtn.innerHTML = 'Tournament Summary';
             mrHomeBtn.onclick = () => { closeModal('modal-result'); openTournamentSummary(); };
             mrBackBtn.innerHTML = '📅 Match Schedule';
             mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentMatchesModal(m.tournamentId); };
@@ -1391,7 +1390,7 @@ function togglePublish(checked) {
     if (!currentMatch) return;
     currentMatch.publishLive = checked;
     DB.saveMatch(currentMatch);
-    showToast(checked ? '📡 Score published live!' : '📡 Live score hidden', 'success');
+    showToast(checked ? 'Score published live!' : 'Live score hidden', 'success');
     updateHeaderActions();
 }
 
@@ -1642,21 +1641,37 @@ function syncOfficialStats(m, t) {
         }
     });
 
-    // Update Team Stats (Played/Won)
-    const teams = [m.battingFirst, m.fieldingFirst];
-    teams.forEach(tName => {
+    // Update Team Stats (Played/Won/NRR Components)
+    const teamsList = [m.battingFirst, m.fieldingFirst];
+    teamsList.forEach((tName, i) => {
         const team = DB.getTeams().find(t => t.name === tName);
         if (team) {
-            const s = team.stats || { played: 0, won: 0, lost: 0, tied: 0, prizeMoney: 0 };
+            const s = team.stats || { played: 0, won: 0, lost: 0, tied: 0, runsScored: 0, ballsFaced: 0, runsConceded: 0, ballsBowled: 0, prizeMoney: 0 };
             s.played++;
+            
             const i0 = m.innings[0], i1 = m.innings[1];
             if (i0 && i1) {
                 const isBatFirst = (m.battingFirst === tName);
-                const myRuns = isBatFirst ? i0.runs : i1.runs;
-                const oppRuns = isBatFirst ? i1.runs : i0.runs;
-                if (myRuns > oppRuns) s.won++;
-                else if (myRuns < oppRuns) s.lost++;
+                const myInn = isBatFirst ? i0 : i1;
+                const oppInn = isBatFirst ? i1 : i0;
+                
+                // Wins/Loss/Tie
+                if (myInn.runs > oppInn.runs) s.won++;
+                else if (myInn.runs < oppInn.runs) s.lost++;
                 else s.tied++;
+
+                // NRR Components
+                // In cricket, if a team is all out, they are considered to have faced their full quota of overs for NRR purposes.
+                let myBalls = myInn.balls;
+                if (myInn.wickets >= m.playersPerSide - 1) myBalls = m.overs * m.ballsPerOver;
+                
+                let oppBalls = oppInn.balls;
+                if (oppInn.wickets >= m.playersPerSide - 1) oppBalls = m.overs * m.ballsPerOver;
+
+                s.runsScored += myInn.runs;
+                s.ballsFaced += myBalls;
+                s.runsConceded += oppInn.runs;
+                s.ballsBowled += oppBalls;
             }
             DB.updateTeamStats(tName, s);
         }

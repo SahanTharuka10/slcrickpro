@@ -41,7 +41,7 @@ function renderLive() {
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">📡</div>
+      <div class="empty-state-icon"><svg style="width:48px;height:48px;opacity:0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></svg></div>
       <div class="empty-state-title">No Live Matches</div>
       <div class="empty-state-sub">Start a match from "Score New Match" and publish it live</div>
     </div>`;
@@ -73,7 +73,7 @@ function buildMatchCard(m, isLive) {
     else targetInfo = `<span style="color:#00e676">Won!</span>`;
   }
 
-  const typeLabel = m.type === 'tournament' ? `🏆 ${m.tournamentName || 'Tournament'}` : '🎯 Single Match';
+  const typeLabel = m.type === 'tournament' ? `Tournament` : 'Single Match';
 
   return `<div class="match-card ${isLive ? 'live-card' : ''}" onclick="openMatchDetail('${m.id}')">
     <div class="match-card-header">
@@ -130,7 +130,7 @@ function buildFullScorecard(m) {
       <div>
         <div style="font-size:22px;font-weight:900;margin-bottom:4px">${m.team1} vs ${m.team2}</div>
         <div style="font-size:13px;color:var(--c-muted);margin-bottom:20px">
-          ${m.overs} overs &middot; ${m.venue || 'Home Ground'} &middot; ${m.type === 'tournament' ? '🏆 ' + (m.tournamentName || 'Tournament') : '🎯 Single Match'}
+          ${m.overs} overs &middot; ${m.venue || 'Home Ground'} &middot; ${m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match'}
         </div>
       </div>
       <a href="overlay.html?match=${m.id}" target="_blank" class="badge badge-amber" style="text-decoration:none; display:flex; align-items:center; gap:5px; padding:6px 12px;">📺 TV Streaming Overlay</a>
@@ -255,7 +255,7 @@ function renderTournamentSelector() {
   if (!tournaments.length) {
     container.innerHTML = '';
     document.getElementById('tournament-details').innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">🏆</div>
+      <div class="empty-state-icon"><svg style="width:48px;height:48px;opacity:0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
       <div class="empty-state-title">No Tournaments Yet</div>
       <div class="empty-state-sub">Go to "Score New Match" and start a tournament</div>
     </div>`;
@@ -264,7 +264,7 @@ function renderTournamentSelector() {
 
   container.innerHTML = tournaments.map(t =>
     `<button class="tourn-select-btn ${t.id === selectedTournId ? 'active' : ''}" onclick="selectTournament('${t.id}')">
-      🏆 ${t.name}
+      ${t.name}
     </button>`
   ).join('');
 
@@ -294,7 +294,7 @@ function renderTournDetails(id) {
   details.innerHTML = `
     <div class="tournament-header-card">
       <div>
-        <div class="tourn-name">🏆 ${t.name}</div>
+        <div class="tourn-name">${t.name}</div>
         <div class="tourn-format">${capitalize(t.format)} · ${t.overs} overs · ${t.teams.length} teams</div>
       </div>
       <div class="tourn-stats-mini">
@@ -302,8 +302,8 @@ function renderTournDetails(id) {
         <div class="tsm-item"><div class="tsm-val">${completedMatches}</div><div class="tsm-lbl">Played</div></div>
         <div class="tsm-item"><div class="tsm-val" style="color:#00e676">${liveMatches}</div><div class="tsm-lbl">Live</div></div>
         <div class="tsm-item" style="display:flex;align-items:center;margin-left:15px">
-           <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:700" onclick="window.print()">📄 Get PDF Report</button>
-           <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; margin-left:10px; padding:10px 14px; font-size:12px; font-weight:700">📺 TV Display</a>
+           <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:700" onclick="window.print()">Get PDF Report</button>
+           <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; margin-left:10px; padding:10px 14px; font-size:12px; font-weight:700">TV Display</a>
         </div>
       </div>
     </div>
@@ -504,7 +504,7 @@ function renderRecent() {
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">📋</div>
+      <div class="empty-state-icon"><svg style="width:48px;height:48px;opacity:0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
       <div class="empty-state-title">No Completed Matches</div>
       <div class="empty-state-sub">Completed matches will appear here</div>
     </div>`;

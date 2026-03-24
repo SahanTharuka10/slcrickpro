@@ -82,7 +82,7 @@ const DB = {
         player.stats = player.stats || {
             matches: 0, innings: 0,
             runs: 0, balls: 0, fours: 0, sixes: 0, notOuts: 0,
-            highScore: 0, hundreds: 0, fifties: 0,
+            highScore: 0, hundreds: 0, fifties: 0, thirties: 0,
             wickets: 0, overs: 0, bowlingRuns: 0, maidens: 0, bestBowling: "0/0",
             catches: 0, stumpings: 0,
         };
@@ -149,6 +149,12 @@ const DB = {
         const arr = this.getTeams();
         team.id = 'TEAM-' + Date.now();
         team.createdAt = Date.now();
+        team.stats = team.stats || {
+            played: 0, won: 0, lost: 0, tied: 0,
+            runsScored: 0, ballsFaced: 0,
+            runsConceded: 0, ballsBowled: 0,
+            prizeMoney: 0
+        };
         arr.push(team);
         this.saveTeams(arr);
         // Sync to MongoDB

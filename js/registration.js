@@ -73,7 +73,7 @@ function registerPlayer() {
     };
 
     const saved = DB.addPlayer(player);
-    showToast(`✅ ${saved.name} registered as ${saved.playerId}!`, 'success');
+    showToast(`${saved.name} registered as ${saved.playerId}!`, 'success');
     renderPreview();
     clearForm();
 
@@ -142,7 +142,7 @@ function renderPlayerList() {
       <td>${age}</td>
       <td style="font-size:12px;color:var(--c-muted)">${since}</td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="viewPlayerModal('${escapeHTML(p.playerId)}')">👤 View Profile</button>
+        <button class="btn btn-ghost btn-sm" onclick="viewPlayerModal('${escapeHTML(p.playerId)}')">View Profile</button>
       </td>
     </tr>`;
     }).join('');
@@ -154,7 +154,7 @@ function deletePlayer(pid) {
     DB.savePlayers(all);
     DB.deletePlayerFromCloud(pid);
     renderPlayerList();
-    showToast('🗑️ Player deleted', 'error');
+    showToast('Player deleted', 'error');
 }
 
 function exportPlayers() {
@@ -188,7 +188,7 @@ function populateTeamsDropdown() {
 
 function registerTeam() {
     const name = document.getElementById('team-name').value.trim();
-    if (!name) { showToast('❌ Enter team name', 'error'); return; }
+    if (!name) { showToast('Enter team name', 'error'); return; }
 
     const team = {
         name,
@@ -201,7 +201,7 @@ function registerTeam() {
     DB.addTeam(team);
     // Sync team registration to Google Sheets
     DB.addTeamToSheets(team);
-    showToast(`✅ ${name} registered!`, 'success');
+    showToast(`${name} registered!`, 'success');
     ['team-name', 'team-ground', 'team-captain', 'team-manager', 'team-contact', 'team-year'].forEach(id => { document.getElementById(id).value = ''; });
     renderTeamsList();
     populateTeamsDropdown();
@@ -211,7 +211,7 @@ function renderTeamsList() {
     const teams = DB.getTeams();
     const container = document.getElementById('teams-list');
     if (!teams.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏟️</div><div class="empty-state-title">No teams yet</div></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg style="width:48px;height:48px;opacity:0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.3 11c.3-1.1 1.3-2 2.6-2h10.2c1.3 0 2.3.9 2.6 2"/><path d="m3 11 1.5 1h15L21 11"/><path d="M12 2A10 10 0 1 0 22 12"/><path d="M7 12v5"/><path d="M17 12v5"/><path d="M7 15h10"/></svg></div><div class="empty-state-title">No teams yet</div></div>`;
         return;
     }
     const players = DB.getPlayers();
@@ -219,7 +219,7 @@ function renderTeamsList() {
         const memberCount = players.filter(p => p.team === t.name).length;
         return `<div class="team-list-card">
       <div>
-        <div class="team-list-name">🏟️ ${escapeHTML(t.name)}</div>
+        <div class="team-list-name">${escapeHTML(t.name)}</div>
         <div class="team-list-info">${memberCount} players · ${escapeHTML(t.ground) || 'No ground'} · ${escapeHTML(t.captain) ? 'Cap: ' + escapeHTML(t.captain) : ''} · Est. ${escapeHTML(t.year) || '—'}</div>
         ${t.manager ? `<div class="team-list-info" style="margin-top:4px">Manager: ${escapeHTML(t.manager)} ${t.contact ? '(' + escapeHTML(t.contact) + ')' : ''}</div>` : ''}
       </div>
@@ -230,7 +230,7 @@ function renderTeamsList() {
 // ========== LOOKUP ==========
 function lookupPlayerById() {
     const pid = document.getElementById('lookup-pid').value.trim().toUpperCase();
-    if (!pid) { showToast('❌ Enter a Player ID', 'error'); return; }
+    if (!pid) { showToast('Enter a Player ID', 'error'); return; }
 
     const player = DB.getPlayerById(pid);
     const container = document.getElementById('lookup-result');

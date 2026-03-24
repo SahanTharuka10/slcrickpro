@@ -23,7 +23,10 @@
     <!-- Header -->
     <div class="sub-header" id="app-header">
         <button class="back-btn" onclick="handleBack()">← Home</button>
-        <div class="sub-header-title" id="header-title">🏏 Score New Match</div>
+        <div class="sub-header-title" id="header-title">
+            <svg style="width:20px;height:20px;margin-right:8px;vertical-align:middle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.42 4.41a8.94 8.94 0 0 1 2.33 6.13 9 9 0 0 1-18 0 8.94 8.94 0 0 1 2.33-6.13"/><path d="m11 5 1 1 1-1"/><path d="m15 10 2 2-2 2"/><path d="m9 10-2 2 2 2"/></svg>
+            Score New Match
+        </div>
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center" id="header-actions"></div>
     </div>
 
@@ -35,19 +38,19 @@
                 <div class="hero-badge" style="margin-bottom:16px">Choose Match Type</div>
                 <div class="match-type-selector" id="match-type-selector">
                     <button class="type-btn active" id="type-single" onclick="selectMatchType('single')">
-                        <span class="type-icon">🎯</span>
+                        <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
                         <span class="type-label">Single Match</span>
                         <span class="type-sub">Quick match, no tournament</span>
                     </button>
                     <button class="type-btn" id="type-tournament" onclick="selectMatchType('tournament')">
-                        <span class="type-icon">🏆</span>
+                        <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
                         <span class="type-label">Tournament Match</span>
-                        <span class="type-sub">Schedule in a tournament with password</span>
+                        <span class="type-sub">Schedule in a tournament</span>
                     </button>
                     <button class="type-btn" id="type-instant-nrr" onclick="selectMatchType('instant-nrr')">
-                        <span class="type-icon">⚡</span>
-                        <span class="type-label">Instant NRR Generator</span>
-                        <span class="type-sub">Quick NRR calc (No DB save)</span>
+                        <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h3L11 22"/></svg></span>
+                        <span class="type-label">Instant NRR</span>
+                        <span class="type-sub">Quick calculation tool</span>
                     </button>
                 </div>
             </div>

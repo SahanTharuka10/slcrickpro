@@ -130,6 +130,7 @@ function buildPlayerStats() {
                 highScore: st.highScore || 0,
                 thirties: st.thirties || 0,
                 fifties: st.fifties || 0,
+                hundreds: st.hundreds || 0,
                 wickets,
                 bowlBalls,
                 bowlRuns,
@@ -173,6 +174,7 @@ function buildPlayerStats() {
             highScore: st.highScore || 0,
             thirties: st.thirties || 0,
             fifties: st.fifties || 0,
+            hundreds: st.hundreds || 0,
             wickets,
             bowlBalls,
             bowlRuns,
@@ -215,8 +217,9 @@ function renderBatting() {
     <td>${p.highScore}</td>
     <td style="font-family:'JetBrains Mono',monospace">${p.avg}</td>
     <td style="font-family:'JetBrains Mono',monospace">${p.sr}</td>
-    <td>${p.thirties}</td>
+    <td>${p.hundreds}</td>
     <td>${p.fifties}</td>
+    <td>${p.thirties}</td>
     <td>${p.fours}</td>
     <td>${p.sixes}</td>
   </tr>`).join('') || noData(12);
@@ -291,8 +294,10 @@ function renderTeams() {
             won: t.stats.won || 0,
             lost: t.stats.lost || 0,
             tied: t.stats.tied || 0,
-            runsFor: t.stats.runsFor || 0,
-            runsAgainst: t.stats.runsAgainst || 0,
+            runsFor: t.stats.runsScored || 0,
+            ballsFaced: t.stats.ballsFaced || 0,
+            runsAgainst: t.stats.runsConceded || 0,
+            ballsBowled: t.stats.ballsBowled || 0,
             prizeMoney: t.stats.prizeMoney || 0
         }));
     } else {
@@ -307,7 +312,10 @@ function renderTeams() {
                 tied: s.tied || 0,
                 prizeMoney: s.prizeMoney || 0,
                 runsFor: s.runsScored || 0,
-                runsAgainst: s.runsConceded || 0
+                ballsFaced: s.ballsFaced || 0,
+                runsAgainst: s.runsConceded || 0,
+                ballsBowled: s.ballsBowled || 0,
+                prizeMoney: s.prizeMoney || 0,
             };
         });
     }
@@ -316,11 +324,14 @@ function renderTeams() {
         sorted = sorted.filter(t => t.name.toLowerCase().includes(q));
     }
 
-    const sort = document.getElementById('team-sort')?.value || 'prizes';
+    const sort = document.getElementById('team-sort')?.value || 'wins';
     sorted.sort((a, b) => {
-        if (sort === 'prizes') return (b.prizeMoney || 0) - (a.prizeMoney || 0) || (b.won || 0) - (a.won || 0);
-        if (sort === 'wins') return (b.won || 0) - (a.won || 0) || (b.played || 0) - (a.played || 0);
-        if (sort === 'matches') return (b.played || 0) - (a.played || 0) || (b.won || 0) - (a.won || 0);
+        const nrrA = a.ballsFaced > 0 && a.ballsBowled > 0 ? (a.runsFor / (a.ballsFaced / 6)) - (a.runsAgainst / (a.ballsBowled / 6)) : 0;
+        const nrrB = b.ballsFaced > 0 && b.ballsBowled > 0 ? (b.runsFor / (b.ballsFaced / 6)) - (b.runsAgainst / (b.ballsBowled / 6)) : 0;
+
+        if (sort === 'prizes') return (b.prizeMoney || 0) - (a.prizeMoney || 0) || (b.won || 0) - (a.won || 0) || nrrB - nrrA;
+        if (sort === 'wins') return (b.won || 0) - (a.won || 0) || nrrB - nrrA || (b.played || 0) - (a.played || 0);
+        if (sort === 'matches') return (b.played || 0) - (a.played || 0) || (b.won || 0) - (a.won || 0) || nrrB - nrrA;
         return 0;
     });
 
@@ -334,7 +345,9 @@ function renderTeams() {
     const tiers = ['🥇', '🥈', '🥉'];
     document.getElementById('team-cards-grid').innerHTML = sorted.map((t, i) => {
         const wp = t.played > 0 ? ((t.won / t.played) * 100).toFixed(0) : 0;
-        const nrr = t.played > 0 ? ((t.runsFor - t.runsAgainst) / t.played / 10).toFixed(3) : '0.000';
+        const rrFor = t.ballsFaced > 0 ? (t.runsFor / (t.ballsFaced / 6)) : 0;
+        const rrAgainst = t.ballsBowled > 0 ? (t.runsAgainst / (t.ballsBowled / 6)) : 0;
+        const nrr = (rrFor - rrAgainst).toFixed(3);
         return `<div class="team-card">
       <div class="team-card-name">${i < 3 ? tiers[i] : ''} ${t.name}</div>
       <div class="progress-bar" style="margin-bottom:14px">
