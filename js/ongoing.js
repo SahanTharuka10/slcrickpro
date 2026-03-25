@@ -7,14 +7,28 @@ let refreshInterval;
 document.addEventListener('DOMContentLoaded', () => {
   renderLive();
   startAutoRefresh();
+  
+  // Visibility API to stop polling when tab is hidden
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearInterval(refreshInterval);
+    } else {
+      startAutoRefresh();
+    }
+  });
 });
 
 function startAutoRefresh() {
   clearInterval(refreshInterval);
+  
+  // Dynamic interval: 10s on mobile, 5s on desktop
+  const isMobile = window.innerWidth < 768;
+  const interval = isMobile ? 10000 : 5000;
+
   refreshInterval = setInterval(() => {
     if (currentTab === 'live') renderLive();
     if (currentTab === 'tournament' && selectedTournId) renderTournDetails(selectedTournId);
-  }, 5000);
+  }, interval);
 }
 
 function refreshAll() {

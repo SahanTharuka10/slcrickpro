@@ -10,7 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function initParticles() {
     const container = document.getElementById('particles');
     if (!container) return;
-    for (let i = 0; i < 40; i++) {
+    
+    // Reduce particle count on mobile (15 vs 40)
+    const isMobile = window.innerWidth < 768;
+    const count = isMobile ? 15 : 40;
+
+    for (let i = 0; i < count; i++) {
         const p = document.createElement('div');
         p.className = 'particle';
         const size = Math.random() * 3 + 1;

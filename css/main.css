@@ -217,6 +217,21 @@ a:hover {
   }
 }
 
+/* Mobile Performance Optimizations */
+@media (max-width: 768px) {
+  .bg-orb {
+    filter: blur(60px); /* Reduced from 120px for GPU performance */
+    opacity: 0.12;
+    animation-duration: 20s; /* Slower animations to reduce CPU load */
+  }
+  .particle {
+    display: none; /* Disable particles on mobile for maximum speed */
+  }
+  .bg-canvas {
+    background: var(--c-bg); /* Ensure solid background if orbs are too light */
+  }
+}
+
 .cricket-field-lines {
   position: absolute;
   inset: 0;

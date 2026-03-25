@@ -70,7 +70,7 @@ function renderProducts() {
     const fallbackSvg = fallbacks[p.category] || fallbacks.equipment;
     
     const imgEl = isImg
-      ? `<img src="${p.img}" alt="" class="product-img" /><div class="product-svg-wrap" style="display:none">${fallbackSvg}</div>`
+      ? `<img src="${p.img}" alt="" class="product-img" loading="lazy" /><div class="product-svg-wrap" style="display:none">${fallbackSvg}</div>`
       : `<div class="product-svg-wrap">${fallbackSvg}</div>`;
 
     const catColor = { bat: '#7c4dff', ball: '#00bcd4', gear: '#ff6d3b', bag: '#00e676', shoes: '#ffd700', equipment: '#ff4081', service: '#e91e9c' };
@@ -121,7 +121,7 @@ function openProductDetail(id) {
   const cc = catColor[p.category] || '#888';
 
   const imgEl = isImg
-    ? `<img src="${p.img}" alt="" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" /><div class="product-svg-wrap" style="display:none;justify-content:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`
+    ? `<img src="${p.img}" alt="" loading="lazy" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-bottom:20px" /><div class="product-svg-wrap" style="display:none;justify-content:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`
     : `<div class="product-svg-wrap" style="text-align:center;margin-bottom:20px;color:${cc}">${fallbackSvg}</div>`;
 
   const detailsHtml = p.details
