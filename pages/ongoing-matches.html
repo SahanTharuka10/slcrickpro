@@ -9,6 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="../css/main.css" />
+    <link rel="icon" type="image/png" href="../assets/logo.png" />
     <link rel="stylesheet" href="../css/ongoing.css" />
 </head>
 
@@ -22,8 +23,8 @@
     <div class="sub-header">
         <button class="back-btn" onclick="history.back()">← Home</button>
         <div class="sub-header-title">
-            <svg style="width:20px;height:20px;margin-right:8px;vertical-align:middle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></svg>
-            Ongoing Matches
+            <img src="../assets/logo.png" alt="Logo" class="premium-logo" />
+            <span style="margin-left:8px">Ongoing Matches</span>
         </div>
         <div class="header-right-group">
             <button class="btn btn-sm btn-ghost" onclick="refreshAll()">🔄 Refresh</button>
@@ -50,7 +51,7 @@
         <div id="panel-tournament" style="display:none">
             <div class="section-hd">Current Tournament</div>
             <div id="tournament-selector" class="tournament-selector-row"></div>
-            <div id="tournament-details"></div>
+            <div id="tournament-details" class="table-container"></div>
         </div>
 
         <!-- COMPLETED -->
