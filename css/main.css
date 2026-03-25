@@ -1332,10 +1332,31 @@ body.light-mode .theme-toggle {
 
 /* SIMPLIFIED ROTATING LOGO SYSTEM */
 .logo-rotating-container { width: 50px; height: 50px; position: relative; display: flex; align-items: center; justify-content: center; animation: logo-main-rotate 12s linear infinite; }
-.logo-bat-simple { width: 35px; height: 8px; background: linear-gradient(90deg, #d2b48c 0%, #8b4513 100%); border-radius: 2px; position: absolute; transform-origin: center; animation: logo-bat-float 3s ease-in-out infinite alternate; }
+.logo-bat-simple { 
+  width: 32px; 
+  height: 9px; 
+  background: linear-gradient(to right, #e3c193 20%, #8b4513 100%); 
+  border-radius: 1px 4px 4px 1px; 
+  position: absolute; 
+  transform-origin: center; 
+  animation: logo-bat-float 3s ease-in-out infinite alternate, logo-bat-swing 6s ease-in-out infinite; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.logo-bat-simple::after {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 2px;
+  width: 14px;
+  height: 5px;
+  background: #5d4037;
+  border-radius: 2px 0 0 2px;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+}
 .logo-ball-simple { width: 12px; height: 12px; background: radial-gradient(circle at 30% 30%, #ff4d4d, #990000); border-radius: 50%; position: absolute; top: 5px; right: 5px; animation: logo-ball-orb 4s ease-in-out infinite; }
 @keyframes logo-main-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes logo-bat-float { from { transform: translateY(-2px) rotate(-5deg); } to { transform: translateY(2px) rotate(5deg); } }
+@keyframes logo-bat-float { from { transform: translateY(-3px) rotate(-8deg); } to { transform: translateY(3px) rotate(8deg); } }
+@keyframes logo-bat-swing { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-15deg) translateX(2px); } }
 @keyframes logo-ball-orb { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-10px, 10px); } }
 
 /* FINAL TRANSPARENCY OVERRIDES */
