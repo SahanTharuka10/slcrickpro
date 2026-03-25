@@ -180,6 +180,8 @@ function renderTournDetails(id) {
     const completedMatches = DB.getMatches().filter(m => m.tournamentId === id && m.status === 'completed' && m.publishLive).length;
     const liveMatches = DB.getMatches().filter(m => m.tournamentId === id && m.status === 'live' && m.publishLive).length;
 
+    const isKO = t.format === 'knockout';
+
     details.innerHTML = `
         <div class="tournament-header-card">
             <div>
@@ -197,21 +199,17 @@ function renderTournDetails(id) {
             </div>
         </div>
         <div class="tourn-sub-tabs">
-            <button class="tourn-sub-tab active" id="subtab-standings" onclick="switchTournSubTab('standings')">📊 Standings</button>
-            <button class="tourn-sub-tab" style="display:none" id="subtab-bracket" onclick="switchTournSubTab('bracket')">🌳 Bracket</button>
+            ${isKO ? `<button class="tourn-sub-tab active" id="subtab-bracket" onclick="switchTournSubTab('bracket')">🌳 Bracket</button>` : `<button class="tourn-sub-tab active" id="subtab-standings" onclick="switchTournSubTab('standings')">📊 Standings</button>`}
             <button class="tourn-sub-tab" onclick="switchTournSubTab('batting')">🏏 Batsmen</button>
             <button class="tourn-sub-tab" onclick="switchTournSubTab('bowling')">🎳 Bowlers</button>
-            <button class="tourn-sub-tab" onclick="switchTournSubTab('nrr')">📈 NRR</button>
+            ${!isKO ? `<button class="tourn-sub-tab" onclick="switchTournSubTab('nrr')">📈 NRR</button>` : ''}
             <button class="tourn-sub-tab" onclick="switchTournSubTab('fixtures')">📅 Fixtures</button>
         </div>
-        <div id="tourn-sub-content">${buildTournSubTab(t, 'standings')}</div>
+        <div id="tourn-sub-content"></div>
     `;
     
-    const bBtn = document.getElementById('subtab-bracket');
-    if (bBtn) {
-        bBtn.style.display = t.format === 'knockout' ? 'block' : 'none';
-        if (t.format === 'knockout') switchTournSubTab('bracket');
-    }
+    // Auto-select first tab
+    switchTournSubTab(isKO ? 'bracket' : 'standings');
 }
 
 function buildTournSubTab(t, tab) {
