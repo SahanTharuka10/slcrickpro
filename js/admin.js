@@ -19,7 +19,7 @@ function loginAdmin() {
     const pass = document.getElementById('admin-password').value;
 
     // Secure authentication placeholder - in production use server-side auth
-    if (user === 'STgamage' && pass === 'SL26crickpro@') {
+    if (user === 'STgamage' && pass === 'ST26gamage@') {
         sessionStorage.setItem('isAdmin', 'true');
         checkAdminAuth();
         showToast('🔓 Welcome, Admin!', 'success');
@@ -300,7 +300,7 @@ function openEditProduct(id) {
     document.getElementById('edit-prod-name').value = p.name;
     document.getElementById('edit-prod-price').value = p.price;
     document.getElementById('edit-prod-stock').value = p.stock;
-    document.getElementById('edit-prod-img').value = p.image || '';
+    document.getElementById('edit-prod-img').value = p.img || '';
     document.getElementById('modal-edit-product').style.display = 'flex';
 }
 
@@ -316,7 +316,7 @@ function saveNewProduct() {
     const products = DB.getProducts();
     const newProd = {
         id: 'PROD-' + Date.now(),
-        name, price, stock, image: img, description: desc,
+        name, price, stock, img, description: desc,
         createdAt: Date.now()
     };
     products.push(newProd);
@@ -338,7 +338,7 @@ function saveProductEdit() {
     const products = DB.getProducts();
     const idx = products.findIndex(p => p.id === id);
     if (idx !== -1) {
-        products[idx] = { ...products[idx], name, price, stock, image: img };
+        products[idx] = { ...products[idx], name, price, stock, img };
         DB.saveProducts(products);
         showToast('✅ Product updated', 'success');
         closeModal('modal-edit-product');

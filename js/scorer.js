@@ -1603,15 +1603,16 @@ function syncOfficialStats(m, t) {
             const existing = DB.getPlayerById(b.playerId);
             if (!existing) return;
 
+            const s = existing.stats || {};
             const runs = b.runs || 0;
             const stats = {
-                innings:  (existing.stats.innings  || 0) + 1,
-                runs:     (existing.stats.runs     || 0) + runs,
-                balls:    (existing.stats.balls    || 0) + (b.balls || 0),
-                fours:    (existing.stats.fours    || 0) + (b.fours || 0),
-                sixes:    (existing.stats.sixes    || 0) + (b.sixes || 0),
-                notOuts:  (existing.stats.notOuts  || 0) + (b.notOut ? 1 : 0),
-                highScore: Math.max((existing.stats.highScore || 0), runs),
+                innings:  (s.innings  || 0) + 1,
+                runs:     (s.runs     || 0) + runs,
+                balls:    (s.balls    || 0) + (b.balls || 0),
+                fours:    (s.fours    || 0) + (b.fours || 0),
+                sixes:    (s.sixes    || 0) + (b.sixes || 0),
+                notOuts:  (s.notOuts  || 0) + (b.notOut ? 1 : 0),
+                highScore: Math.max((s.highScore || 0), runs),
             };
             if (runs >= 100) stats.hundreds = (existing.stats.hundreds || 0) + 1;
             else if (runs >= 50) stats.fifties = (existing.stats.fifties || 0) + 1;
@@ -1626,20 +1627,20 @@ function syncOfficialStats(m, t) {
             const p = DB.getPlayerById(b.playerId);
             if (!p) return;
 
+            const s = p.stats || {};
             const wkt = b.wickets || 0;
-            const bestParts = (p.stats.bestBowling || '0/0').split('/');
+            const bestParts = (s.bestBowling || '0/0').split('/');
             const bestW = parseInt(bestParts[0]) || 0;
             const bestR = parseInt(bestParts[1]) || 999;
-            let newBest = p.stats.bestBowling || '0/0';
+            let newBest = s.bestBowling || '0/0';
             if (wkt > bestW || (wkt === bestW && (b.runs || 0) < bestR)) {
                 newBest = `${wkt}/${b.runs || 0}`;
             }
-
             const stats = {
-                wickets:      (p.stats.wickets     || 0) + wkt,
-                bowlingRuns:  (p.stats.bowlingRuns || 0) + (b.runs || 0),
-                overs:        (p.stats.overs       || 0) + ((b.balls || 0) / 6),
-                maidens:      (p.stats.maidens     || 0) + (b.maidens || 0),
+                wickets:      (s.wickets     || 0) + wkt,
+                bowlingRuns:  (s.bowlingRuns || 0) + (b.runs || 0),
+                overs:        (s.overs       || 0) + ((b.balls || 0) / 6),
+                maidens:      (s.maidens     || 0) + (b.maidens || 0),
                 bestBowling:  newBest,
             };
             p.stats = { ...p.stats, ...stats };
