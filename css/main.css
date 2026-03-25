@@ -8,25 +8,25 @@
 }
 
 :root {
-  --c-bg: #030712;
+  --c-bg: #030713;
   --c-surface: #111827;
   --c-surface2: #1f2937;
   --c-border: rgba(255, 255, 255, 0.06);
   --c-text: #f9fafb;
   --c-muted: #9ca3af;
-  --c-green: #10b981;
+  --c-green: #2eb086;
   --c-teal: #14b8a6;
-  --c-amber: #f59e0b;
+  --c-amber: #ffb302;
   --c-orange: #f97316;
-  --c-pink: #ec4899;
-  --c-purple: #8b5cf6;
+  --c-pink: #e91e63;
+  --c-purple: #7c4dff;
   --c-blue: #3b82f6;
   --c-red: #ef4444;
-  --gradient-gold: linear-gradient(135deg, #fbbf24, #f59e0b);
-  --gradient-live: linear-gradient(135deg, #10b981, #14b8a6);
-  --gradient-score: linear-gradient(135deg, #8b5cf6, #4f46e5);
-  --gradient-rank: linear-gradient(135deg, #f59e0b, #ea580c);
-  --gradient-store: linear-gradient(135deg, #ec4899, #d946ef);
+  --gradient-gold: linear-gradient(135deg, #fbbf24, #ffb302);
+  --gradient-live: linear-gradient(135deg, #2eb086, #14b8a6);
+  --gradient-score: linear-gradient(135deg, #7c4dff, #4f46e5);
+  --gradient-rank: linear-gradient(135deg, #ffb302, #ea580c);
+  --gradient-store: linear-gradient(135deg, #e91e63, #d946ef);
   --gradient-reg: linear-gradient(135deg, #0ea5e9, #3b82f6);
   --r: 24px;
   --r-sm: 14px;
@@ -258,8 +258,8 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(3, 7, 18, 0.7);
-  backdrop-filter: blur(25px);
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--c-border);
 }
 
@@ -448,7 +448,7 @@ body.light-mode .theme-toggle {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #fbbf24, #ea580c, #ec4899);
+  background: linear-gradient(135deg, #fbbf24, #ea580c, #e91e63);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -509,15 +509,18 @@ body.light-mode .theme-toggle {
 .nav-card {
   position: relative;
   border-radius: var(--r);
-  padding: 28px 22px;
+  padding: 32px 28px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.35s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.35s ease;
+  transition: transform 0.4s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.4s ease, background 0.4s ease;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  min-height: 300px;
+  min-height: 320px;
 }
 
 .nav-card:hover {
@@ -1310,7 +1313,7 @@ body.light-mode .theme-toggle {
 .logo-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; position: relative; padding: 10px; }
 .logo-anim-container { position: relative; width: 60px; height: 60px; overflow: hidden; background: radial-gradient(circle, rgba(26,0,51,0.5) 0%, rgba(0,0,0,0.8) 100%); border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.2); }
 .cricket-ball { position: absolute; width: 14px; height: 14px; background: radial-gradient(circle at 30% 30%, #ff4d4d, #990000); border-radius: 50%; top: -20px; right: -20px; box-shadow: inset -2px -2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(255, 69, 0, 0.4); z-index: 2; }
-.cricket-ball::after { content: " \; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.6); transform: translateY(-50%); }
+.cricket-ball::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.6); transform: translateY(-50%); }
 .cricket-bat { position: absolute; width: 40px; height: 10px; background: linear-gradient(to bottom, #d2b48c, #8b4513); border-radius: 2px; bottom: 15px; left: -50px; transform-origin: left center; z-index: 1; border-right: 4px solid #333; }
 .glow-burst { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 40px; height: 40px; background: radial-gradient(circle, #ffd700 0%, transparent 70%); border-radius: 50%; opacity: 0; pointer-events: none; z-index: 3; }
 .logo-wrapper:hover .cricket-ball { animation: ball-arc 1.2s cubic-bezier(0.36, 0, 0.64, 1) forwards; }
@@ -1321,8 +1324,19 @@ body.light-mode .theme-toggle {
 @keyframes glow-burst { 0%, 48% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
 .logo-text-animated { display: flex; flex-direction: column; opacity: 1; transition: opacity 0.5s ease; }
 .logo-name-animated { font-family: \Outfit\, sans-serif; font-weight: 900; font-size: 24px; color: #fff; letter-spacing: 1px; }
-.logo-name-animated span.pro { background: linear-gradient(to right, #ff8c00, #ff4500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 5px rgba(255, 69, 0, 0.5)); }
+.logo-name-animated span.pro { background: linear-gradient(to right, #ff8c00, #ff4500); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 5px rgba(255, 69, 0, 0.5)); }
 .logo-tag-animated { font-size: 10px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; }
 
 /* PREMIUM HEADER MESH GRADIENT */
 .main-header, .sub-header { background: radial-gradient(at 0% 0%, #1a0033 0%, #000 100%), radial-gradient(at 100% 0%, #330066 0%, transparent 50%); border-bottom: 1px solid rgba(255, 215, 0, 0.15); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); }
+
+/* SIMPLIFIED ROTATING LOGO SYSTEM */
+.logo-rotating-container { width: 50px; height: 50px; position: relative; display: flex; align-items: center; justify-content: center; animation: logo-main-rotate 12s linear infinite; }
+.logo-bat-simple { width: 35px; height: 8px; background: linear-gradient(90deg, #d2b48c 0%, #8b4513 100%); border-radius: 2px; position: absolute; transform-origin: center; animation: logo-bat-float 3s ease-in-out infinite alternate; }
+.logo-ball-simple { width: 12px; height: 12px; background: radial-gradient(circle at 30% 30%, #ff4d4d, #990000); border-radius: 50%; position: absolute; top: 5px; right: 5px; animation: logo-ball-orb 4s ease-in-out infinite; }
+@keyframes logo-main-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes logo-bat-float { from { transform: translateY(-2px) rotate(-5deg); } to { transform: translateY(2px) rotate(5deg); } }
+@keyframes logo-ball-orb { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-10px, 10px); } }
+
+/* FINAL TRANSPARENCY OVERRIDES */
+.logo-wrapper, .logo-anim-container, .logo-rotating-container { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; }

@@ -78,18 +78,21 @@
   <!-- Header -->
   <header class="main-header">
     <div class="header-inner">
-      <div class="logo-wrapper">
-        <div class="logo-anim-container">
-          <div class="cricket-ball"></div>
-          <div class="cricket-bat"></div>
-          <div class="glow-burst"></div>
+      <div class="logo-wrapper" style="background:transparent; border:none;">
+        <div class="logo-rotating-container">
+          <div class="logo-bat-simple"></div>
+          <div class="logo-ball-simple"></div>
         </div>
         <div class="logo-text-animated">
           <span class="logo-name-animated">SL CRICK <span class="pro">PRO</span></span>
-          <span class="logo-tag-animated">Ultimate Cricket Management</span>
+          <span class="logo-tag-animated">Simplified Cricket Portal</span>
         </div>
       </div>
       <div class="header-info">
+        <a href="pages/admin-login.html" class="admin-badge">
+          <span>ADMIN</span>
+          <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+        </a>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Switch Day/Dark Mode" style="width:36px;height:36px">
           <svg class="svg-theme-icon moon-icon"><use href="#icon-moon"></use></svg>
           <svg class="svg-theme-icon sun-icon"><use href="#icon-sun"></use></svg>
@@ -106,10 +109,10 @@
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="hero-content">
-      <div class="hero-badge">🏆 Professional Cricket Platform</div>
+      <div class="hero-badge">🏆 Cricket Management System</div>
       <h1 class="hero-title">
-        Manage Every <span class="gradient-text">Cricket</span><br />
-        Moment in Real‑Time
+        The Ultimate <span class="gradient-text">Cricket</span><br />
+        Hub for Professionals
       </h1>
       <p class="hero-sub">Ball-by-ball scoring · Live tournaments · Player registry · Rankings</p>
     </div>
