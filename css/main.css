@@ -1353,46 +1353,18 @@ body.light-mode .theme-toggle {
   cursor: pointer;
 }
 
-.logo-icon-animated {
-  width: 44px;
-  height: 44px;
+.logo-icon {
+  font-size: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  filter: drop-shadow(0 0 8px rgba(255, 179, 2, 0.4));
+  animation: logo-spin 10s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 179, 2, 0.3));
 }
 
-.logo-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.bat {
-  transform-origin: 70px 30px;
-  animation: batSwing 2.5s ease-in-out infinite alternate;
-}
-
-.bat-handle {
-  transform-origin: 70px 30px;
-  animation: batSwing 2.5s ease-in-out infinite alternate;
-}
-
-.ball {
-  animation: ballOrbit 4s linear infinite;
-}
-
-@keyframes batSwing {
-  0% { transform: rotate(-8deg); }
-  100% { transform: rotate(12deg); }
-}
-
-@keyframes ballOrbit {
-  0% { transform: translate(0, 0); }
-  25% { transform: translate(30px, -10px); }
-  50% { transform: translate(15px, 40px); }
-  75% { transform: translate(-10px, 20px); }
-  100% { transform: translate(0, 0); }
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* FINAL TRANSPARENCY OVERRIDES */
