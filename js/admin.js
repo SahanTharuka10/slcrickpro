@@ -19,7 +19,7 @@ function loginAdmin() {
     const pass = document.getElementById('admin-password').value;
 
     // Secure authentication placeholder - in production use server-side auth
-    if (user === 'SLcrickpro' && pass === 'SL26crickpro@') {
+    if (user === 'STgamage' && pass === 'SL26crickpro@') {
         sessionStorage.setItem('isAdmin', 'true');
         checkAdminAuth();
         showToast('🔓 Welcome, Admin!', 'success');
@@ -289,5 +289,84 @@ function showToast(msg, type = 'default') {
     setTimeout(() => { t.className = 'toast'; }, 3000);
 }
 
-function openAddProduct() { document.getElementById('modal-add-product').style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function openAddProduct() {
+    document.getElementById('modal-add-product').style.display = 'flex';
+}
+
+function openEditProduct(id) {
+    const p = DB.getProducts().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('edit-prod-id').value = p.id;
+    document.getElementById('edit-prod-name').value = p.name;
+    document.getElementById('edit-prod-price').value = p.price;
+    document.getElementById('edit-prod-stock').value = p.stock;
+    document.getElementById('edit-prod-img').value = p.image || '';
+    document.getElementById('modal-edit-product').style.display = 'flex';
+}
+
+function saveNewProduct() {
+    const name = document.getElementById('add-prod-name').value.trim();
+    const price = parseInt(document.getElementById('add-prod-price').value) || 0;
+    const stock = parseInt(document.getElementById('add-prod-stock').value) || 0;
+    const img = document.getElementById('add-prod-img').value.trim();
+    const desc = document.getElementById('add-prod-desc').value.trim();
+
+    if (!name) { showToast('❌ Enter product name', 'error'); return; }
+
+    const products = DB.getProducts();
+    const newProd = {
+        id: 'PROD-' + Date.now(),
+        name, price, stock, image: img, description: desc,
+        createdAt: Date.now()
+    };
+    products.push(newProd);
+    DB.saveProducts(products);
+    showToast('✅ Product added', 'success');
+    closeModal('modal-add-product');
+    renderStoreItems();
+}
+
+function saveProductEdit() {
+    const id = document.getElementById('edit-prod-id').value;
+    const name = document.getElementById('edit-prod-name').value.trim();
+    const price = parseInt(document.getElementById('edit-prod-price').value) || 0;
+    const stock = parseInt(document.getElementById('edit-prod-stock').value) || 0;
+    const img = document.getElementById('edit-prod-img').value.trim();
+
+    if (!name) { showToast('❌ Enter product name', 'error'); return; }
+
+    const products = DB.getProducts();
+    const idx = products.findIndex(p => p.id === id);
+    if (idx !== -1) {
+        products[idx] = { ...products[idx], name, price, stock, image: img };
+        DB.saveProducts(products);
+        showToast('✅ Product updated', 'success');
+        closeModal('modal-edit-product');
+        renderStoreItems();
+    }
+}
+
+function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    let products = DB.getProducts();
+    const toDelete = products.find(p => p.id === id);
+    products = products.filter(p => p.id !== id);
+    DB.saveProducts(products);
+    if (toDelete) DB.deleteProductFromCloud(id);
+    showToast('🗑️ Product deleted', 'error');
+    renderStoreItems();
+}
+
+function encodeProductImage(input, targetId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById(targetId).value = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}

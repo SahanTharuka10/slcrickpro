@@ -529,8 +529,13 @@ function renderMatchDetailContent(m) {
             ${inn1 ? renderInningsTable(inn1, m.fieldingFirst || m.team2) : ''}
 
             <div style="margin-top:30px; display:flex; gap:12px">
-                <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('match-detail-modal').style.display='none'">Close</button>
+                <button class="btn btn-ghost" style="flex:1" onclick="closeMatchDetail()">Close</button>
             </div>
         </div>
     `;
+}
+
+function closeMatchDetail() {
+    const modal = document.getElementById('match-detail-modal');
+    if (modal) modal.style.display = 'none';
 }

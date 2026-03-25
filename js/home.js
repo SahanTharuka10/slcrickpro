@@ -58,3 +58,11 @@ function updateTicker() {
     const content = parts.join('   &nbsp;|&nbsp;   ');
     el.innerHTML = content + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + content;
 }
+
+function formatOvers(balls, bpo = 6) {
+    return `${Math.floor(balls / bpo)}.${balls % bpo}`;
+}
+
+function formatCRR(runs, balls, bpo = 6) {
+    return balls ? (runs / (balls / bpo)).toFixed(2) : '0.00';
+}
