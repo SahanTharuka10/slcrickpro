@@ -89,6 +89,13 @@
                                 <option value="knockout">Knockout</option>
                             </select>
                         </div>
+                    </div>
+                    <div id="knockout-team-count-group" class="form-group" style="display:none; margin-bottom:15px">
+                        <label class="form-label">Total Teams in Knockout (N)</label>
+                        <input type="number" class="form-input" id="tourn-team-count" value="8" min="2" max="64" />
+                        <p style="font-size:11px; color:var(--c-muted); margin-top:4px">Matches and rounds will be automatically calculated based on N.</p>
+                    </div>
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Tournament Type</label>
                             <select class="form-select" id="tourn-type" onchange="toggleOfficialSettings(this.value)">

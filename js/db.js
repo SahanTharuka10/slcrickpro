@@ -320,13 +320,17 @@ const DB = {
             matches: [],
             standings: {},
             createdAt: Date.now(),
-            status: 'active', // active | completed
+            status: 'active',
             isOfficial: cfg.isOfficial || false,
             matchCount: cfg.matchCount || 0,
+            totalTeams: cfg.totalTeams || cfg.teams.length,
             prizes: cfg.prizes || { first: '', second: '', third: '' },
         };
-        // Pre-schedule matches
-        if (cfg.matchCount > 0) {
+
+        if (t.format === 'knockout') {
+            this._generateKnockoutMatches(t);
+        } else if (cfg.matchCount > 0) {
+            // League format pre-scheduling
             for (let i = 1; i <= cfg.matchCount; i++) {
                 let mName = `Match ${i}`;
                 if (i === cfg.matchCount) mName = "Final 🏆";
@@ -334,24 +338,15 @@ const DB = {
                 else if (i === cfg.matchCount - 2) mName = "Eliminator 💥";
                 else if (i === cfg.matchCount - 3 && cfg.matchCount >= 4) mName = "Qualifier 1 🏏";
 
-                const isFinals = (i >= cfg.matchCount - 3);
-                let team1 = "TBD";
-                let team2 = "TBD";
-                if (!isFinals && t.teams.length >= 2) {
+                let team1 = "TBD", team2 = "TBD";
+                if (i <= Math.floor(cfg.matchCount / 2) && t.teams.length >= 2) {
                     team1 = t.teams[(i - 1) % t.teams.length];
                     team2 = t.teams[i % t.teams.length];
-                    if (team1 === team2) team2 = t.teams[(i + 1) % t.teams.length];
                 }
 
                 const match = this.createMatch({
-                    type: 'tournament',
-                    tournamentId: t.id,
-                    tournamentName: t.name,
-                    team1: team1,
-                    team2: team2,
-                    overs: t.overs,
-                    ballsPerOver: t.ballsPerOver,
-                    password: null // set later via request
+                    type: 'tournament', tournamentId: t.id, tournamentName: t.name,
+                    team1, team2, overs: t.overs, ballsPerOver: t.ballsPerOver
                 });
                 match.status = 'scheduled';
                 match.scheduledName = mName;
@@ -359,7 +354,8 @@ const DB = {
                 t.matches.push(match.id);
             }
         }
-        // init standings
+
+        // Init standings (only for League, effectively)
         t.teams.forEach(team => {
             t.standings[team] = {
                 played: 0, won: 0, lost: 0, tied: 0,
@@ -368,8 +364,66 @@ const DB = {
                 runsConceded: 0, ballsBowled: 0,
             };
         });
+
         this.saveTournament(t);
         return t;
+    },
+
+    _generateKnockoutMatches(t) {
+        const N = t.totalTeams;
+        const rounds = Math.ceil(Math.log2(N));
+        const totalMatches = N - 1;
+        
+        let matchIndex = 1;
+        let currentRoundTeams = [];
+        
+        // Populate initial teams (fill with 'TBD' if needed)
+        for (let i = 0; i < N; i++) {
+            currentRoundTeams.push(t.teams[i] || `Team ${i + 1}`);
+        }
+
+        let roundNodes = []; // Tracks matches in current round to link to next
+        let prevRoundMatches = currentRoundTeams.map(name => ({ type: 'team', name }));
+
+        for (let r = 1; r <= rounds; r++) {
+            const nextRoundMatches = [];
+            const roundMatchCount = Math.floor(prevRoundMatches.length / 2);
+            
+            for (let i = 0; i < roundMatchCount; i++) {
+                const node1 = prevRoundMatches[i * 2];
+                const node2 = prevRoundMatches[i * 2 + 1];
+                
+                const mName = (r === rounds) ? "Final 🏆" : 
+                             (r === rounds - 1) ? `Semi-Final ${i + 1}` : 
+                             `Round ${r} - Match ${matchIndex}`;
+                
+                const match = this.createMatch({
+                    type: 'tournament', tournamentId: t.id, tournamentName: t.name,
+                    team1: node1.type === 'team' ? node1.name : 'TBD',
+                    team2: node2.type === 'team' ? node2.name : 'TBD',
+                    overs: t.overs, ballsPerOver: t.ballsPerOver
+                });
+
+                match.status = 'scheduled';
+                match.scheduledName = mName;
+                match.knockout = { round: r, matchNum: matchIndex, nextMatchIndex: null, slot: null };
+                
+                // Link predecessors to this match
+                if (node1.type === 'match') { node1.ref.knockout.nextMatchId = match.id; node1.ref.knockout.slot = 1; this.saveMatch(node1.ref); }
+                if (node2.type === 'match') { node2.ref.knockout.nextMatchId = match.id; node2.ref.knockout.slot = 2; this.saveMatch(node2.ref); }
+
+                this.saveMatch(match);
+                t.matches.push(match.id);
+                nextRoundMatches.push({ type: 'match', id: match.id, ref: match });
+                matchIndex++;
+            }
+
+            // Handle Byes (if odd numbered nodes)
+            if (prevRoundMatches.length % 2 === 1) {
+                nextRoundMatches.push(prevRoundMatches[prevRoundMatches.length - 1]);
+            }
+            prevRoundMatches = nextRoundMatches;
+        }
     },
 
     // ---------- PRODUCTS ----------

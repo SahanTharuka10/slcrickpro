@@ -16,6 +16,10 @@ let currentTournament = null;
 let _pendingTournPayload = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('tourn-format').addEventListener('change', (e) => {
+        const kg = document.getElementById('knockout-team-count-group');
+        if (kg) kg.style.display = e.target.value === 'knockout' ? 'block' : 'none';
+    });
     populateTournamentDropdown();
     renderResumeMatches();
     showScreen('setup');
@@ -340,14 +344,18 @@ function startNewMatch() {
                 if (teamLines.length < 2) { showToast('Enter at least 2 teams', 'error'); return; }
 
                 if (tournType === 'official') {
-                    const matchCount = parseInt(document.getElementById('tourn-match-count')?.value) || 10;
+                    const matchCount = format === 'knockout' 
+                        ? (parseInt(document.getElementById('tourn-team-count').value) - 1)
+                        : (parseInt(document.getElementById('tourn-match-count')?.value) || 10);
                     const startDate = document.getElementById('tourn-start-date')?.value || '';
                     const prize1 = document.getElementById('tourn-prize-1')?.value || '';
                     const prize2 = document.getElementById('tourn-prize-2')?.value || '';
                     const prize3 = document.getElementById('tourn-prize-3')?.value || '';
 
                     _pendingTournPayload = {
-                        name: tName, format, overs, ballsPerOver: bpo, teams: teamLines, isOfficial: true, matchCount,
+                        name: tName, format, overs, ballsPerOver: bpo, teams: teamLines, isOfficial: true, 
+                        totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
+                        matchCount,
                         startDate, prizes: { first: prize1, second: prize2, third: prize3 }
                     };
 
@@ -357,10 +365,14 @@ function startNewMatch() {
                     openModal('modal-request');
                     return;
                 } else {
-                    const matchCount = parseInt(document.getElementById('tourn-match-count')?.value) || 10;
+                    const matchCount = format === 'knockout' 
+                        ? (parseInt(document.getElementById('tourn-team-count').value) - 1)
+                        : (parseInt(document.getElementById('tourn-match-count')?.value) || 10);
                     const tourn = DB.createTournament({
                         name: tName, format, overs, ballsPerOver: bpo,
-                        teams: teamLines, isOfficial: false, matchCount: matchCount // Changed to include matchCount
+                        teams: teamLines, isOfficial: false, 
+                        totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
+                        matchCount: matchCount 
                     });
                     showToast(`Tournament "${tName}" created!`, 'success');
                     populateTournamentDropdown();
@@ -1234,10 +1246,21 @@ function showMatchResult() {
     if (m.tournamentId) {
         const t = DB.getTournament(m.tournamentId);
         if (t) {
-            computeStandings(t);
+            if (t.format === 'knockout') {
+                // Promote winner to next match if applicable
+                if (m.knockout && m.knockout.nextMatchId && winner) {
+                    const nextMatch = DB.getMatch(m.knockout.nextMatchId);
+                    if (nextMatch) {
+                        if (m.knockout.slot === 1) nextMatch.team1 = winner;
+                        else if (m.knockout.slot === 2) nextMatch.team2 = winner;
+                        DB.saveMatch(nextMatch);
+                    }
+                }
+            } else {
+                computeStandings(t);
+            }
             DB.saveTournament(t);
             if (t.isOfficial) {
-                // Update players
                 syncOfficialStats(m, t);
             }
         }

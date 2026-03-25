@@ -52,9 +52,18 @@
 
         <!-- TOURNAMENT PANEL -->
         <div id="panel-tournament" style="display:none">
-            <div class="section-hd">Current Tournament</div>
+            <div class="tournament-header-flex">
+                <div class="section-hd">Current Tournament</div>
+                <div class="sub-tab-bar" id="tourn-subtabs" style="display:none">
+                    <button class="sub-tab-btn active" id="subtab-standings" onclick="switchTournSubTab('standings')">Standings</button>
+                    <button class="sub-tab-btn" id="subtab-bracket" onclick="switchTournSubTab('bracket')">Knockout Bracket</button>
+                    <button class="sub-tab-btn" id="subtab-matches" onclick="switchTournSubTab('matches')">Full Schedule</button>
+                </div>
+            </div>
             <div id="tournament-selector" class="tournament-selector-row"></div>
             <div id="tournament-details" class="table-container"></div>
+            <div id="tournament-bracket" class="bracket-container" style="display:none"></div>
+            <div id="tournament-full-schedule" class="matches-grid" style="display:none"></div>
         </div>
 
         <!-- COMPLETED -->
