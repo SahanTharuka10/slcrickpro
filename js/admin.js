@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function loginAdmin() {
     const un = document.getElementById('admin-username').value.trim();
     const pw = document.getElementById('admin-password').value.trim();
+    
+    // SECURITY NOTE: Hardcoded credentials should be replaced with server-side 
+    // authentication for production versions to prevent unauthorized access.
     if (un === 'STgamage' && pw === 'ST23gamage@') {
         sessionStorage.setItem('cricpro_admin', 'true');
         showAdminContent();

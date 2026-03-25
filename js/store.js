@@ -19,6 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
 });
 
+function sanitizeDesc(desc) {
+  if (!desc) return '';
+  // If the description starts with data:image, it's likely a leaked source string.
+  if (desc.trim().startsWith('data:image/')) return 'No description available.';
+  return desc;
+}
+
 /* ── Category filter ── */
 function filterCat(cat, btn) {
   currentCat = cat;
@@ -74,7 +81,7 @@ function renderProducts() {
       <div class="product-info">
         <div class="product-badge" style="background:${cc}22;color:${cc}">${p.type || p.category}</div>
         <div class="product-name">${p.name}</div>
-        <div class="product-desc">${(p.desc || '').slice(0, 80)}${p.desc && p.desc.length > 80 ? '…' : ''}</div>
+        <div class="product-desc">${sanitizeDesc(p.desc || '').slice(0, 80)}${p.desc && p.desc.length > 80 ? '…' : ''}</div>
         <div class="star-rating">${'★'.repeat(Math.floor(p.rating))}${'☆'.repeat(5 - Math.floor(p.rating))} <span style="font-size:11px;color:var(--c-muted)">${p.rating}</span></div>
         <div class="product-price">Rs. ${p.price.toLocaleString()}</div>
         ${p.isService ? `<div style="font-size:11px;color:var(--c-muted);margin-bottom:8px">📞 Click for booking details</div>` : ''}
@@ -141,7 +148,7 @@ function openProductDetail(id) {
     </div>
     <div style="margin-bottom:8px">${'★'.repeat(Math.floor(p.rating))}${'☆'.repeat(5 - Math.floor(p.rating))}
       <span style="font-size:12px;color:var(--c-muted);margin-left:6px">${p.rating} / 5.0</span></div>
-    <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.82);margin-bottom:16px">${p.desc || ''}</div>
+    <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.82);margin-bottom:16px">${sanitizeDesc(p.desc || '')}</div>
     ${detailsHtml}
     <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-amber" style="flex:1" onclick="addToCart('${p.id}')">

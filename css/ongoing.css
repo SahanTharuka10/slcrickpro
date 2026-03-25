@@ -199,17 +199,24 @@
 
 .tourn-sub-tabs {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     background: rgba(255, 255, 255, 0.04);
     border-radius: 12px;
-    padding: 4px;
+    padding: 6px;
     margin-bottom: 20px;
     max-width: 700px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+}
+.tourn-sub-tabs::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
 }
 
 .tourn-sub-tab {
     flex: 1;
-    padding: 10px;
+    min-width: max-content;
+    padding: 10px 16px;
     background: none;
     border: none;
     color: var(--c-muted);
@@ -219,6 +226,7 @@
     cursor: pointer;
     border-radius: 9px;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .tourn-sub-tab.active {
