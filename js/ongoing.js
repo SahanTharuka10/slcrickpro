@@ -445,25 +445,91 @@ function openMatchDetail(id) {
 function renderMatchDetailContent(m) {
     const inn0 = m.innings ? m.innings[0] : null;
     const inn1 = m.innings ? m.innings[1] : null;
-    const score0 = inn0 ? `${inn0.runs}/${inn0.wickets} (${formatOvers(inn0.balls)})` : 'Yet to bat';
-    const score1 = inn1 ? `${inn1.runs}/${inn1.wickets} (${formatOvers(inn1.balls)})` : 'Yet to bat';
-    
+
+    const renderInningsTable = (inn, teamName) => {
+        if (!inn) return `<div class="sc-extras">No data for ${teamName} innings</div>`;
+        
+        const totalScore = `${inn.runs}/${inn.wickets}`;
+        const totalOvers = formatOvers(inn.balls, m.ballsPerOver);
+        
+        let batsmenHtml = inn.batsmen.map(b => `
+            <tr>
+                <td>
+                    <div class="sc-name">${b.name}</div>
+                    <div class="sc-status">${b.status || 'Not Out'}</div>
+                </td>
+                <td class="sc-val">${b.runs}</td>
+                <td class="sc-muted-val">${b.balls}</td>
+                <td class="sc-muted-val">${b.fours}</td>
+                <td class="sc-muted-val">${b.sixes}</td>
+                <td class="sc-muted-val">${formatSR(b.runs, b.balls)}</td>
+            </tr>
+        `).join('');
+
+        let bowlersHtml = inn.bowlers.map(b => `
+            <tr>
+                <td class="sc-name">${b.name}</td>
+                <td class="sc-val">${formatOvers(b.balls, m.ballsPerOver)}</td>
+                <td class="sc-muted-val">${b.maidens || 0}</td>
+                <td class="sc-muted-val">${b.runs}</td>
+                <td class="sc-val" style="color:#00e676">${b.wickets}</td>
+                <td class="sc-muted-val">${formatEcon(b.runs, b.balls, m.ballsPerOver)}</td>
+            </tr>
+        `).join('');
+
+        const extras = inn.extras || { total: 0, wd: 0, nb: 0, b: 0, lb: 0 };
+        const extrasText = `Extras: ${extras.total || 0} (Wd:${extras.wd || 0}, Nb:${extras.nb || 0}, By:${extras.b || 0}, Lb:${extras.lb || 0})`;
+
+        return `
+            <div class="scorecard-inn-header">
+                <div class="scorecard-inn-name">${teamName} Innings</div>
+                <div class="scorecard-inn-total">${totalScore} <span class="scorecard-inn-overs">(${totalOvers} ov)</span></div>
+            </div>
+            
+            <table class="sc-table">
+                <thead>
+                    <tr><th>Batsman</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>
+                </thead>
+                <tbody>${batsmenHtml}</tbody>
+            </table>
+
+            <div class="sc-extras">${extrasText}</div>
+
+            <div class="scorecard-inn-name" style="margin-bottom:12px; font-size:12px">Bowling</div>
+            <table class="sc-table">
+                <thead>
+                    <tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr>
+                </thead>
+                <tbody>${bowlersHtml}</tbody>
+            </table>
+        `;
+    };
+
+    const typeLabel = m.type === 'tournament' ? `Tournament` : 'Single Match';
+    const subInfo = `${m.overs} overs · ${m.venue || 'Home'} · ${typeLabel}`;
+
     return `
-        <div style="padding:25px">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px">
-                <h2 style="margin:0; color:#ffc107; font-size:24px">${m.team1} vs ${m.team2}</h2>
-                <a href="overlay.html?match=${m.id}" target="_blank" class="badge badge-amber" style="text-decoration:none">Overlay</a>
+        <div class="scorecard-container">
+            <div class="scorecard-header-flex">
+                <div>
+                    <h1 class="scorecard-title">${m.team1} vs ${m.team2}</h1>
+                    <div class="scorecard-subtitle">${subInfo}</div>
+                </div>
+                <a href="overlay.html?match=${m.id}" target="_blank" class="btn btn-amber btn-sm" style="text-decoration:none">
+                    📺 TV Streaming Overlay
+                </a>
             </div>
-            <div class="detail-scores" style="display:flex; flex-direction:column; gap:10px; margin-bottom:25px">
-                <div style="display:flex; justify-content:space-between; font-weight:700"><span>${m.team1}</span> <span>${score0}</span></div>
-                <div style="display:flex; justify-content:space-between; font-weight:700"><span>${m.team2}</span> <span>${score1}</span></div>
-            </div>
-            <div style="padding:15px; background:rgba(255,193,7,0.1); border-radius:10px; text-align:center; font-weight:900; color:#ffc107; font-size:18px">
+
+            <div style="background:rgba(255,193,7,0.1); padding:12px; border-radius:10px; text-align:center; font-weight:900; color:#ffc107; font-size:16px; margin-bottom:20px">
                 ${m.result || 'Match in Progress'}
             </div>
+
+            ${renderInningsTable(inn0, m.battingFirst || m.team1)}
+            ${inn1 ? `<hr style="border-color:var(--c-border); margin:40px 0">` : ''}
+            ${inn1 ? renderInningsTable(inn1, m.fieldingFirst || m.team2) : ''}
+
             <div style="margin-top:30px; display:flex; gap:12px">
                 <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('match-detail-modal').style.display='none'">Close</button>
-                <a href="overlay.html?match=${m.id}" target="_blank" class="btn btn-primary" style="flex:2; text-decoration:none; text-align:center">Full Scorecard</a>
             </div>
         </div>
     `;

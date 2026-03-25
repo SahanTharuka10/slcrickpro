@@ -19,7 +19,7 @@ function loginAdmin() {
     const pass = document.getElementById('admin-password').value;
 
     // Secure authentication placeholder - in production use server-side auth
-    if (user === 'admin' && pass === 'slcrickpro@2024') {
+    if (user === 'SLcrickpro' && pass === 'SL26crickpro@') {
         sessionStorage.setItem('isAdmin', 'true');
         checkAdminAuth();
         showToast('🔓 Welcome, Admin!', 'success');

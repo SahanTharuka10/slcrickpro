@@ -504,3 +504,106 @@
     font-size: 14px;
     margin-bottom: 20px;
 }
+
+/* Scorecard Modal Refinements */
+.scorecard-container {
+    padding: 10px;
+}
+.scorecard-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+.scorecard-title {
+    font-size: 28px;
+    font-weight: 900;
+    margin: 0;
+    color: #fff;
+}
+.scorecard-subtitle {
+    font-size: 13px;
+    color: var(--c-muted);
+    margin-top: 4px;
+}
+.scorecard-inn-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--c-border);
+}
+.scorecard-inn-name {
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--c-muted);
+}
+.scorecard-inn-total {
+    font-size: 32px;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+}
+.scorecard-inn-overs {
+    font-size: 14px;
+    color: var(--c-muted);
+    margin-left: 8px;
+    font-weight: 400;
+}
+
+.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+.sc-table th {
+    text-align: left;
+    padding: 10px;
+    color: var(--c-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--c-border);
+}
+.sc-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.sc-table tr:last-child td {
+    border-bottom: none;
+}
+.sc-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+.sc-status {
+    color: var(--c-muted);
+    font-size: 12px;
+}
+.sc-val {
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+}
+.sc-muted-val {
+    color: var(--c-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+.sc-extras {
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--c-muted);
+    margin: 10px 0 24px;
+}
+
+@media (max-width: 600px) {
+    .scorecard-inn-total { font-size: 24px; }
+    .sc-table { font-size: 12px; }
+    .sc-table th, .sc-table td { padding: 8px 5px; }
+}
