@@ -108,7 +108,7 @@
             background: rgba(0,0,0,0.1);
         }
 
-        /* BROADCAST OVERLAY STYLES */
+        /* BROADCAST OVERLAYS */
         .broadcast-overlay {
             position: fixed;
             z-index: 11000;
@@ -137,41 +137,87 @@
         .rb-main small { font-size: 20px; font-weight: 600; text-transform: lowercase; margin: 0 10px; opacity: 0.7; }
         .rb-footer { font-size: 11px; font-weight: 700; margin-top: 10px; opacity: 0.6; letter-spacing: 2px; }
 
-        /* Next Match Graphic */
-        .next-match-overlay {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            opacity: 0;
-            width: 800px;
-            background: #fff;
-            border-radius: 20px;
-            padding: 40px;
-            color: #1b1642;
-            text-align: center;
-            box-shadow: 0 30px 100px rgba(0,0,0,0.8);
-            border: 8px solid #1b1642;
-        }
-        .nm-tag { background: #e61b4d; color: #fff; padding: 6px 20px; border-radius: 30px; font-size: 14px; font-weight: 900; display: inline-block; margin-bottom: 30px; }
-        .nm-teams { font-size: 64px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 40px; }
-        .nm-vs { color: #e61b4d; font-size: 32px; font-style: italic; }
-        .nm-footer { margin-top: 40px; font-size: 12px; font-weight: 700; color: #666; letter-spacing: 3px; }
-
-        /* Full Scorecard / Summary */
-        .full-scorecard-overlay, .summary-overlay {
-            top: 50px;
-            left: 50px;
-            right: 50px;
-            bottom: 50px;
-            background: rgba(27, 22, 66, 0.98);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 40px;
+        /* Current Run Rate Graphic */
+        .crr-overlay {
+            bottom: 40px;
+            right: 40px;
+            width: 220px;
+            height: 90px;
+            background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 40px 100px rgba(0,0,0,0.9);
-            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 200, 83, 0.4);
+            border: 2px solid rgba(255,255,255,0.2);
+            transform: translateX(300px); /* For GSAP */
         }
+        .crr-label { font-size: 14px; font-weight: 800; opacity: 0.8; letter-spacing: 2px; }
+        .crr-val { font-size: 36px; font-weight: 900; }
+
+        /* Next Match Cinematic Artwork */
+        .next-match-overlay {
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); /* Dark cinematic backdrop */
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(1.1);
+        }
+        .nm-artwork {
+            width: 1000px;
+            height: 500px;
+            background: linear-gradient(45deg, #1b1642 0%, #292265 100%);
+            border-radius: 40px;
+            border: 4px solid #e61b4d;
+            box-shadow: 0 50px 150px rgba(0,0,0,1), 0 0 50px rgba(230,27,77,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .nm-glow { position: absolute; top:-50%; left:-50%; width:200%; height:200%; background: radial-gradient(circle, rgba(230,27,77,0.1) 0%, transparent 70%); animation: rotate 10s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .nm-tag { background: #e61b4d; color: #fff; padding: 10px 40px; border-radius: 40px; font-size: 20px; font-weight: 900; letter-spacing: 5px; margin-bottom: 60px; z-index: 2; }
+        .nm-teams { display: flex; align-items: center; gap: 60px; z-index: 2; }
+        .nm-team { font-size: 72px; font-weight: 900; color: #fff; text-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .nm-vs-circle { width: 100px; height: 100px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #e61b4d; font-size: 40px; font-weight: 900; font-style: italic; box-shadow: 0 0 30px rgba(255,255,255,0.4); }
+        .nm-footer { margin-top: 60px; color: #aaa; font-size: 14px; letter-spacing: 4px; z-index: 2; font-weight: 600; }
+
+        /* Full Scorecard (Balanced Columns) */
+        .full-scorecard-overlay {
+            top: 20px; left: 20px; right: 20px; bottom: 20px;
+            background: #fdfdfd; 
+            color: #111;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+        .fs-header { text-align: center; margin-bottom: 20px; background: #1b1642; color: #fff; padding: 15px; border-radius: 12px; }
+        .fs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; flex: 1; min-height: 0; }
+        .fs-column { display: flex; flex-direction: column; gap: 15px; }
+
+        /* Summary Sheet (Proper Sheet Look) */
+        .summary-overlay {
+            top: 40px; left: 40px; right: 40px; bottom: 40px;
+            background: #fff;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #111;
+            border: 20px solid #1b1642;
+            padding: 40px;
+            box-shadow: 0 50px 150px rgba(0,0,0,1);
+        }
+        .sm-header { border-bottom: 5px double #1b1642; padding-bottom: 20px; margin-bottom: 30px; text-align: center; }
+        .sm-title { font-size: 48px; font-weight: 900; color: #1b1642; margin: 0; }
+        .sm-subtitle { font-size: 18px; color: #e61b4d; font-weight: 800; letter-spacing: 3px; }
     </style>
 </head>
 
@@ -192,27 +238,34 @@
         </div>
     </div>
 
-    <div id="broadcast-next-match" class="broadcast-overlay next-match-overlay" style="display:none">
-        <div class="nm-card">
+    <div id="broadcast-next-match" class="broadcast-overlay next-match-overlay">
+        <div class="nm-artwork">
+            <div class="nm-glow"></div>
             <div class="nm-tag">COMING UP NEXT</div>
             <div class="nm-teams">
-                <span id="nm-team-a">TEAM A</span>
-                <span class="nm-vs">VS</span>
-                <span id="nm-team-b">TEAM B</span>
+                <div class="nm-team" id="nm-team-a">TEAM ALPHA</div>
+                <div class="nm-vs-circle">VS</div>
+                <div class="nm-team" id="nm-team-b">TEAM BETA</div>
             </div>
-            <div class="nm-footer">STAY TUNED FOR LIVE ACTION</div>
+            <div class="nm-footer">SLCRICKPRO LIVE BROADCAST PRODUCTION</div>
         </div>
     </div>
 
-    <div id="broadcast-full-scorecard" class="broadcast-overlay full-scorecard-overlay" style="display:none">
-        <div class="fs-container" id="fs-content">
-            <!-- Full scorecard injected here -->
+    <!-- NEW CRR GRAPHIC -->
+    <div id="broadcast-crr" class="broadcast-overlay crr-overlay">
+        <div class="crr-label">CURRENT RR</div>
+        <div class="crr-val" id="crr-val">0.00</div>
+    </div>
+
+    <div id="broadcast-full-scorecard" class="broadcast-overlay full-scorecard-overlay">
+        <div id="fs-content" style="height:100%; display:flex; flex-direction:column">
+            <!-- Balanaced Scorecard Injected -->
         </div>
     </div>
 
-    <div id="broadcast-summary" class="broadcast-overlay summary-overlay" style="display:none">
-        <div class="sm-container" id="sm-content">
-            <!-- Summary table injected here -->
+    <div id="broadcast-summary" class="broadcast-overlay summary-overlay">
+        <div id="sm-content">
+            <!-- Proper Summary Sheet Injected -->
         </div>
     </div>
 

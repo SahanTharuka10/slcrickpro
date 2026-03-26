@@ -64,6 +64,16 @@ const Broadcast = {
     },
 
     /**
+     * Show Current Run Rate graphic
+     */
+    showCRR() {
+        if (!currentMatch) return;
+        const target = (currentMatch.innings[1]?.runs / (currentMatch.innings[1]?.balls / 6)) || 0;
+        this.send('SHOW_CRR', { crr: target.toFixed(2) });
+        showToast('📈 CRR Published!', 'success');
+    },
+
+    /**
      * Stop all overlays and return to live score
      */
     stopAll() {

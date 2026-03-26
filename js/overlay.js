@@ -98,13 +98,31 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_SUMMARY':
             toggleBroadcastSummary();
             break;
+        case 'SHOW_CRR':
+            showCRRGraphic(data);
+            break;
     }
 }
 
 function hideAllBroadcastOverlays() {
-    gsap.to('.broadcast-overlay', { opacity: 0, scale: 0.8, duration: 0.4, onComplete: () => {
+    gsap.to('.broadcast-overlay', { opacity: 0, scale: 0.9, duration: 0.4, onComplete: () => {
         document.querySelectorAll('.broadcast-overlay').forEach(el => el.style.display = 'none');
     }});
+}
+
+function showCRRGraphic(data) {
+    const el = document.getElementById('broadcast-crr');
+    document.getElementById('crr-val').textContent = data.crr;
+    
+    el.style.display = 'flex';
+    gsap.fromTo(el, { x: 300, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: 'back.out(1.7)' });
+    
+    // Auto hide after 8 seconds
+    setTimeout(() => {
+        gsap.to(el, { x: 300, opacity: 0, duration: 0.8, ease: 'power4.in', onComplete: () => {
+            el.style.display = 'none';
+        }});
+    }, 8000);
 }
 
 function showRunsBallsGraphic(data) {
@@ -113,11 +131,10 @@ function showRunsBallsGraphic(data) {
     document.getElementById('rb-balls').textContent = data.balls;
     
     el.style.display = 'flex';
-    gsap.fromTo(el, { x: '-100%', opacity: 1 }, { x: '0%', duration: 0.8, ease: 'power4.out' });
+    gsap.fromTo(el, { x: '-100%', opacity: 1 }, { x: '0%', duration: 1.2, ease: 'expo.out' });
     
-    // Auto hide after 6 seconds
     setTimeout(() => {
-        gsap.to(el, { x: '100%', duration: 0.8, ease: 'power4.in', onComplete: () => {
+        gsap.to(el, { x: '100%', duration: 1, ease: 'expo.in', onComplete: () => {
             el.style.display = 'none';
         }});
     }, 6000);
@@ -128,18 +145,20 @@ function showNextMatchGraphic(data) {
     document.getElementById('nm-team-a').textContent = data.teamA;
     document.getElementById('nm-team-b').textContent = data.teamB;
     
-    el.style.display = 'block';
-    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.7)' });
+    el.style.display = 'flex';
+    // Cinematic entrance
+    gsap.fromTo(el, { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 1, ease: 'power4.out' });
+    gsap.from('.nm-artwork', { y: 100, opacity: 0, duration: 1.2, delay: 0.3, ease: 'back.out(1.2)' });
 }
 
 function toggleBroadcastScorecard() {
     const el = document.getElementById('broadcast-full-scorecard');
-    if (el.style.display === 'block') {
-        gsap.to(el, { opacity: 0, y: 50, duration: 0.4, onComplete: () => el.style.display = 'none' });
+    if (el.style.display === 'flex') {
+        gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
         renderFullScorecardOverlay();
-        el.style.display = 'block';
-        gsap.fromTo(el, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.4 });
+        el.style.display = 'flex';
+        gsap.fromTo(el, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' });
     }
 }
 
@@ -147,55 +166,57 @@ function renderFullScorecardOverlay() {
     const m = DB.getMatch(matchId);
     if (!m) return;
     
-    let html = `<h1 style="text-align:center; color:#e61b4d; margin-bottom:30px; font-weight:900; letter-spacing:2px">MATCH SCORECARD</h1>`;
+    let html = `
+    <div class="fs-header">
+        <div style="font-size:32px; font-weight:900; letter-spacing:3px">MATCH SCORECARD</div>
+        <div style="font-size:14px; opacity:0.7; letter-spacing:1px">${m.team1} vs ${m.team2}</div>
+    </div>
+    <div class="fs-grid">`;
     
     m.innings.forEach((inn, i) => {
         if (!inn) return;
         html += `
-        <div style="margin-bottom:40px">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #e61b4d; padding-bottom:10px; margin-bottom:15px">
-                <div style="font-size:24px; font-weight:800">${inn.battingTeam.toUpperCase()} <span style="font-size:16px; color:#aaa; font-weight:400">${i === 0 ? '1ST' : '2ND'} INNINGS</span></div>
-                <div style="font-size:32px; font-weight:900; color:#00e676">${inn.runs}/${inn.wickets} <span style="font-size:18px; color:#fff; font-weight:600">(${formatOvers(inn.balls, m.ballsPerOver)} ov)</span></div>
+        <div class="fs-column">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#1b1642; color:#fff; padding:12px 20px; border-radius:8px">
+                <div style="font-size:20px; font-weight:800">${inn.battingTeam.toUpperCase()}</div>
+                <div style="font-size:24px; font-weight:900">${inn.runs}/${inn.wickets} <small style="font-size:14px; opacity:0.8">(${formatOvers(inn.balls, m.ballsPerOver)})</small></div>
             </div>
-            <table style="width:100%; border-collapse:collapse; font-size:18px">
-                <thead>
-                    <tr style="text-align:left; color:#aaa; font-size:14px; text-transform:uppercase">
-                        <th style="padding:10px">Batsman</th>
-                        <th style="padding:10px">Status</th>
-                        <th style="padding:10px; text-align:center">R</th>
-                        <th style="padding:10px; text-align:center">B</th>
-                        <th style="padding:10px; text-align:center">4s</th>
-                        <th style="padding:10px; text-align:center">6s</th>
-                        <th style="padding:10px; text-align:center">SR</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${inn.batsmen.map(b => `
-                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                        <td style="padding:12px; font-weight:700">${b.name}</td>
-                        <td style="padding:12px; font-size:14px; color:#aaa">${b.dismissal || (b.notOut ? 'not out' : 'did not bat')}</td>
-                        <td style="padding:12px; text-align:center; font-weight:800; color:#00e676">${b.runs || 0}</td>
-                        <td style="padding:12px; text-align:center">${b.balls || 0}</td>
-                        <td style="padding:12px; text-align:center">${b.fours || 0}</td>
-                        <td style="padding:12px; text-align:center">${b.sixes || 0}</td>
-                        <td style="padding:12px; text-align:center; color:#ffc107">${formatSR(b.runs || 0, b.balls || 0)}</td>
-                    </tr>`).join('')}
-                </tbody>
-            </table>
+            <div style="flex:1; background:#fff; border:1px solid #ddd; border-radius:8px; overflow:hidden">
+                <table style="width:100%; border-collapse:collapse; font-size:14px">
+                    <thead style="background:#f5f5f5; border-bottom:1px solid #ddd">
+                        <tr>
+                            <th style="padding:8px; text-align:left">Batsman</th>
+                            <th style="padding:8px; text-align:center">R</th>
+                            <th style="padding:8px; text-align:center">B</th>
+                            <th style="padding:8px; text-align:center">SR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${inn.batsmen.map(b => `
+                        <tr style="border-bottom:1px solid #eee">
+                            <td style="padding:8px; font-weight:700">${b.name} <div style="font-size:10px; color:#888; font-weight:400">${b.dismissal || (b.notOut ? 'not out' : 'did not bat')}</div></td>
+                            <td style="padding:8px; text-align:center; font-weight:800; color:#e61b4d">${b.runs || 0}</td>
+                            <td style="padding:8px; text-align:center">${b.balls || 0}</td>
+                            <td style="padding:8px; text-align:center; font-weight:600">${formatSR(b.runs || 0, b.balls || 0)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
         </div>`;
     });
     
+    html += `</div>`;
     document.getElementById('fs-content').innerHTML = html;
 }
 
 function toggleBroadcastSummary() {
     const el = document.getElementById('broadcast-summary');
     if (el.style.display === 'block') {
-        gsap.to(el, { opacity: 0, scale: 0.9, duration: 0.4, onComplete: () => el.style.display = 'none' });
+        gsap.to(el, { opacity: 0, y: 100, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
         renderTournamentSummaryOverlay();
         el.style.display = 'block';
-        gsap.fromTo(el, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4 });
+        gsap.fromTo(el, { opacity: 0, y: 100 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
     }
 }
 
@@ -203,39 +224,52 @@ function renderTournamentSummaryOverlay() {
     const t = DB.getTournament(tournId);
     if (!t) return;
     
-    // Points Table
     const sortedTeams = Object.entries(t.standings || {}).map(([team, s]) => ({ team, ...s }))
         .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
         
     let html = `
-    <h1 style="text-align:center; color:#ffc107; margin-bottom:30px; font-weight:900; letter-spacing:2px">TOURNAMENT SUMMARY</h1>
-    <div style="margin-bottom:40px">
-        <h2 style="font-size:20px; color:#e61b4d; margin-bottom:15px">PROVISION STANDINGS</h2>
-        <table style="width:100%; border-collapse:collapse; font-size:18px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden">
-            <thead style="background:rgba(230,27,77,0.2)">
-                <tr style="text-align:left; font-size:14px">
-                    <th style="padding:15px">Pos</th>
-                    <th style="padding:15px">Team</th>
-                    <th style="padding:15px; text-align:center">P</th>
-                    <th style="padding:15px; text-align:center">W</th>
-                    <th style="padding:15px; text-align:center">L</th>
-                    <th style="padding:15px; text-align:center">Pts</th>
-                    <th style="padding:15px; text-align:center">NRR</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${sortedTeams.map((s, i) => `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                    <td style="padding:15px; font-weight:800; color:#aaa">${i + 1}</td>
-                    <td style="padding:15px; font-weight:800">${s.team}</td>
-                    <td style="padding:15px; text-align:center">${s.played || 0}</td>
-                    <td style="padding:15px; text-align:center; color:#00e676">${s.won || 0}</td>
-                    <td style="padding:15px; text-align:center; color:#e61b4d">${s.lost || 0}</td>
-                    <td style="padding:15px; text-align:center; font-weight:900; color:#ffc107">${s.points || 0}</td>
-                    <td style="padding:15px; text-align:center; color:${(s.nrr || 0) >= 0 ? '#00e676' : '#ff6d3b'}">${(s.nrr || 0).toFixed(3)}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
+    <div class="sm-header">
+        <h1 class="sm-title">TOURNAMENT SUMMARY</h1>
+        <div class="sm-subtitle">${t.name?.toUpperCase() || 'OFFICIAL TOURNAMENT'}</div>
+    </div>
+    <div style="display:grid; grid-template-columns: 2fr 1.2fr; gap:40px">
+        <div>
+            <h3 style="border-bottom:2px solid #1b1642; display:inline-block; margin-bottom:15px">OFFICIAL STANDINGS</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:16px">
+                <thead style="border-bottom:2px solid #1b1642">
+                    <tr style="text-align:left">
+                        <th style="padding:10px">Pos</th>
+                        <th style="padding:10px">Team</th>
+                        <th style="padding:10px; text-align:center">P</th>
+                        <th style="padding:10px; text-align:center">W</th>
+                        <th style="padding:10px; text-align:center">Pts</th>
+                        <th style="padding:10px; text-align:right">NRR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedTeams.map((s, i) => `
+                    <tr style="border-bottom:1px solid #ddd">
+                        <td style="padding:12px; font-weight:800">${i + 1}</td>
+                        <td style="padding:12px; font-weight:900; color:#1b1642">${s.team}</td>
+                        <td style="padding:12px; text-align:center">${s.played || 0}</td>
+                        <td style="padding:12px; text-align:center; color:#00c853">${s.won || 0}</td>
+                        <td style="padding:12px; text-align:center; font-weight:900">${s.points || 0}</td>
+                        <td style="padding:12px; text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:${(s.nrr || 0) >= 0 ? '#00c853' : '#e61b4d'}">${(s.nrr || 0).toFixed(3)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+        <div style="background:rgba(230,27,77,0.05); padding:20px; border-radius:12px; border:2px dashed rgba(230,27,77,0.3)">
+            <h3 style="color:#e61b4d; margin-top:0">TOURNAMENT NOTES</h3>
+            <p style="font-size:14px; line-height:1.6; color:#444">
+                This summary represents the latest validated standings based on completed matches. 
+                NRR is calculated using total runs and overs throughout the series.
+            </p>
+            <div style="margin-top:30px; padding-top:20px; border-top:1px solid #ddd; text-align:center">
+                <div style="font-weight:900; font-size:24px; color:#1b1642">🏆</div>
+                <div style="font-size:12px; font-weight:700; color:#aaa; margin-top:10px">SLCRICKPRO OFFICIAL DATA</div>
+            </div>
+        </div>
     </div>`;
     
     document.getElementById('sm-content').innerHTML = html;
