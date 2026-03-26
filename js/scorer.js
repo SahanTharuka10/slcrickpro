@@ -205,36 +205,42 @@ function openTournamentMatchesModal(tId) {
     document.getElementById('tm-title').textContent = t.name + ' - Matches';
 
     let html = '';
-    t.matches.forEach(mId => {
+    t.matches.forEach((mId, index) => {
         const m = DB.getMatch(mId);
         if (!m) return;
 
         let statusBadge = '';
         let btn = '';
+        let matchName = `Match ${index + 1}`;
+        let subInfo = 'Scheduled';
+        let cardStyle = '';
+
         if (m.status === 'scheduled') {
             statusBadge = `<span class="badge badge-amber" style="font-size:10px">Scheduled</span>`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="startOfficialMatch('${m.id}')">Score</button>`;
+            btn = `<button class="btn btn-primary btn-sm" onclick="startOfficialMatch('${m.id}')">Start Match</button>`;
         } else if (m.status === 'live' || m.status === 'paused') {
-            statusBadge = `<span class="badge badge-amber" style="font-size:10px">Live</span>`;
+            statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
             btn = `<button class="btn btn-primary btn-sm" onclick="resumeMatch('${m.id}')">Resume</button>`;
+            matchName = `${m.team1 || 'TBD'} vs ${m.team2 || 'TBD'}`;
+            subInfo = `Match ${index + 1} · ${m.overs} ov`;
+            cardStyle = 'border-left: 4px solid #00e676;';
         } else if (m.status === 'completed') {
-            statusBadge = `<span class="badge badge-green" style="font-size:10px">Completed</span>`;
-            btn = `<button class="btn btn-ghost btn-sm" disabled>Done</button>`;
+            statusBadge = `<span class="badge badge-blue" style="font-size:10px">✅ Done</span>`;
+            btn = `<button class="btn btn-ghost btn-sm" disabled>View Result</button>`;
+            matchName = `${m.team1} vs ${m.team2}`;
+            subInfo = `Match ${index + 1} · Completed`;
+            cardStyle = 'opacity: 0.8;';
         }
 
-        let matchTitle = '';
-        if (m.status === 'scheduled') {
-            matchTitle = m.scheduledName || `Match ${m.id.split('-').pop()}`;
-        } else {
-            matchTitle = `${m.scheduledName ? m.scheduledName + ': ' : ''}${m.team1} vs ${m.team2}`;
-        }
-
-        html += `<div class="resume-card" style="margin-bottom:8px">
-            <div class="resume-card-info">
-                <h4 style="font-size: 14px">${matchTitle}</h4>
-                <p>${statusBadge}</p>
+        html += `<div class="resume-card" style="margin-bottom:8px; align-items: center; ${cardStyle}">
+            <div class="resume-card-info" style="flex: 1">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-muted); margin-bottom: 2px">${subInfo}</div>
+                <h4 style="font-size: 16px; font-weight: 800">${matchName}</h4>
             </div>
-            ${btn}
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+                ${statusBadge}
+                ${btn}
+            </div>
         </div>`;
     });
 

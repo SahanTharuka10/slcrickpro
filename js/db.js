@@ -173,6 +173,7 @@ const DB = {
         return this.getMatches().find(m => m.id === id);
     },
     saveMatch(match) {
+        match.lastUpdated = Date.now();
         const arr = this.getMatches();
         const idx = arr.findIndex(m => m.id === match.id);
         if (idx !== -1) arr[idx] = match; else arr.push(match);
@@ -751,11 +752,32 @@ function pullLiveUpdates() {
     fetch(BACKEND_BASE_URL + '/sync/matches')
         .then(r => r.json())
         .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) {
-                if (!isScorer) DB.saveMatches(data);
-                if (isScorer && !window.hasFetchedCloudOnce) DB.saveMatches(data);
+            if (data && Array.isArray(data)) {
+                if (!isScorer) {
+                    // Smart merge: only overwrite local match if cloud match is strictly newer
+                    const localMatches = DB.getMatches();
+                    const merged = [...localMatches];
+                    
+                    data.forEach(cloudMatch => {
+                        const localIdx = merged.findIndex(m => m.id === cloudMatch.id);
+                        if (localIdx === -1) {
+                            merged.push(cloudMatch);
+                        } else {
+                            const localMatch = merged[localIdx];
+                            // Only update if cloud version is newer
+                            if ((cloudMatch.lastUpdated || 0) > (localMatch.lastUpdated || 0)) {
+                                merged[localIdx] = cloudMatch;
+                            }
+                        }
+                    });
+                    DB.saveMatches(merged);
+                }
+                if (isScorer && !window.hasFetchedCloudOnce) {
+                    DB.saveMatches(data);
+                    window.hasFetchedCloudOnce = true;
+                }
             }
-        }).catch(() => {});
+        }).catch(err => console.error("Cloud Match Pull failed", err));
 
     // ── Tournaments ──────────────────────────────────────────
     fetch(BACKEND_BASE_URL + '/sync/tournaments')

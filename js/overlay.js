@@ -177,27 +177,57 @@ function renderFullScorecardOverlay() {
         if (!inn) return;
         html += `
         <div class="fs-column">
+            <!-- Innings Header -->
             <div style="display:flex; justify-content:space-between; align-items:center; background:#1b1642; color:#fff; padding:12px 20px; border-radius:8px">
-                <div style="font-size:20px; font-weight:800">${inn.battingTeam.toUpperCase()}</div>
-                <div style="font-size:24px; font-weight:900">${inn.runs}/${inn.wickets} <small style="font-size:14px; opacity:0.8">(${formatOvers(inn.balls, m.ballsPerOver)})</small></div>
+                <div style="font-size:18px; font-weight:800">${inn.battingTeam.toUpperCase()}</div>
+                <div style="font-size:20px; font-weight:900">${inn.runs}/${inn.wickets} <small style="font-size:12px; opacity:0.8">(${formatOvers(inn.balls, m.ballsPerOver)})</small></div>
             </div>
-            <div style="flex:1; background:#fff; border:1px solid #ddd; border-radius:8px; overflow:hidden">
-                <table style="width:100%; border-collapse:collapse; font-size:14px">
+
+            <!-- Batting Table -->
+            <div style="background:#fff; border:1px solid #ddd; border-radius:8px; overflow:hidden">
+                <table style="width:100%; border-collapse:collapse; font-size:12px">
                     <thead style="background:#f5f5f5; border-bottom:1px solid #ddd">
                         <tr>
-                            <th style="padding:8px; text-align:left">Batsman</th>
-                            <th style="padding:8px; text-align:center">R</th>
-                            <th style="padding:8px; text-align:center">B</th>
-                            <th style="padding:8px; text-align:center">SR</th>
+                            <th style="padding:6px; text-align:left">Batsman</th>
+                            <th style="padding:6px; text-align:center">R</th>
+                            <th style="padding:6px; text-align:center">B</th>
+                            <th style="padding:6px; text-align:center">SR</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${inn.batsmen.map(b => `
                         <tr style="border-bottom:1px solid #eee">
-                            <td style="padding:8px; font-weight:700">${b.name} <div style="font-size:10px; color:#888; font-weight:400">${b.dismissal || (b.notOut ? 'not out' : 'did not bat')}</div></td>
-                            <td style="padding:8px; text-align:center; font-weight:800; color:#e61b4d">${b.runs || 0}</td>
-                            <td style="padding:8px; text-align:center">${b.balls || 0}</td>
-                            <td style="padding:8px; text-align:center; font-weight:600">${formatSR(b.runs || 0, b.balls || 0)}</td>
+                            <td style="padding:6px; font-weight:700">${b.name} <span style="font-size:9px; color:#999; font-weight:400">(${b.dismissal || (b.notOut ? 'not out' : 'did not bat')})</span></td>
+                            <td style="padding:6px; text-align:center; font-weight:800; color:#e61b4d">${b.runs || 0}</td>
+                            <td style="padding:6px; text-align:center">${b.balls || 0}</td>
+                            <td style="padding:6px; text-align:center; font-weight:600">${formatSR(b.runs || 0, b.balls || 0)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bowling Table -->
+            <div style="border:1px solid rgba(27,22,66,0.1); border-radius:8px; overflow:hidden">
+                <table style="width:100%; border-collapse:collapse; font-size:11px; background:#fafafa">
+                    <thead style="background:#1b1642; color:#fff">
+                        <tr>
+                            <th style="padding:4px; text-align:left">Bowler</th>
+                            <th style="padding:4px; text-align:center">O</th>
+                            <th style="padding:4px; text-align:center">M</th>
+                            <th style="padding:4px; text-align:center">R</th>
+                            <th style="padding:4px; text-align:center">W</th>
+                            <th style="padding:4px; text-align:center">Econ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(inn.bowlers || []).map(b => `
+                        <tr style="border-bottom:1px solid #eee">
+                            <td style="padding:5px; font-weight:700">${b.name}</td>
+                            <td style="padding:5px; text-align:center">${formatOvers(b.balls || 0)}</td>
+                            <td style="padding:5px; text-align:center">${b.maidens || 0}</td>
+                            <td style="padding:5px; text-align:center">${b.runs || 0}</td>
+                            <td style="padding:5px; text-align:center; font-weight:900; color:#00c853">${b.wickets || 0}</td>
+                            <td style="padding:5px; text-align:center; opacity:0.7">${formatEcon(b.runs || 0, b.balls || 0)}</td>
                         </tr>`).join('')}
                     </tbody>
                 </table>
