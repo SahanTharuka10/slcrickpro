@@ -350,6 +350,10 @@ function renderMilestoneOverlay(runs, balls) {
 }
 
 function hideAllOverlays() {
+    hideAllBroadcastOverlays();
+}
+
+function renderOverlay() {
     let m = null;
     if (matchId) {
         m = DB.getMatch(matchId);

@@ -215,10 +215,7 @@ function openTournamentMatchesModal(tId) {
         let subInfo = 'Scheduled';
         let cardStyle = '';
 
-        if (m.status === 'scheduled') {
-            statusBadge = `<span class="badge badge-amber" style="font-size:10px">Scheduled</span>`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="startOfficialMatch('${m.id}')">Start Match</button>`;
-        } else if (m.status === 'live' || m.status === 'paused') {
+        if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
             btn = `<button class="btn btn-primary btn-sm" onclick="resumeMatch('${m.id}')">Resume</button>`;
             matchName = `${m.team1 || 'TBD'} vs ${m.team2 || 'TBD'}`;
@@ -230,6 +227,13 @@ function openTournamentMatchesModal(tId) {
             matchName = `${m.team1} vs ${m.team2}`;
             subInfo = `Match ${index + 1} · Completed`;
             cardStyle = 'opacity: 0.8;';
+        } else {
+            // Default: Scheduled, Requested, or any other status
+            statusBadge = `<span class="badge badge-amber" style="font-size:10px">Scheduled</span>`;
+            btn = `<button class="btn btn-primary btn-sm" onclick="startOfficialMatch('${m.id}')">Start Match</button>`;
+            if (m.team1 && m.team2 && m.team1 !== 'TBD') {
+                matchName = `${m.team1} vs ${m.team2}`;
+            }
         }
 
         html += `<div class="resume-card" style="margin-bottom:8px; align-items: center; ${cardStyle}">
