@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../css/overlay.css" />
     <link rel="stylesheet" href="../css/overlay.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <style>
         .tv-controls {
             position: fixed;
@@ -106,6 +107,71 @@
         .player-row-clickable:hover {
             background: rgba(0,0,0,0.1);
         }
+
+        /* BROADCAST OVERLAY STYLES */
+        .broadcast-overlay {
+            position: fixed;
+            z-index: 11000;
+            display: none;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Runs Needed Motion Graphic */
+        .runs-balls-overlay {
+            bottom: 120px;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(90deg, rgba(230,27,77,0.95) 0%, rgba(255,109,59,0.95) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border-top: 4px solid #fff;
+            border-bottom: 4px solid #fff;
+            transform: translateX(-100%); /* For GSAP */
+        }
+        .rb-content { text-align: center; color: #fff; }
+        .rb-title { font-size: 18px; font-weight: 800; letter-spacing: 4px; margin-bottom: 5px; opacity: 0.8; }
+        .rb-main { font-size: 48px; font-weight: 900; line-height: 1; }
+        .rb-main small { font-size: 20px; font-weight: 600; text-transform: lowercase; margin: 0 10px; opacity: 0.7; }
+        .rb-footer { font-size: 11px; font-weight: 700; margin-top: 10px; opacity: 0.6; letter-spacing: 2px; }
+
+        /* Next Match Graphic */
+        .next-match-overlay {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            opacity: 0;
+            width: 800px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px;
+            color: #1b1642;
+            text-align: center;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.8);
+            border: 8px solid #1b1642;
+        }
+        .nm-tag { background: #e61b4d; color: #fff; padding: 6px 20px; border-radius: 30px; font-size: 14px; font-weight: 900; display: inline-block; margin-bottom: 30px; }
+        .nm-teams { font-size: 64px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 40px; }
+        .nm-vs { color: #e61b4d; font-size: 32px; font-style: italic; }
+        .nm-footer { margin-top: 40px; font-size: 12px; font-weight: 700; color: #666; letter-spacing: 3px; }
+
+        /* Full Scorecard / Summary */
+        .full-scorecard-overlay, .summary-overlay {
+            top: 50px;
+            left: 50px;
+            right: 50px;
+            bottom: 50px;
+            background: rgba(27, 22, 66, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -115,6 +181,39 @@
     <div id="overlay-popup" class="overlay-popup"></div>
     <div id="overlay-container" class="overlay-container">
         <!-- Inner overlay injected by JS -->
+    </div>
+
+    <!-- BROADCAST OVERLAYS -->
+    <div id="broadcast-runs-balls" class="broadcast-overlay runs-balls-overlay" style="display:none">
+        <div class="rb-content">
+            <div class="rb-title">RUNS NEEDED</div>
+            <div class="rb-main"><span id="rb-runs">0</span> <small>from</small> <span id="rb-balls">0</span> <small>balls</small></div>
+            <div class="rb-footer">SLCRICKPRO LIVE BROADCAST</div>
+        </div>
+    </div>
+
+    <div id="broadcast-next-match" class="broadcast-overlay next-match-overlay" style="display:none">
+        <div class="nm-card">
+            <div class="nm-tag">COMING UP NEXT</div>
+            <div class="nm-teams">
+                <span id="nm-team-a">TEAM A</span>
+                <span class="nm-vs">VS</span>
+                <span id="nm-team-b">TEAM B</span>
+            </div>
+            <div class="nm-footer">STAY TUNED FOR LIVE ACTION</div>
+        </div>
+    </div>
+
+    <div id="broadcast-full-scorecard" class="broadcast-overlay full-scorecard-overlay" style="display:none">
+        <div class="fs-container" id="fs-content">
+            <!-- Full scorecard injected here -->
+        </div>
+    </div>
+
+    <div id="broadcast-summary" class="broadcast-overlay summary-overlay" style="display:none">
+        <div class="sm-container" id="sm-content">
+            <!-- Summary table injected here -->
+        </div>
     </div>
 
     <script src="../js/db.js"></script>

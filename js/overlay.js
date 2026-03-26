@@ -64,7 +64,182 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTournamentStats(currentPopupView);
         }
     }, 2000);
+
+    // BROADCAST COMMAND LISTENER
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'cricpro_broadcast_cmd') {
+            try {
+                const payload = JSON.parse(e.newValue);
+                handleBroadcastCommand(payload.cmd, payload.data);
+            } catch (err) { console.error("Broadcast parse err", err); }
+        }
+    });
 });
+
+function handleBroadcastCommand(cmd, data) {
+    console.log("📥 Received Broadcast:", cmd, data);
+    
+    // Clear existing special overlays if needed
+    if (cmd === 'STOP_OVERLAY') {
+        hideAllBroadcastOverlays();
+        return;
+    }
+
+    switch (cmd) {
+        case 'SHOW_RUNS_BALLS':
+            showRunsBallsGraphic(data);
+            break;
+        case 'SHOW_NEXT_MATCH':
+            showNextMatchGraphic(data);
+            break;
+        case 'SHOW_SCORECARD':
+            toggleBroadcastScorecard();
+            break;
+        case 'SHOW_SUMMARY':
+            toggleBroadcastSummary();
+            break;
+    }
+}
+
+function hideAllBroadcastOverlays() {
+    gsap.to('.broadcast-overlay', { opacity: 0, scale: 0.8, duration: 0.4, onComplete: () => {
+        document.querySelectorAll('.broadcast-overlay').forEach(el => el.style.display = 'none');
+    }});
+}
+
+function showRunsBallsGraphic(data) {
+    const el = document.getElementById('broadcast-runs-balls');
+    document.getElementById('rb-runs').textContent = data.runs;
+    document.getElementById('rb-balls').textContent = data.balls;
+    
+    el.style.display = 'flex';
+    gsap.fromTo(el, { x: '-100%', opacity: 1 }, { x: '0%', duration: 0.8, ease: 'power4.out' });
+    
+    // Auto hide after 6 seconds
+    setTimeout(() => {
+        gsap.to(el, { x: '100%', duration: 0.8, ease: 'power4.in', onComplete: () => {
+            el.style.display = 'none';
+        }});
+    }, 6000);
+}
+
+function showNextMatchGraphic(data) {
+    const el = document.getElementById('broadcast-next-match');
+    document.getElementById('nm-team-a').textContent = data.teamA;
+    document.getElementById('nm-team-b').textContent = data.teamB;
+    
+    el.style.display = 'block';
+    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.7)' });
+}
+
+function toggleBroadcastScorecard() {
+    const el = document.getElementById('broadcast-full-scorecard');
+    if (el.style.display === 'block') {
+        gsap.to(el, { opacity: 0, y: 50, duration: 0.4, onComplete: () => el.style.display = 'none' });
+    } else {
+        renderFullScorecardOverlay();
+        el.style.display = 'block';
+        gsap.fromTo(el, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.4 });
+    }
+}
+
+function renderFullScorecardOverlay() {
+    const m = DB.getMatch(matchId);
+    if (!m) return;
+    
+    let html = `<h1 style="text-align:center; color:#e61b4d; margin-bottom:30px; font-weight:900; letter-spacing:2px">MATCH SCORECARD</h1>`;
+    
+    m.innings.forEach((inn, i) => {
+        if (!inn) return;
+        html += `
+        <div style="margin-bottom:40px">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #e61b4d; padding-bottom:10px; margin-bottom:15px">
+                <div style="font-size:24px; font-weight:800">${inn.battingTeam.toUpperCase()} <span style="font-size:16px; color:#aaa; font-weight:400">${i === 0 ? '1ST' : '2ND'} INNINGS</span></div>
+                <div style="font-size:32px; font-weight:900; color:#00e676">${inn.runs}/${inn.wickets} <span style="font-size:18px; color:#fff; font-weight:600">(${formatOvers(inn.balls, m.ballsPerOver)} ov)</span></div>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:18px">
+                <thead>
+                    <tr style="text-align:left; color:#aaa; font-size:14px; text-transform:uppercase">
+                        <th style="padding:10px">Batsman</th>
+                        <th style="padding:10px">Status</th>
+                        <th style="padding:10px; text-align:center">R</th>
+                        <th style="padding:10px; text-align:center">B</th>
+                        <th style="padding:10px; text-align:center">4s</th>
+                        <th style="padding:10px; text-align:center">6s</th>
+                        <th style="padding:10px; text-align:center">SR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${inn.batsmen.map(b => `
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <td style="padding:12px; font-weight:700">${b.name}</td>
+                        <td style="padding:12px; font-size:14px; color:#aaa">${b.dismissal || (b.notOut ? 'not out' : 'did not bat')}</td>
+                        <td style="padding:12px; text-align:center; font-weight:800; color:#00e676">${b.runs || 0}</td>
+                        <td style="padding:12px; text-align:center">${b.balls || 0}</td>
+                        <td style="padding:12px; text-align:center">${b.fours || 0}</td>
+                        <td style="padding:12px; text-align:center">${b.sixes || 0}</td>
+                        <td style="padding:12px; text-align:center; color:#ffc107">${formatSR(b.runs || 0, b.balls || 0)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    });
+    
+    document.getElementById('fs-content').innerHTML = html;
+}
+
+function toggleBroadcastSummary() {
+    const el = document.getElementById('broadcast-summary');
+    if (el.style.display === 'block') {
+        gsap.to(el, { opacity: 0, scale: 0.9, duration: 0.4, onComplete: () => el.style.display = 'none' });
+    } else {
+        renderTournamentSummaryOverlay();
+        el.style.display = 'block';
+        gsap.fromTo(el, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4 });
+    }
+}
+
+function renderTournamentSummaryOverlay() {
+    const t = DB.getTournament(tournId);
+    if (!t) return;
+    
+    // Points Table
+    const sortedTeams = Object.entries(t.standings || {}).map(([team, s]) => ({ team, ...s }))
+        .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
+        
+    let html = `
+    <h1 style="text-align:center; color:#ffc107; margin-bottom:30px; font-weight:900; letter-spacing:2px">TOURNAMENT SUMMARY</h1>
+    <div style="margin-bottom:40px">
+        <h2 style="font-size:20px; color:#e61b4d; margin-bottom:15px">PROVISION STANDINGS</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:18px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden">
+            <thead style="background:rgba(230,27,77,0.2)">
+                <tr style="text-align:left; font-size:14px">
+                    <th style="padding:15px">Pos</th>
+                    <th style="padding:15px">Team</th>
+                    <th style="padding:15px; text-align:center">P</th>
+                    <th style="padding:15px; text-align:center">W</th>
+                    <th style="padding:15px; text-align:center">L</th>
+                    <th style="padding:15px; text-align:center">Pts</th>
+                    <th style="padding:15px; text-align:center">NRR</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${sortedTeams.map((s, i) => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                    <td style="padding:15px; font-weight:800; color:#aaa">${i + 1}</td>
+                    <td style="padding:15px; font-weight:800">${s.team}</td>
+                    <td style="padding:15px; text-align:center">${s.played || 0}</td>
+                    <td style="padding:15px; text-align:center; color:#00e676">${s.won || 0}</td>
+                    <td style="padding:15px; text-align:center; color:#e61b4d">${s.lost || 0}</td>
+                    <td style="padding:15px; text-align:center; font-weight:900; color:#ffc107">${s.points || 0}</td>
+                    <td style="padding:15px; text-align:center; color:${(s.nrr || 0) >= 0 ? '#00e676' : '#ff6d3b'}">${(s.nrr || 0).toFixed(3)}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+    </div>`;
+    
+    document.getElementById('sm-content').innerHTML = html;
+}
 
 function renderOverlay() {
     let m = null;

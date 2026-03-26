@@ -1315,7 +1315,7 @@ function openTournamentSummary() {
         ptsBody.innerHTML = sortedTeams.map(s => `<tr>
             <td><strong>${s.team}</strong></td>
             <td>${s.played}</td><td>${s.won}</td><td>${s.lost}</td><td>${s.tied}</td>
-            <td><strong>${s.points}</strong></td><td>${s.nrr.toFixed(3)}</td>
+            <td><strong>${s.points}</strong></td><td>${(s.nrr || 0).toFixed(3)}</td>
         </tr>`).join('');
     }
     
@@ -1404,7 +1404,7 @@ function computeStandings(t) {
         const s = t.standings[team];
         const rr = s.ballsFaced ? (s.runsScored / (s.ballsFaced / 6)) : 0;
         const ra = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / 6)) : 0;
-        s.nrr = parseFloat((rr - ra).toFixed(3));
+        s.nrr = parseFloat((rr - ra).toFixed(3)) || 0;
     });
 }
 

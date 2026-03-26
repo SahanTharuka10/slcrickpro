@@ -1,0 +1,89 @@
+/**
+ * SLCRICKPRO – Broadcast Control Logic
+ * Handles communication between Scorer and TV Display Overlay
+ */
+
+const BROADCAST_KEYS = {
+    COMMAND: 'cricpro_broadcast_cmd',
+    DATA: 'cricpro_broadcast_data'
+};
+
+const Broadcast = {
+    /**
+     * Send a command to the TV Display
+     * @param {string} cmd - Command name (e.g., 'SHOW_RUNS_BALLS')
+     * @param {object} data - Optional data payload
+     */
+    send(cmd, data = {}) {
+        const payload = {
+            cmd,
+            data,
+            timestamp: Date.now()
+        };
+        // Use a unique key with timestamp to ensure the 'storage' event fires even if command is same
+        localStorage.setItem(BROADCAST_KEYS.COMMAND, JSON.stringify(payload));
+        console.log(`📡 Broadcast Sent: ${cmd}`, data);
+    },
+
+    /**
+     * Trigger the "Runs Needed" motion graphic
+     */
+    showRunsNeeded() {
+        if (!currentMatch) return;
+        const inn0 = currentMatch.innings[0];
+        const inn1 = currentMatch.innings[1];
+        if (currentMatch.currentInnings !== 1 || !inn0 || !inn1) {
+            showToast('Only available in 2nd Innings!', 'error');
+            return;
+        }
+
+        const target = inn0.runs + 1;
+        const runsNeeded = target - inn1.runs;
+        const ballsRemaining = (currentMatch.overs * currentMatch.ballsPerOver) - inn1.balls;
+
+        this.send('SHOW_RUNS_BALLS', {
+            runs: runsNeeded,
+            balls: ballsRemaining
+        });
+        showToast('🚀 Graphic Published to TV!', 'success');
+    },
+
+    /**
+     * Set the "Coming Up Next" graphic
+     */
+    publishNextMatch() {
+        const teamA = document.getElementById('broadcast-next-a').value.trim();
+        const teamB = document.getElementById('broadcast-next-b').value.trim();
+        if (!teamA || !teamB) {
+            showToast('Enter both team names!', 'error');
+            return;
+        }
+
+        this.send('SHOW_NEXT_MATCH', { teamA, teamB });
+        showToast('📅 Next Match Published!', 'success');
+    },
+
+    /**
+     * Stop all overlays and return to live score
+     */
+    stopAll() {
+        this.send('STOP_OVERLAY');
+        showToast('⏹ All Overlays Cleared', 'default');
+    },
+
+    /**
+     * Toggle full scorecard overlay
+     */
+    showScorecard() {
+        this.send('SHOW_SCORECARD');
+        showToast('📋 Scorecard Published!', 'success');
+    },
+
+    /**
+     * Toggle tournament summary overlay
+     */
+    showSummary() {
+        this.send('SHOW_SUMMARY');
+        showToast('🏆 Summary Published!', 'success');
+    }
+};

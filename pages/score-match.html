@@ -413,6 +413,40 @@
                             Innings</button>
                     </div>
                 </div>
+
+                <!-- BROADCAST CONTROL PANEL -->
+                <div class="card" style="margin-top:20px; border: 2px solid var(--c-amber)">
+                    <div class="card-head" style="color:var(--c-amber); font-weight:900">📡 Broadcast Control</div>
+                    <div style="display:flex; flex-direction:column; gap:12px">
+                        
+                        <!-- Runs Needed Hotkey -->
+                        <div class="form-group" style="margin-bottom:0">
+                            <button class="btn btn-primary btn-full" style="height:60px; font-size:18px; font-weight:900; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%)" onclick="Broadcast.showRunsNeeded()">
+                                🚀 HOTKEY: RUNS NEEDED
+                            </button>
+                            <p style="font-size:10px; color:var(--c-muted); text-align:center; margin-top:4px">Publishes "[Runs] runs needed from [Balls] balls" graphic</p>
+                        </div>
+
+                        <hr style="border-color:var(--c-border)">
+
+                        <!-- Next Match Graphic -->
+                        <div class="grid-2" style="gap:8px">
+                            <input type="text" class="form-input btn-sm" id="broadcast-next-a" placeholder="Next Team A">
+                            <input type="text" class="form-input btn-sm" id="broadcast-next-b" placeholder="Next Team B">
+                        </div>
+                        <button class="btn btn-amber btn-full btn-sm" onclick="Broadcast.publishNextMatch()">📅 Publish Coming Up Next</button>
+
+                        <hr style="border-color:var(--c-border)">
+
+                        <!-- Scorecard & Summary -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px">
+                            <button class="btn btn-ghost btn-sm" onclick="Broadcast.showScorecard()">📋 Scorecard</button>
+                            <button class="btn btn-ghost btn-sm" onclick="Broadcast.showSummary()">🏆 Summary</button>
+                        </div>
+
+                        <button class="btn btn-red btn-full btn-sm" style="font-weight:700" onclick="Broadcast.stopAll()">⏹ STOP / CLEAR ALL</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -892,11 +926,50 @@
         </div>
     </div>
 
+    <!-- Broadcast Control Panel -->
+    <div class="modal-overlay" id="modal-broadcast-control" style="display:none">
+        <div class="modal-box" style="max-width:400px">
+            <div style="font-size:48px;text-align:center;margin-bottom:8px">📡</div>
+            <div class="modal-title">Broadcast Control</div>
+            <div class="modal-sub">Manage live broadcast overlays</div>
+
+            <div class="form-group">
+                <label class="form-label">Broadcast URL</label>
+                <input type="text" class="form-input" id="broadcast-url" placeholder="e.g. ws://localhost:8080" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Connection Status:</label>
+                <span id="broadcast-status" style="font-weight:bold;color:var(--c-red)">Disconnected</span>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="connectBroadcast()">Connect</button>
+                <button class="btn btn-ghost" onclick="disconnectBroadcast()">Disconnect</button>
+            </div>
+
+            <hr style="margin:20px 0">
+
+            <div class="modal-actions" style="flex-direction:column;gap:10px">
+                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('scorecard')">Show Scorecard</button>
+                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('batsman-stats')">Show Batsman Stats</button>
+                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('bowler-stats')">Show Bowler Stats</button>
+                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('match-summary')">Show Match Summary</button>
+                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('hide-all')">Hide All Overlays</button>
+            </div>
+
+            <div class="modal-actions" style="margin-top:20px">
+                <button class="btn btn-ghost btn-full" onclick="closeModal('modal-broadcast-control')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <datalist id="db-players-list"></datalist>
 
     <script src="../js/db.js"></script>
+    <script src="../js/broadcast.js"></script>
     <script src="../js/scorer.js"></script>
     <script src="../js/instant-nrr.js"></script>
 </body>
