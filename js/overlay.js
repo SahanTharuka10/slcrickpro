@@ -98,8 +98,14 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_SUMMARY':
             toggleBroadcastSummary();
             break;
-        case 'SHOW_CRR':
-            showCRRGraphic(data);
+        case 'SHOW_CRR': 
+            showCRRGraphic(data); 
+            break;
+        case 'SHOW_MILESTONE':
+            showMilestoneGraphic(data);
+            break;
+        case 'STOP_OVERLAY': 
+            hideAllBroadcastOverlays(); 
             break;
     }
 }
@@ -149,6 +155,26 @@ function showNextMatchGraphic(data) {
     // Cinematic entrance
     gsap.fromTo(el, { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 1, ease: 'power4.out' });
     gsap.from('.nm-artwork', { y: 100, opacity: 0, duration: 1.2, delay: 0.3, ease: 'back.out(1.2)' });
+}
+
+function showMilestoneGraphic(data) {
+    hideAllBroadcastOverlays();
+    const el = document.getElementById('milestone-overlay');
+    document.getElementById('ms-val').textContent = data.runs;
+    document.getElementById('ms-sub').textContent = `${data.runs} RUNS OFF ${data.balls} BALLS`;
+    
+    el.style.display = 'block';
+    // Punchy elastic entrance for the runs
+    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(2)" });
+    gsap.fromTo('#ms-val', { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1, delay: 0.2, ease: "elastic.out(1, 0.5)" });
+    gsap.fromTo('#ms-sub', { opacity: 0 }, { opacity: 1, duration: 1, delay: 0.8 });
+
+    // Auto-hide after 15 seconds
+    setTimeout(() => {
+        if (el.style.display === 'block') {
+            gsap.to(el, { opacity: 0, scale: 0.8, duration: 0.5, onComplete: () => el.style.display = 'none' });
+        }
+    }, 15000);
 }
 
 function toggleBroadcastScorecard() {
@@ -305,7 +331,25 @@ function renderTournamentSummaryOverlay() {
     document.getElementById('sm-content').innerHTML = html;
 }
 
-function renderOverlay() {
+function renderMilestoneOverlay(runs, balls) {
+    hideAllOverlays();
+    const el = document.getElementById('milestone-overlay');
+    document.getElementById('ms-val').textContent = runs;
+    document.getElementById('ms-sub').textContent = `${runs} RUNS OFF ${balls} BALLS`;
+    
+    el.style.display = 'block';
+    // Back-out entry for runs, slide up for label
+    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" });
+    gsap.fromTo('#ms-val', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, delay: 0.2, ease: "elastic.out(1, 0.5)" });
+    gsap.fromTo('#ms-sub', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, delay: 0.6 });
+
+    // Auto-hide after 15 seconds
+    setTimeout(() => {
+        if (el.style.display === 'block') hideAllOverlays();
+    }, 15000);
+}
+
+function hideAllOverlays() {
     let m = null;
     if (matchId) {
         m = DB.getMatch(matchId);
