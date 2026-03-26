@@ -50,6 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if(bowlBtn) bowlBtn.style.display = 'block';
     }
 
+    // CRITICAL: Clear any stuck broadcast command from local storage on load
+    localStorage.removeItem('cricpro_broadcast_cmd');
+    hideAllBroadcastOverlays();
+
     // Add match stats button logic if not already there
     const menuContainer = document.getElementById('shortcut-menu');
     if (menuContainer && !document.getElementById('btn-match-stats-menu')) {
@@ -77,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function handleBroadcastCommand(cmd, data) {
+    if (!window.gsap) { console.error("🚫 GSAP not loaded. Broadcast animations skipped."); return; }
     console.log("📥 Received Broadcast:", cmd, data);
     
     // Clear existing special overlays if needed
@@ -100,9 +105,6 @@ function handleBroadcastCommand(cmd, data) {
             break;
         case 'SHOW_CRR': 
             showCRRGraphic(data); 
-            break;
-        case 'SHOW_MILESTONE':
-            showMilestoneGraphic(data);
             break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
@@ -157,25 +159,7 @@ function showNextMatchGraphic(data) {
     gsap.from('.nm-artwork', { y: 100, opacity: 0, duration: 1.2, delay: 0.3, ease: 'back.out(1.2)' });
 }
 
-function showMilestoneGraphic(data) {
-    hideAllBroadcastOverlays();
-    const el = document.getElementById('milestone-overlay');
-    document.getElementById('ms-val').textContent = data.runs;
-    document.getElementById('ms-sub').textContent = `${data.runs} RUNS OFF ${data.balls} BALLS`;
-    
-    el.style.display = 'block';
-    // Punchy elastic entrance for the runs
-    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(2)" });
-    gsap.fromTo('#ms-val', { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1, delay: 0.2, ease: "elastic.out(1, 0.5)" });
-    gsap.fromTo('#ms-sub', { opacity: 0 }, { opacity: 1, duration: 1, delay: 0.8 });
-
-    // Auto-hide after 15 seconds
-    setTimeout(() => {
-        if (el.style.display === 'block') {
-            gsap.to(el, { opacity: 0, scale: 0.8, duration: 0.5, onComplete: () => el.style.display = 'none' });
-        }
-    }, 15000);
-}
+// Milestone Graphic Removed as per User Request
 
 function toggleBroadcastScorecard() {
     const el = document.getElementById('broadcast-full-scorecard');

@@ -73,16 +73,7 @@ const Broadcast = {
         showToast('📈 CRR Published!', 'success');
     },
 
-    publishMilestone() {
-        const runs = document.getElementById('broadcast-ms-runs').value.trim();
-        const balls = document.getElementById('broadcast-ms-balls').value.trim();
-        if (!runs || !balls) {
-            showToast('Enter both runs and balls for milestone', 'error');
-            return;
-        }
-        this.send('SHOW_MILESTONE', { runs, balls }); // Assuming 'send' is the correct method based on existing code
-        showToast(`🎬 Published Milestone: ${runs} runs off ${balls} balls`, 'success');
-    },
+    // Milestone Option Removed as per User Request
 
     /**
      * Stop all overlays and return to live score
