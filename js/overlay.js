@@ -182,15 +182,19 @@ function toggleBroadcastScorecard() {
     if (el.style.display === 'flex') {
         gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
-        renderFullScorecardOverlay();
-        el.style.display = 'flex';
-        gsap.fromTo(el, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' });
+        const success = renderFullScorecardOverlay();
+        if (success) {
+            el.style.display = 'flex';
+            gsap.fromTo(el, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' });
+        } else {
+            console.error("🚫 Cannot show scorecard: No match data found.");
+        }
     }
 }
 
 function renderFullScorecardOverlay() {
     const m = DB.getMatch(matchId);
-    if (!m) return;
+    if (!m) return false;
     
     let html = `
     <div class="fs-header">
@@ -263,6 +267,7 @@ function renderFullScorecardOverlay() {
     
     html += `</div>`;
     document.getElementById('fs-content').innerHTML = html;
+    return true;
 }
 
 function toggleBroadcastSummary() {
@@ -270,15 +275,19 @@ function toggleBroadcastSummary() {
     if (el.style.display === 'block') {
         gsap.to(el, { opacity: 0, y: 100, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
-        renderTournamentSummaryOverlay();
-        el.style.display = 'block';
-        gsap.fromTo(el, { opacity: 0, y: 100 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
+        const success = renderTournamentSummaryOverlay();
+        if (success) {
+            el.style.display = 'block';
+            gsap.fromTo(el, { opacity: 0, y: 100 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
+        } else {
+            console.error("🚫 Cannot show summary: No tournament data found.");
+        }
     }
 }
 
 function renderTournamentSummaryOverlay() {
     const t = DB.getTournament(tournId);
-    if (!t) return;
+    if (!t) return false;
     
     const sortedTeams = Object.entries(t.standings || {}).map(([team, s]) => ({ team, ...s }))
         .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
@@ -329,24 +338,17 @@ function renderTournamentSummaryOverlay() {
     </div>`;
     
     document.getElementById('sm-content').innerHTML = html;
+    return true;
 }
 
-function renderMilestoneOverlay(runs, balls) {
-    hideAllOverlays();
-    const el = document.getElementById('milestone-overlay');
-    document.getElementById('ms-val').textContent = runs;
-    document.getElementById('ms-sub').textContent = `${runs} RUNS OFF ${balls} BALLS`;
-    
-    el.style.display = 'block';
-    // Back-out entry for runs, slide up for label
-    gsap.fromTo(el, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" });
-    gsap.fromTo('#ms-val', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, delay: 0.2, ease: "elastic.out(1, 0.5)" });
-    gsap.fromTo('#ms-sub', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, delay: 0.6 });
+function formatSR(runs, balls) {
+    if (!balls) return '0.0';
+    return ((runs / balls) * 100).toFixed(1);
+}
 
-    // Auto-hide after 15 seconds
-    setTimeout(() => {
-        if (el.style.display === 'block') hideAllOverlays();
-    }, 15000);
+function formatEcon(runs, balls) {
+    if (!balls) return '0.0';
+    return ((runs / balls) * 6).toFixed(1);
 }
 
 function hideAllOverlays() {
