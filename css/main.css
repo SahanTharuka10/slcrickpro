@@ -1338,7 +1338,7 @@ body.light-mode .theme-toggle {
 @keyframes bat-swing { 0% { left: -50px; transform: rotate(0deg); } 40% { left: 5px; transform: rotate(-30deg); } 50% { left: 10px; transform: rotate(20deg); } 100% { left: 10px; transform: rotate(20deg); } }
 @keyframes glow-burst { 0%, 48% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
 .logo-text-animated { display: flex; flex-direction: column; opacity: 1; transition: opacity 0.5s ease; }
-.logo-name-animated { font-family: \Outfit\, sans-serif; font-weight: 900; font-size: 24px; color: #fff; letter-spacing: 1px; }
+.logo-name-animated { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 24px; color: #ffd700; letter-spacing: 1px; }
 .logo-name-animated span.pro { background: linear-gradient(to right, #ff8c00, #ff4500); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 5px rgba(255, 69, 0, 0.5)); }
 .logo-tag-animated { font-size: 10px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; }
 

@@ -20,10 +20,10 @@ body {
 }
 
 .overlay-container {
-    width: 100%;
-    max-width: 1200px;
+    width: calc(100% - 40px);
+    max-width: none;
     height: 54px;
-    margin-bottom: 40px;
+    margin: 0 auto 40px;
     display: flex;
     align-items: center;
     border-radius: 30px;
