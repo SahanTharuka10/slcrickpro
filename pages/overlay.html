@@ -116,26 +116,53 @@
             font-family: 'Outfit', sans-serif;
         }
 
-        /* Runs Needed Motion Graphic */
+        /* Runs Needed Cinematic Artwork */
         .runs-balls-overlay {
-            bottom: 120px;
-            left: 0;
-            width: 100%;
-            height: 120px;
-            background: linear-gradient(90deg, rgba(230,27,77,0.95) 0%, rgba(255,109,59,0.95) 100%);
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            border-top: 4px solid #fff;
-            border-bottom: 4px solid #fff;
-            transform: translateX(-100%); /* For GSAP */
+            opacity: 0;
+            z-index: 12000;
         }
-        .rb-content { text-align: center; color: #fff; }
-        .rb-title { font-size: 18px; font-weight: 800; letter-spacing: 4px; margin-bottom: 5px; opacity: 0.8; }
-        .rb-main { font-size: 48px; font-weight: 900; line-height: 1; }
-        .rb-main small { font-size: 20px; font-weight: 600; text-transform: lowercase; margin: 0 10px; opacity: 0.7; }
-        .rb-footer { font-size: 11px; font-weight: 700; margin-top: 10px; opacity: 0.6; letter-spacing: 2px; }
+        .rb-artwork-inner {
+            position: relative;
+            width: 800px;
+            height: 220px;
+            background: linear-gradient(135deg, #1a237e 0%, #7b1fa2 100%);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 100px rgba(123,31,162,0.4);
+            border: 4px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            transform: scale(0.8);
+        }
+        .rb-artwork-inner::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 2px);
+            pointer-events: none;
+        }
+        .rb-content { text-align: center; color: #fff; position: relative; z-index: 2; }
+        .rb-title { 
+            font-size: 24px; font-weight: 900; letter-spacing: 12px; margin-bottom: 5px; 
+            color: #ffd600; text-shadow: 0 0 20px rgba(255,214,0,0.5);
+        }
+        .rb-main { font-size: 80px; font-weight: 900; line-height: 1; display: flex; align-items: baseline; gap: 20px; }
+        .rb-main span { color: #fff; text-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .rb-main b { font-size: 32px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+        .rb-footer { font-size: 14px; font-weight: 700; margin-top: 15px; opacity: 0.5; letter-spacing: 4px; }
+        
+        .rb-decor {
+            position: absolute; top: -50px; right: -50px; width: 200px; height: 300px;
+            background: rgba(255,255,255,0.05); transform: rotate(15deg);
+        }
 
         /* Current Run Rate Graphic */
         .crr-overlay {
@@ -230,11 +257,19 @@
     </div>
 
     <!-- BROADCAST OVERLAYS -->
-    <div id="broadcast-runs-balls" class="broadcast-overlay runs-balls-overlay" style="display:none">
-        <div class="rb-content">
-            <div class="rb-title">RUNS NEEDED</div>
-            <div class="rb-main"><span id="rb-runs">0</span> <small>from</small> <span id="rb-balls">0</span> <small>balls</small></div>
-            <div class="rb-footer">SLCRICKPRO LIVE BROADCAST</div>
+    <div id="broadcast-runs-balls" class="broadcast-overlay runs-balls-overlay">
+        <div class="rb-artwork-inner" id="rb-inner">
+            <div class="rb-decor"></div>
+            <div class="rb-content">
+                <div class="rb-title" id="rb-title-anim">RUNS NEEDED</div>
+                <div class="rb-main">
+                    <span id="rb-runs">0</span>
+                    <b>from</b>
+                    <span id="rb-balls">0</span>
+                    <b>balls</b>
+                </div>
+                <div class="rb-footer">SLCRICKPRO LIVE BROADCAST PRODUCTION</div>
+            </div>
         </div>
     </div>
 

@@ -134,18 +134,32 @@ function showCRRGraphic(data) {
 }
 
 function showRunsBallsGraphic(data) {
-    const el = document.getElementById('broadcast-runs-balls');
+    if (!window.gsap) return;
+    const el = document.querySelector('.runs-balls-overlay');
+    const inner = document.getElementById('rb-inner');
+    
     document.getElementById('rb-runs').textContent = data.runs;
     document.getElementById('rb-balls').textContent = data.balls;
     
     el.style.display = 'flex';
-    gsap.fromTo(el, { x: '-100%', opacity: 1 }, { x: '0%', duration: 1.2, ease: 'expo.out' });
     
+    // Cinematic Timeline
+    const tl = gsap.timeline();
+    tl.to(el, { opacity: 1, duration: 0.5 })
+      .fromTo(inner, { scale: 0.5, rotateX: 45, opacity: 0 }, { scale: 1, rotateX: 0, opacity: 1, duration: 1, ease: 'back.out(1.2)' }, "-=0.3")
+      .from('#rb-title-anim', { y: -20, opacity: 0, duration: 0.6 }, "-=0.5")
+      .from('.rb-main span', { scale: 1.5, opacity: 0, stagger: 0.2, duration: 0.8, ease: 'elastic.out(1, 0.5)' }, "-=0.4")
+      .from('.rb-footer', { opacity: 0, duration: 1 }, "-=0.5");
+    
+    // Auto-hide after 10 seconds (User requested slower)
     setTimeout(() => {
-        gsap.to(el, { x: '100%', duration: 1, ease: 'expo.in', onComplete: () => {
-            el.style.display = 'none';
-        }});
-    }, 6000);
+        if (el.style.display === 'flex') {
+            gsap.to(el, { opacity: 0, duration: 0.8, onComplete: () => {
+                el.style.display = 'none';
+                gsap.set(inner, { scale: 0.8, opacity: 0 }); // Reset for next time
+            }});
+        }
+    }, 10000);
 }
 
 function showNextMatchGraphic(data) {
