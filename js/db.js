@@ -326,7 +326,7 @@ const DB = {
             matchCount: cfg.matchCount || 0,
             totalTeams: cfg.totalTeams || cfg.teams.length,
             prizes: cfg.prizes || { first: '', second: '', third: '' },
-            password: cfg.password || null,
+            scoringPassword: cfg.scoringPassword || null,
         };
 
         if (t.format === 'knockout') {
