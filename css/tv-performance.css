@@ -1,0 +1,49 @@
+/* SLCRICKPRO - Performance-First TV Optimization */
+
+@media screen and (min-width: 1200px) {
+    /* Hardware-accelerated transitions */
+    .broadcast-overlay, 
+    .score-banner,
+    .sb-score,
+    .sb-overs {
+        will-change: transform, opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+
+    /* Disable heavy shadows and blurs for low-end TV CPUs */
+    .tv-mode .bg-orb {
+        display: none !important;
+    }
+
+    .tv-mode .bg-canvas {
+        background: #0a0a0c !important;
+    }
+
+    /* Optimize typography rendering */
+    body {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Smooth but lightweight animations */
+    .recent-ball {
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Reduce layout thrashing by fixing dimensions */
+    .score-banner-inner {
+        contain: layout size;
+        height: 120px;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
