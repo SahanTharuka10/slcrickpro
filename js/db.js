@@ -326,6 +326,7 @@ const DB = {
             matchCount: cfg.matchCount || 0,
             totalTeams: cfg.totalTeams || cfg.teams.length,
             prizes: cfg.prizes || { first: '', second: '', third: '' },
+            password: cfg.password || null,
         };
 
         if (t.format === 'knockout') {
@@ -347,7 +348,8 @@ const DB = {
 
                 const match = this.createMatch({
                     type: 'tournament', tournamentId: t.id, tournamentName: t.name,
-                    team1, team2, overs: t.overs, ballsPerOver: t.ballsPerOver
+                    team1, team2, overs: t.overs, ballsPerOver: t.ballsPerOver,
+                    password: t.password
                 });
                 match.status = 'scheduled';
                 match.scheduledName = mName;
@@ -402,7 +404,8 @@ const DB = {
                     type: 'tournament', tournamentId: t.id, tournamentName: t.name,
                     team1: node1.type === 'team' ? node1.name : 'TBD',
                     team2: node2.type === 'team' ? node2.name : 'TBD',
-                    overs: t.overs, ballsPerOver: t.ballsPerOver
+                    overs: t.overs, ballsPerOver: t.ballsPerOver,
+                    password: t.password
                 });
 
                 match.status = 'scheduled';

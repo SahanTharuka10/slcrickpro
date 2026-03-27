@@ -149,7 +149,7 @@ function approveRequest(reqId) {
             t.status = 'approved';
             t.format = format;
             if (format === 'knockout') {
-                t.teamCount = teamCount;
+                t.totalTeams = teamCount;
                 if (typeof DB._generateKnockoutMatches === 'function') {
                     DB._generateKnockoutMatches(t, teamCount);
                 }

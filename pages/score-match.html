@@ -60,16 +60,11 @@
             <!-- Tournament section (hidden by default) -->
             <div id="tournament-setup-section" style="display:none" class="card" style="margin-bottom:20px">
                 <div class="card-head">Tournament Settings</div>
-                <div class="grid-2">
                     <div class="form-group">
                         <label class="form-label">Create New / Select Tournament</label>
                         <select class="form-select" id="tournament-select" onchange="onTournamentSelect(this.value)">
                             <option value="new">➕ Create New Tournament</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Match Password (for resuming)</label>
-                        <input type="password" class="form-input" id="match-password" placeholder="Set a password..." />
                     </div>
                 </div>
                 <div id="new-tournament-form">
@@ -140,6 +135,10 @@
                 <div class="form-group">
                     <label class="form-label">Team 2 Name</label>
                     <input type="text" class="form-input" id="team2-name" placeholder="e.g. Tigers CC" maxlength="25" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tournament / Match Password (for login)</label>
+                    <input type="password" class="form-input" id="match-password" placeholder="Set a password (optional)..." />
                 </div>
             </div>
             <div class="grid-2" id="overs-grid">

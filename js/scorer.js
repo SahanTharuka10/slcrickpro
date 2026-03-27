@@ -125,7 +125,7 @@ function renderResumeMatches() {
             actionBtn = `<button class="btn btn-green btn-sm" onclick="openTournamentHub('${t.id}')">Open Tournament</button>`;
         }
 
-        const locked = (t.password || t.status === 'approved' || (t.isOfficial && t.status === 'active')) ? '🔒 ' : '';
+        const locked = t.password ? '🔒 ' : '';
         html += `<div class="resume-card">
       <div class="resume-card-info">
         <h4>${locked}Tournament: ${t.name}</h4>
@@ -214,6 +214,7 @@ function openTournamentMatchesModal(tId) {
         let matchName = `Match ${index + 1}`;
         let subInfo = 'Scheduled';
         let cardStyle = '';
+        let locked = m.password ? '🔒 ' : '';
 
         if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
@@ -239,7 +240,7 @@ function openTournamentMatchesModal(tId) {
         html += `<div class="resume-card" style="margin-bottom:8px; align-items: center; ${cardStyle}">
             <div class="resume-card-info" style="flex: 1">
                 <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-muted); margin-bottom: 2px">${subInfo}</div>
-                <h4 style="font-size: 16px; font-weight: 800">${matchName}</h4>
+                <h4 style="font-size: 16px; font-weight: 800">${locked}${matchName}</h4>
             </div>
             <div style="text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
                 ${statusBadge}
@@ -295,8 +296,8 @@ function endTournamentManually(tournId) {
         showToast('Tournament marked as COMPLETED!', 'success');
         closeModal('modal-tournament-matches');
         // Optionally refresh summary if applicable
-        if (typeof currentTournamentId !== 'undefined' && currentTournamentId === tournId) {
-           openTournamentSummary(tournId);
+        if (currentMatch && currentMatch.tournamentId === tournId) {
+           openTournamentSummary();
         }
     }
 }
@@ -304,6 +305,17 @@ function endTournamentManually(tournId) {
 function startOfficialMatch(mId) {
     const m = DB.getMatch(mId);
     if (!m) return;
+
+    if (m.password) {
+        currentMatch = m;
+        currentMatch.isScheduledTemplate = true;
+        document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
+        document.getElementById('login-password').value = '';
+        showScreen('login');
+        closeModal('modal-tournament-matches');
+        return;
+    }
+
     closeModal('modal-tournament-matches');
 
     showScreen('setup');
@@ -333,7 +345,23 @@ function loginToMatch() {
 
     if (!currentMatch) return;
     if (pw !== currentMatch.password) { showToast('Wrong password!', 'error'); return; }
-    loadMatch(currentMatch);
+    
+    if (currentMatch.isScheduledTemplate) {
+        showScreen('setup');
+        document.getElementById('type-tournament').click();
+        setTimeout(() => {
+            const m = currentMatch;
+            document.getElementById('tournament-setup-section').style.display = 'none';
+            document.getElementById('tournament-select').value = m.tournamentId;
+            document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
+            document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
+            document.getElementById('setup-overs').value = m.overs;
+            document.getElementById('setup-bpo').value = m.ballsPerOver;
+            document.getElementById('setup-pps').value = m.playersPerSide || 11;
+        }, 100);
+    } else {
+        loadMatch(currentMatch);
+    }
 }
 
 function startNewMatch() {
@@ -378,8 +406,9 @@ function startNewMatch() {
                     const matchCount = format === 'knockout' 
                         ? (parseInt(document.getElementById('tourn-team-count').value) - 1)
                         : (parseInt(document.getElementById('tourn-match-count')?.value) || 10);
+                    const tournPassword = document.getElementById('match-password').value.trim() || null;
                     const tourn = DB.createTournament({
-                        name: tName, format, overs, ballsPerOver: bpo,
+                        name: tName, format, overs, ballsPerOver: bpo, password: tournPassword,
                         teams: teamLines, isOfficial: false, 
                         totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
                         matchCount: matchCount 
@@ -450,8 +479,12 @@ function startNewMatch() {
                 }
             }
 
-            const password = currentMatchType === 'tournament'
-                ? (document.getElementById('match-password').value.trim() || null) : null;
+             let password = document.getElementById('match-password').value.trim() || null;
+             
+             if (currentMatchType === 'tournament' && !password && tournamentId) {
+                 const t = DB.getTournament(tournamentId);
+                 if (t && t.password) password = t.password;
+             }
 
             match = DB.createMatch({ type: currentMatchType, tournamentId, tournamentName, password, team1: t1, team2: t2, overs, ballsPerOver: bpo, playersPerSide: pps, venue, tossWinner, tossDecision: dec, battingFirst, fieldingFirst });
         }
@@ -1412,8 +1445,9 @@ function computeStandings(t) {
     });
     t.teams.forEach(team => {
         const s = t.standings[team];
-        const rr = s.ballsFaced ? (s.runsScored / (s.ballsFaced / 6)) : 0;
-        const ra = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / 6)) : 0;
+        const bpo = t.ballsPerOver || 6;
+        const rr = s.ballsFaced ? (s.runsScored / (s.ballsFaced / bpo)) : 0;
+        const ra = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / bpo)) : 0;
         s.nrr = parseFloat((rr - ra).toFixed(3)) || 0;
     });
 }
