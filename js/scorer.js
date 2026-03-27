@@ -195,7 +195,9 @@ function resumeMatch(id) {
     if (!m) return;
     if (m.password) {
         currentMatch = m;
+        currentTournament = null; // Important: reset tournament context
         document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
+        document.getElementById('login-password').value = '';
         showScreen('login');
     } else { loadMatch(m); }
 }
@@ -205,6 +207,7 @@ function openTournamentHub(id) {
     if (!t) return;
 
     currentTournament = t;
+    currentMatch = null; // Important: reset match context
     if (t.password) {
         document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
         document.getElementById('login-password').value = '';
@@ -217,6 +220,13 @@ function openTournamentHub(id) {
 function openTournamentMatchesModal(tId) {
     const t = DB.getTournament(tId);
     if (!t) return;
+    
+    // Security check: if tournament is password protected, ensure it's authenticated
+    if (t.password && (!currentTournament || currentTournament.id !== t.id)) {
+        openTournamentHub(t.id);
+        return;
+    }
+    
     document.getElementById('tm-title').textContent = t.name + ' - Matches';
 
     let html = '';
