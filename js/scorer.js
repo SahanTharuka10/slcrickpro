@@ -358,34 +358,49 @@ function startOfficialMatch(mId) {
     }, 100);
 }
 
-function loginToMatch() {
+async function loginToMatch() {
     const pw = document.getElementById('login-password').value.trim();
+    if (!pw) { showToast('Password required!', 'error'); return; }
 
-    if (currentTournament) {
-        if (pw !== currentTournament.password) { showToast('Wrong password!', 'error'); return; }
-        openTournamentMatchesModal(currentTournament.id);
-        currentTournament = null;
-        return;
-    }
+    const id = currentTournament ? currentTournament.id : currentMatch.id;
+    const type = currentTournament ? 'tournament' : 'match';
 
-    if (!currentMatch) return;
-    if (pw !== currentMatch.password) { showToast('Wrong password!', 'error'); return; }
-    
-    if (currentMatch.isScheduledTemplate) {
-        showScreen('setup');
-        document.getElementById('type-tournament').click();
-        setTimeout(() => {
-            const m = currentMatch;
-            document.getElementById('tournament-setup-section').style.display = 'none';
-            document.getElementById('tournament-select').value = m.tournamentId;
-            document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
-            document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
-            document.getElementById('setup-overs').value = m.overs;
-            document.getElementById('setup-bpo').value = m.ballsPerOver;
-            document.getElementById('setup-pps').value = m.playersPerSide || 11;
-        }, 100);
-    } else {
-        loadMatch(currentMatch);
+    try {
+        const res = await fetch((BACKEND_BASE_URL || '') + '/api/verify-scoring-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, type, password: pw })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            if (currentTournament) {
+                openTournamentMatchesModal(currentTournament.id);
+                currentTournament = null;
+            } else if (currentMatch) {
+                if (currentMatch.isScheduledTemplate) {
+                    showScreen('setup');
+                    document.getElementById('type-tournament').click();
+                    setTimeout(() => {
+                        const m = currentMatch;
+                        document.getElementById('tournament-setup-section').style.display = 'none';
+                        document.getElementById('tournament-select').value = m.tournamentId;
+                        document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
+                        document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
+                        document.getElementById('setup-overs').value = m.overs;
+                        document.getElementById('setup-bpo').value = m.ballsPerOver;
+                        document.getElementById('setup-pps').value = m.playersPerSide || 11;
+                    }, 100);
+                } else {
+                    loadMatch(currentMatch);
+                }
+            }
+        } else {
+            showToast(data.error || 'Invalid password!', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Security verification failed. Check backend connection.', 'error');
     }
 }
 
@@ -397,6 +412,7 @@ function startNewMatch() {
             const sel = document.getElementById('tournament-select').value;
             if (sel === 'new') {
                 const tName = document.getElementById('tourn-name').value.trim();
+                const scoringPw = document.getElementById('tourn-scoring-password').value.trim();
                 const teamLines = document.getElementById('tourn-teams').value.split('\n').map(l => l.trim()).filter(Boolean);
                 const overs = parseInt(document.getElementById('setup-overs').value) || 20;
                 const bpo = parseInt(document.getElementById('setup-bpo').value) || 6;
@@ -417,6 +433,7 @@ function startNewMatch() {
 
                     _pendingTournPayload = {
                         name: tName, format, overs, ballsPerOver: bpo, teams: teamLines, isOfficial: true, 
+                        scoringPassword: scoringPw,
                         totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
                         matchCount,
                         startDate, prizes: { first: prize1, second: prize2, third: prize3 }
@@ -431,9 +448,9 @@ function startNewMatch() {
                     const matchCount = format === 'knockout' 
                         ? (parseInt(document.getElementById('tourn-team-count').value) - 1)
                         : (parseInt(document.getElementById('tourn-match-count')?.value) || 10);
-                    const tournPassword = document.getElementById('match-password').value.trim() || null;
                     const tourn = DB.createTournament({
-                        name: tName, format, overs, ballsPerOver: bpo, password: tournPassword,
+                        name: tName, format, overs, ballsPerOver: bpo, 
+                        scoringPassword: scoringPw,
                         teams: teamLines, isOfficial: false, 
                         totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
                         matchCount: matchCount 
@@ -504,14 +521,29 @@ function startNewMatch() {
                 }
             }
 
-             let password = document.getElementById('match-password').value.trim() || null;
+             let scoringPassword = document.getElementById('match-scoring-password').value.trim() || null;
              
-             if (currentMatchType === 'tournament' && !password && tournamentId) {
+             if (currentMatchType === 'tournament' && !scoringPassword && tournamentId) {
                  const t = DB.getTournament(tournamentId);
-                 if (t && t.password) password = t.password;
+                 if (t && t.scoringPassword) scoringPassword = t.scoringPassword;
              }
 
-            match = DB.createMatch({ type: currentMatchType, tournamentId, tournamentName, password, team1: t1, team2: t2, overs, ballsPerOver: bpo, playersPerSide: pps, venue, tossWinner, tossDecision: dec, battingFirst, fieldingFirst });
+            match = DB.createMatch({ 
+                type: currentMatchType, 
+                tournamentId, 
+                tournamentName, 
+                scoringPassword, 
+                team1: t1, 
+                team2: t2, 
+                overs, 
+                ballsPerOver: bpo, 
+                playersPerSide: pps, 
+                venue, 
+                tossWinner, 
+                tossDecision: dec, 
+                battingFirst, 
+                fieldingFirst 
+            });
         }
     }
 

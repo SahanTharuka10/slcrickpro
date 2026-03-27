@@ -12,6 +12,7 @@
         rel="stylesheet" />
     <link rel="stylesheet" href="../css/main.css" />
     <link rel="stylesheet" href="../css/scorer.css" />
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body class="page-wrapper">
@@ -74,6 +75,12 @@
                             <input type="text" class="form-input" id="tourn-name"
                                 placeholder="e.g. Village Premier League" />
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Scoring Password</label>
+                            <input type="password" class="form-input" id="tourn-scoring-password" placeholder="Set a scoring password..." />
+                        </div>
+                    </div>
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Format</label>
                             <select class="form-select" id="tourn-format">
