@@ -49,6 +49,13 @@ This backend server is designed to sync cricket data from the SLCRICKPRO app. It
 - `DELETE /sync/products/:id` - Delete a product
 - `POST /sync/match` - Sync live match data
 - `POST /sync/tournament` - Sync tournament structure
+- `POST /api/tournaments/:id/verify-password` - Verify tournament scoring password and issue scoped token
+- `POST /api/tournaments/:id/scoring-authorized` - Validate tournament scoring token
+- `GET /tv/matches/:id/light` - Lightweight cached TV payload (<2KB target)
 - `GET /health` - Check database connection status
+
+## Optional Environment Variables
+- `SCORING_TOKEN_SECRET` - HMAC secret for tournament scoring access tokens.
+- `REDIS_URL` - Redis connection URL for TV payload caching (falls back to memory cache if not set).
 
 Your app will now seamlessly sync players, teams, and stats into your MongoDB Atlas database!

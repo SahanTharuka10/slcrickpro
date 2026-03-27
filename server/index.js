@@ -4,12 +4,31 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const socketIo = require('socket.io');
 const http = require('http');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'text/plain' }));
+
+let redisClient = null;
+try {
+    if (process.env.REDIS_URL) {
+        const Redis = require('ioredis');
+        redisClient = new Redis(process.env.REDIS_URL, {
+            lazyConnect: true,
+            maxRetriesPerRequest: 2
+        });
+        redisClient.connect().catch(() => {});
+    }
+} catch (e) {
+    console.warn('Redis unavailable, falling back to memory cache');
+}
+
+const memTvCache = new Map();
+const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
+const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 
 // ─── Security Middleware (Hand-rolled Helmet) ─────────────────
 app.use((req, res, next) => {
@@ -158,6 +177,101 @@ function parseBody(req) {
     // Basic structural check (every valid sync payload or model action usually has data or an ID)
     if (typeof payload !== 'object' || payload === null) return null;
     return payload;
+}
+
+function createScoringToken(tournamentId) {
+    const payload = {
+        tournamentId,
+        exp: Date.now() + SCORING_TOKEN_TTL_MS
+    };
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = crypto.createHmac('sha256', SCORING_TOKEN_SECRET).update(payloadB64).digest('base64url');
+    return `${payloadB64}.${sig}`;
+}
+
+function decodeScoringToken(token) {
+    if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+    const [payloadB64, sig] = token.split('.');
+    const expected = crypto.createHmac('sha256', SCORING_TOKEN_SECRET).update(payloadB64).digest('base64url');
+    if (sig !== expected) return null;
+    try {
+        const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+        if (!payload?.tournamentId || !payload?.exp || payload.exp < Date.now()) return null;
+        return payload;
+    } catch {
+        return null;
+    }
+}
+
+function buildLightScorePayload(match) {
+    const m = match && match.data ? match.data : match;
+    if (!m) return null;
+    const inn = Array.isArray(m.innings) ? m.innings[m.currentInnings || 0] : null;
+    const payload = {
+        id: m.id,
+        tournamentId: m.tournamentId || null,
+        type: m.type || 'single',
+        status: m.status,
+        publishLive: !!m.publishLive,
+        team1: m.team1,
+        team2: m.team2,
+        overs: m.overs,
+        ballsPerOver: m.ballsPerOver || 6,
+        currentInnings: m.currentInnings || 0,
+        score: inn ? {
+            battingTeam: inn.battingTeam,
+            bowlingTeam: inn.bowlingTeam,
+            runs: inn.runs || 0,
+            wickets: inn.wickets || 0,
+            balls: inn.balls || 0,
+            currentOver: Array.isArray(inn.currentOver) ? inn.currentOver.slice(-6).map(b => ({
+                type: b.type,
+                runs: b.runs || 0,
+                wicket: !!b.wicket
+            })) : [],
+            striker: (() => {
+                const idx = inn.currentBatsmenIdx?.[inn.strikerIdx || 0];
+                const b = (idx !== undefined && idx !== null) ? inn.batsmen?.[idx] : null;
+                return b ? { name: b.name, runs: b.runs || 0, balls: b.balls || 0 } : null;
+            })(),
+            nonStriker: (() => {
+                const slot = (inn.strikerIdx || 0) === 0 ? 1 : 0;
+                const idx = inn.currentBatsmenIdx?.[slot];
+                const b = (idx !== undefined && idx !== null) ? inn.batsmen?.[idx] : null;
+                return b ? { name: b.name, runs: b.runs || 0, balls: b.balls || 0 } : null;
+            })(),
+            bowler: (() => {
+                const b = (inn.currentBowlerIdx !== null && inn.currentBowlerIdx !== undefined) ? inn.bowlers?.[inn.currentBowlerIdx] : null;
+                return b ? { name: b.name, runs: b.runs || 0, wickets: b.wickets || 0, balls: b.balls || 0 } : null;
+            })()
+        } : null
+    };
+    const str = JSON.stringify(payload);
+    if (str.length > 2048 && payload.score) {
+        payload.score.currentOver = payload.score.currentOver.slice(-3);
+    }
+    return payload;
+}
+
+async function cacheTvPayload(matchId, payload) {
+    const key = `tv:match:${matchId}`;
+    memTvCache.set(key, payload);
+    if (redisClient) {
+        try {
+            await redisClient.set(key, JSON.stringify(payload), 'EX', 90);
+        } catch {}
+    }
+}
+
+async function getCachedTvPayload(matchId) {
+    const key = `tv:match:${matchId}`;
+    if (redisClient) {
+        try {
+            const v = await redisClient.get(key);
+            if (v) return JSON.parse(v);
+        } catch {}
+    }
+    return memTvCache.get(key) || null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -344,17 +458,21 @@ io.on('connection', (socket) => {
         socket.join(`match_${matchId}`);
         console.log(`👤 Client joined room: match_${matchId}`);
     });
+    socket.on('joinTournament', (tournamentId) => {
+        socket.join(`tournament_${tournamentId}`);
+        console.log(`👤 Client joined room: tournament_${tournamentId}`);
+    });
 });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 function emitUpdate(type, id, data) {
     const room = type === 'match' ? `match_${id}` : `tournament_${id}`;
-    // Send lightweight data to TV
-    const lightData = { ...data };
-    if (lightData.data && lightData.data.history) delete lightData.data.history;
-    if (lightData.data && lightData.data.redoStack) delete lightData.data.redoStack;
+    const lightData = buildLightScorePayload(data) || { id };
     
     io.to(room).emit('scoreUpdate', lightData);
+    if (type === 'match' && data?.tournamentId) {
+        io.to(`tournament_${data.tournamentId}`).emit('scoreUpdate', lightData);
+    }
     io.emit('globalUpdate', { type, id }); // For ticker/ongoing pages
 }
 
@@ -377,13 +495,43 @@ app.post('/api/verify-scoring-password', async (req, res) => {
         
         const match = await bcrypt.compare(password, doc.scoring_password);
         if (match) {
-            res.json({ ok: true, token: 'TEMP_SCORING_TOKEN_' + Date.now() }); // Simple mock token
+            const tournamentId = type === 'tournament' ? id : null;
+            const token = tournamentId ? createScoringToken(tournamentId) : null;
+            res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
         } else {
             res.status(401).json({ error: 'Invalid password' });
         }
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+app.post('/api/tournaments/:id/verify-password', async (req, res) => {
+    const { password } = req.body || {};
+    const tournamentId = req.params.id;
+    if (!tournamentId || !password) return res.status(400).json({ error: 'Missing tournament id or password' });
+    try {
+        await ensureDB();
+        const doc = await Tournament.findById(tournamentId).lean();
+        if (!doc) return res.status(404).json({ error: 'Tournament not found' });
+        if (!doc.scoring_password) return res.json({ ok: true, token: null, expiresInMs: SCORING_TOKEN_TTL_MS });
+        const match = await bcrypt.compare(password, doc.scoring_password);
+        if (!match) return res.status(401).json({ error: 'Invalid password' });
+        const token = createScoringToken(tournamentId);
+        res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to verify password' });
+    }
+});
+
+app.post('/api/tournaments/:id/scoring-authorized', async (req, res) => {
+    const tournamentId = req.params.id;
+    const token = req.body?.token || req.headers['x-scoring-token'];
+    const payload = decodeScoringToken(token);
+    if (!payload || payload.tournamentId !== tournamentId) {
+        return res.status(401).json({ ok: false, authorized: false });
+    }
+    return res.json({ ok: true, authorized: true, expiresAt: payload.exp });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -401,6 +549,8 @@ app.post('/sync/match', async (req, res) => {
             delete data.scoringPassword; // Don't store plain in JSON data field
         }
         await Match.findByIdAndUpdate(data.id, update, { upsert: true });
+        const tvPayload = buildLightScorePayload(data);
+        if (tvPayload) await cacheTvPayload(data.id, tvPayload);
         emitUpdate('match', data.id, data);
         res.json({ ok: true });
     } catch (e) {
@@ -416,6 +566,23 @@ app.get('/sync/matches', async (req, res) => {
         res.json(matches.map(m => m.data));
     } catch (e) {
         res.status(500).json({ error: e.message || 'Failed to fetch matches' });
+    }
+});
+
+app.get('/tv/matches/:id/light', async (req, res) => {
+    try {
+        await ensureDB();
+        const id = req.params.id;
+        let payload = await getCachedTvPayload(id);
+        if (!payload) {
+            const m = await Match.findById(id).lean();
+            if (!m) return res.status(404).json({ error: 'Match not found' });
+            payload = buildLightScorePayload(m.data);
+            if (payload) await cacheTvPayload(id, payload);
+        }
+        res.json(payload || { id, status: 'unknown' });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to fetch tv payload' });
     }
 });
 

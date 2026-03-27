@@ -15,9 +15,14 @@ const Broadcast = {
      * @param {object} data - Optional data payload
      */
     send(cmd, data = {}) {
+        const scopeTournamentId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.tournamentId) ||
+            (typeof currentTournament !== 'undefined' && currentTournament && currentTournament.id) || null;
+        const scopeMatchId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.id) || null;
         const payload = {
             cmd,
             data,
+            tournamentId: scopeTournamentId,
+            matchId: scopeMatchId,
             timestamp: Date.now()
         };
         // Use a unique key with timestamp to ensure the 'storage' event fires even if command is same

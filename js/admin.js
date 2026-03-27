@@ -145,7 +145,7 @@ function approveRequest(reqId) {
     if (req.type === 'tournament') {
         const t = DB.getTournament(req.tournamentId);
         if (t) {
-            t.password = req.requestedPassword;
+            t.scoringPassword = req.requestedPassword;
             t.status = 'approved';
             t.format = format;
             if (format === 'knockout') {

@@ -2,6 +2,7 @@ let matchId = new URLSearchParams(window.location.search).get('match');
 let tournId = new URLSearchParams(window.location.search).get('tournament');
 let refreshInterval;
 let currentPopupView = null;
+let latestSocketScore = null;
 
 function toggleShortcutMenu() {
     const menu = document.getElementById('shortcut-menu');
@@ -65,8 +66,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matchId) {
         socket.emit('joinMatch', matchId);
     }
+    if (tournId) {
+        socket.emit('joinTournament', tournId);
+    }
     socket.on('scoreUpdate', (updatedData) => {
         console.log("⚡ Real-time Update Received:", updatedData);
+        if (updatedData && updatedData.score) {
+            if ((matchId && updatedData.id === matchId) || (tournId && updatedData.tournamentId === tournId)) {
+                latestSocketScore = updatedData;
+            }
+            renderOverlay();
+            return;
+        }
         // Sync local DB with received data
         if (updatedData && updatedData.id) {
             const matches = DB.getMatches();
@@ -92,13 +103,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'cricpro_broadcast_cmd') {
             try {
                 const payload = JSON.parse(e.newValue);
-                handleBroadcastCommand(payload.cmd, payload.data);
+                handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
             } catch (err) { console.error("Broadcast parse err", err); }
         }
     });
 });
 
 function handleBroadcastCommand(cmd, data) {
+    if (data && typeof data === 'object') {
+        if (data.tournamentId && tournId && data.tournamentId !== tournId) return;
+        if (data.matchId && matchId && data.matchId !== matchId) return;
+    }
     if (!window.gsap) { console.error("🚫 GSAP not loaded. Broadcast animations skipped."); return; }
     console.log("📥 Received Broadcast:", cmd, data);
     
@@ -372,6 +387,10 @@ function hideAllOverlays() {
 }
 
 function renderOverlay() {
+    if (latestSocketScore && latestSocketScore.score) {
+        return renderOverlayFromLightPayload(latestSocketScore);
+    }
+
     let m = null;
     if (matchId) {
         m = DB.getMatch(matchId);
@@ -515,6 +534,53 @@ function renderOverlay() {
     `;
 
 document.getElementById('overlay-container').innerHTML = html;
+}
+
+function renderOverlayFromLightPayload(payload) {
+    const cur = payload.score;
+    if (!cur) return;
+    document.getElementById('overlay-container').style.display = 'flex';
+    const t1Name = cur.battingTeam || payload.team1 || "T1";
+    const t2Name = cur.bowlingTeam || payload.team2 || "T2";
+    const t1Short = getShortName(t1Name);
+    const t2Short = getShortName(t2Name);
+    const score = `${cur.runs || 0}-${cur.wickets || 0}`;
+    const ov = formatOvers(cur.balls || 0, payload.ballsPerOver || 6);
+    const striker = cur.striker || { name: 'Batsman 1', runs: 0, balls: 0 };
+    const nonStriker = cur.nonStriker || { name: 'Batsman 2', runs: 0, balls: 0 };
+    const bowler = cur.bowler || { name: 'Bowler', wickets: 0, runs: 0, balls: 0 };
+    const b_overs = formatOvers(bowler.balls || 0, payload.ballsPerOver || 6);
+    const recentBallsHtml = (cur.currentOver || []).map(b => {
+        let cls = '';
+        let lbl = b.runs || '0';
+        if (b.wicket) { cls = 'wicket'; lbl = 'W'; }
+        else if (b.type === 'six') { cls = 'six'; lbl = '6'; }
+        else if (b.type === 'four') { cls = 'boundary'; lbl = '4'; }
+        else if (b.type === 'wide') { cls = 'extra'; lbl = 'Wd'; }
+        else if (b.type === 'noball') { cls = 'extra'; lbl = 'Nb'; }
+        else if (b.type === 'bye') { cls = 'extra'; lbl = 'B' + (b.runs || 0); }
+        else if (b.type === 'legbye') { cls = 'extra'; lbl = 'Lb' + (b.runs || 0); }
+        else if ((b.runs || 0) === 0) { cls = 'dot'; lbl = '0'; }
+        else { cls = 'runs'; }
+        return `<div class="recent-ball ${cls}">${lbl}</div>`;
+    }).join('');
+    const html = `
+        <div class="team-logo-box left"><div class="logo-circle">${t1Short}</div></div>
+        <div class="batsmen-section">
+            <div class="player-row"><div class="player-name">▶ ${striker.name}</div><div class="player-value runs">${striker.runs || 0}</div><div class="player-value balls">${striker.balls || 0}</div></div>
+            <div class="player-row"><div class="player-name">&nbsp; ${nonStriker.name}</div><div class="player-value runs">${nonStriker.runs || 0}</div><div class="player-value balls">${nonStriker.balls || 0}</div></div>
+        </div>
+        <div class="score-center-section">
+            <div class="score-top"><span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span><span class="total">${score}</span><span class="phase">LIVE</span><span class="overs">${ov}</span></div>
+            <div class="score-bottom">LIVE UPDATE</div>
+        </div>
+        <div class="bowler-section">
+            <div class="player-row"><div class="player-name">${bowler.name}</div><div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div><div class="player-value balls">${b_overs}</div></div>
+            <div class="recent-balls-row">${recentBallsHtml}</div>
+        </div>
+        <div class="team-logo-box right"><div class="logo-circle">${t2Short}</div></div>
+    `;
+    document.getElementById('overlay-container').innerHTML = html;
 }
 
 function renderTournamentStats(view) {
