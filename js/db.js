@@ -209,7 +209,7 @@ const DB = {
             type: config.type || 'single', // single | tournament
             tournamentId: config.tournamentId || null,
             tournamentName: config.tournamentName || null,
-            password: config.password || null,
+            scoringPassword: config.scoringPassword || null,
             venue: config.venue || '',
             overs: parseInt(config.overs) || 20,
             ballsPerOver: parseInt(config.ballsPerOver) || 6,
@@ -349,7 +349,7 @@ const DB = {
                 const match = this.createMatch({
                     type: 'tournament', tournamentId: t.id, tournamentName: t.name,
                     team1, team2, overs: t.overs, ballsPerOver: t.ballsPerOver,
-                    password: t.password
+                    scoringPassword: t.scoringPassword
                 });
                 match.status = 'scheduled';
                 match.scheduledName = mName;
@@ -405,7 +405,7 @@ const DB = {
                     team1: node1.type === 'team' ? node1.name : 'TBD',
                     team2: node2.type === 'team' ? node2.name : 'TBD',
                     overs: t.overs, ballsPerOver: t.ballsPerOver,
-                    password: t.password
+                    scoringPassword: t.scoringPassword
                 });
 
                 match.status = 'scheduled';
