@@ -98,7 +98,7 @@ function buildMatchCard(m, isLive) {
       <span class="match-type-badge badge badge-${m.type === 'tournament' ? 'amber' : 'blue'}">${typeLabel}</span>
       <span style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</span>
     </div>
-    <div class="match-teams">
+    <div class="match-teams" onclick="openMatchDetail('${m.id}')">
       <div class="match-vs-row">
         <span class="match-team-name">${m.team1}</span>
         <span class="match-vs-sep">vs</span>
@@ -120,7 +120,17 @@ function buildMatchCard(m, isLive) {
       <span class="match-target-info" style="color:#ffc107">${targetInfo}</span>
       <span class="match-crr">${m.overs} ov · ${subText}</span>
     </div>
+    ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
+    <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; display:flex; justify-content:flex-end">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
+            ${m.status === 'scheduled' ? '🏏 Start Scoring' : '🔑 Resume Scoring'}
+        </button>
+    </div>` : ''}
   </div>`;
+}
+
+function scoreMatchRedirect(id) {
+    window.location.href = `score-match.html?matchId=${id}`;
 }
 
 // ========== TOURNAMENT ==========
@@ -408,8 +418,9 @@ function computeTournamentStandings(t) {
     });
     t.teams.forEach(team => {
         const s = t.standings[team];
-        const batRR = s.ballsFaced ? (s.runsScored / (s.ballsFaced / 6)) : 0;
-        const bowlRR = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / 6)) : 0;
+        const bpo = t.ballsPerOver || 6;
+        const batRR = s.ballsFaced ? (s.runsScored / (s.ballsFaced / bpo)) : 0;
+        const bowlRR = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / bpo)) : 0;
         s.nrr = batRR - bowlRR;
     });
 }

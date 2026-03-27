@@ -22,7 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     populateTournamentDropdown();
     renderResumeMatches();
-    showScreen('setup');
+    
+    // Check for matchId parameter for direct scoring access
+    const urlParams = new URLSearchParams(window.location.search);
+    const mId = urlParams.get('matchId');
+    if (mId) {
+        const m = DB.getMatch(mId);
+        if (m) {
+            if (m.status === 'scheduled') {
+                startOfficialMatch(mId);
+            } else if (m.status === 'live' || m.status === 'paused') {
+                resumeMatch(mId);
+            }
+        }
+    } else {
+        showScreen('setup');
+    }
 });
 
 // ========== SCREEN ==========
