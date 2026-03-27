@@ -100,7 +100,7 @@ function buildMatchCard(m, isLive) {
     </div>
     <div class="match-teams" onclick="openMatchDetail('${m.id}')">
       <div class="match-vs-row">
-        <span class="match-team-name">${m.team1}</span>
+        <span class="match-team-name">${m.password ? '🔒 ' : ''}${m.team1}</span>
         <span class="match-vs-sep">vs</span>
         <span class="match-team-name">${m.team2}</span>
       </div>
@@ -408,10 +408,10 @@ function computeTournamentStandings(t) {
         const s2 = t.standings[m.fieldingFirst];
         if (!s1 || !s2) return;
         s1.played++; s2.played++;
-        s1.runsScored += inn0.runs; s1.ballsFaced += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs*6) : inn0.balls);
-        s1.runsConceded += inn1.runs; s1.ballsBowled += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs*6) : inn1.balls);
-        s2.runsScored += inn1.runs; s2.ballsFaced += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs*6) : inn1.balls);
-        s2.runsConceded += inn0.runs; s2.ballsBowled += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs*6) : inn0.balls);
+        s1.runsScored += inn0.runs; s1.ballsFaced += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn0.balls);
+        s1.runsConceded += inn1.runs; s1.ballsBowled += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn1.balls);
+        s2.runsScored += inn1.runs; s2.ballsFaced += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn1.balls);
+        s2.runsConceded += inn0.runs; s2.ballsBowled += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn0.balls);
         if (inn1.runs > inn0.runs) { s2.won++; s2.points += 2; s1.lost++; }
         else if (inn1.runs < inn0.runs) { s1.won++; s1.points += 2; s2.lost++; }
         else { s1.tied++; s2.tied++; s1.points++; s2.points++; }
