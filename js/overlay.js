@@ -60,14 +60,32 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML += `<button onclick="showOverlayPopup('matchstats'); toggleShortcutMenu();" class="btn-tv" id="btn-match-stats-menu">📊 Match Stats</button>`;
     }
 
-    renderOverlay();
-    // Auto refresh every 2 seconds for live sync
-    refreshInterval = setInterval(() => {
+    // Socket.io integration
+    const socket = io();
+    if (matchId) {
+        socket.emit('joinMatch', matchId);
+    }
+    socket.on('scoreUpdate', (updatedData) => {
+        console.log("⚡ Real-time Update Received:", updatedData);
+        // Sync local DB with received data
+        if (updatedData && updatedData.id) {
+            const matches = DB.getMatches();
+            const idx = matches.findIndex(m => m.id === updatedData.id);
+            if (idx !== -1) {
+                matches[idx] = updatedData;
+                DB.saveMatches(matches);
+            }
+        }
         renderOverlay();
+    });
+
+    renderOverlay();
+    // Intervals reduced as socket handles live updates
+    refreshInterval = setInterval(() => {
         if (currentPopupView) {
             renderTournamentStats(currentPopupView);
         }
-    }, 2000);
+    }, 10000); // Only for stats/standings
 
     // BROADCAST COMMAND LISTENER
     window.addEventListener('storage', (e) => {

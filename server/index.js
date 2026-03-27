@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const socketIo = require('socket.io');
+const http = require('http');
 require('dotenv').config();
 
 const app = express();
@@ -79,11 +82,13 @@ const Team   = mongoose.model('Team',   teamSchema);
 
 const matchSchema = new mongoose.Schema({
     _id:  { type: String }, // MATCH-<timestamp>
+    scoring_password: { type: String }, // Hashed
     data: { type: mongoose.Schema.Types.Mixed }
 }, { _id: false, timestamps: true });
 
 const tournamentSchema = new mongoose.Schema({
     _id:  { type: String }, // TOURN-<timestamp>
+    scoring_password: { type: String }, // Hashed
     data: { type: mongoose.Schema.Types.Mixed }
 }, { _id: false, timestamps: true });
 
@@ -327,6 +332,60 @@ app.get('/team-stats', async (req, res) => {
     }
 });
 
+// ─── Socket.io & HTTP Setup ──────────────────────────────────────────────────
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
+io.on('connection', (socket) => {
+    console.log('📡 New Socket Connection:', socket.id);
+    socket.on('joinMatch', (matchId) => {
+        socket.join(`match_${matchId}`);
+        console.log(`👤 Client joined room: match_${matchId}`);
+    });
+});
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+function emitUpdate(type, id, data) {
+    const room = type === 'match' ? `match_${id}` : `tournament_${id}`;
+    // Send lightweight data to TV
+    const lightData = { ...data };
+    if (lightData.data && lightData.data.history) delete lightData.data.history;
+    if (lightData.data && lightData.data.redoStack) delete lightData.data.redoStack;
+    
+    io.to(room).emit('scoreUpdate', lightData);
+    io.emit('globalUpdate', { type, id }); // For ticker/ongoing pages
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECURITY: Password Verification
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post('/api/verify-scoring-password', async (req, res) => {
+    const { id, type, password } = req.body;
+    if (!id || !type || !password) return res.status(400).json({ error: 'Missing id, type, or password' });
+    
+    try {
+        await ensureDB();
+        const Model = type === 'match' ? Match : Tournament;
+        const doc = await Model.findById(id).lean();
+        
+        if (!doc || !doc.scoring_password) {
+            return res.json({ ok: true, message: 'No password required' });
+        }
+        
+        const match = await bcrypt.compare(password, doc.scoring_password);
+        if (match) {
+            res.json({ ok: true, token: 'TEMP_SCORING_TOKEN_' + Date.now() }); // Simple mock token
+        } else {
+            res.status(401).json({ error: 'Invalid password' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  MATCHES & TOURNAMENTS (LIVE SYNC)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -336,7 +395,13 @@ app.post('/sync/match', async (req, res) => {
     if (!data || !data.id) return res.status(400).json({ error: 'Missing match id' });
     try {
         await ensureDB();
-        await Match.findByIdAndUpdate(data.id, { _id: data.id, data }, { upsert: true });
+        const update = { _id: data.id, data };
+        if (data.scoringPassword) {
+            update.scoring_password = await bcrypt.hash(data.scoringPassword, 10);
+            delete data.scoringPassword; // Don't store plain in JSON data field
+        }
+        await Match.findByIdAndUpdate(data.id, update, { upsert: true });
+        emitUpdate('match', data.id, data);
         res.json({ ok: true });
     } catch (e) {
         console.error(e);
@@ -359,7 +424,13 @@ app.post('/sync/tournament', async (req, res) => {
     if (!data || !data.id) return res.status(400).json({ error: 'Missing tournament id' });
     try {
         await ensureDB();
-        await Tournament.findByIdAndUpdate(data.id, { _id: data.id, data }, { upsert: true });
+        const update = { _id: data.id, data };
+        if (data.scoringPassword) {
+            update.scoring_password = await bcrypt.hash(data.scoringPassword, 10);
+            delete data.scoringPassword;
+        }
+        await Tournament.findByIdAndUpdate(data.id, update, { upsert: true });
+        emitUpdate('tournament', data.id, data);
         res.json({ ok: true });
     } catch (e) {
         console.error(e);
@@ -478,7 +549,7 @@ app.get('/health', async (req, res) => {
 // ─── Start ──────────────// ── Start ────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 }
 
 module.exports = app;
