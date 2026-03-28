@@ -463,15 +463,14 @@ function startOfficialMatch(mId) {
 
     showScreen('setup');
     document.getElementById('type-tournament').click();
+    currentMatch = m; // Set it early to avoid null issues in other handlers
     setTimeout(() => {
-        const m = currentMatch;
         document.getElementById('tournament-setup-section').style.display = 'none';
         document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
         document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
         document.getElementById('setup-overs').value = m.overs;
         document.getElementById('setup-bpo').value = m.ballsPerOver;
         document.getElementById('setup-pps').value = m.playersPerSide || 11;
-        currentMatch = m;
         currentMatch.isScheduledTemplate = true;
     }, 100);
 }
