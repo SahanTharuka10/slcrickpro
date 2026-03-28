@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === '1') { e.preventDefault(); showTeamOverlay(0); }
             if (e.key === '2') { e.preventDefault(); showTeamOverlay(1); }
             if (e.key === 'P' || e.key === 'p') { e.preventDefault(); showPlayerOverlay(); }
+            if (e.key === 'B' || e.key === 'b') { e.preventDefault(); showPlayerOverlay(true); } // Single/New batter
         }
         if (e.key === 'Escape') { hideOverlay(); }
     });
@@ -1283,17 +1284,18 @@ function confirmNewBatsman() {
     const idx0 = inn.currentBatsmenIdx[0];
     const idx1 = inn.currentBatsmenIdx[1];
 
+    // Replace dismissed slot or fill first empty
     if (idx0 === undefined || idx0 === null) {
         inn.currentBatsmenIdx[0] = newIdx;
     } else if (idx1 === undefined || idx1 === null) {
         inn.currentBatsmenIdx[1] = newIdx;
-        inn.strikerIdx = 0;
     } else {
-        // Replace dismissed slot — the new bat comes in at that slot
         inn.currentBatsmenIdx[currentPendingWicket] = newIdx;
-        // Incoming bat faces next ball
-        inn.strikerIdx = currentPendingWicket;
     }
+    
+    // Auto-set striker to the new batsman
+    inn.strikerIdx = (idx0 === undefined || idx0 === null) ? 0 : 
+                    (idx1 === undefined || idx1 === null) ? 1 : currentPendingWicket;
 
     // Reset partnership
     inn.currentPartnership = { runs: 0, balls: 0 };
@@ -1302,7 +1304,13 @@ function confirmNewBatsman() {
     if (inn.currentBowlerIdx === null) {
         setTimeout(() => openNewBowlerModal(), 200);
     } else { saveAndRender(); }
+    
     showToast(`🏏 ${name} is now at the crease!`, 'success');
+    
+    // Pro feature: Auto-show profile overlay for new batsman after a short delay
+    setTimeout(() => {
+        showPlayerOverlay(true, name);
+    }, 1000);
 }
 
 // ========== NEW BOWLER ==========
@@ -2144,43 +2152,52 @@ function showTeamOverlay(teamIdx) {
     renderOverlay(html);
 }
 
-function showPlayerOverlay() {
+function showPlayerOverlay(single, specificName) {
     const m = currentMatch;
     if (!m) return;
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
     
-    const batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+    let batters = [];
+    if (specificName) {
+        batters = [specificName];
+    } else if (single) {
+        // Show only striker
+        batters = [inn.strikerIdx === 0 ? inn.batsman1 : inn.batsman2].filter(Boolean);
+    } else {
+        batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+    }
     
     let html = `
         <div class="overlay-container show" id="overlay-players">
-            <div class="overlay-card players-card">
+            <div class="overlay-card players-card" style="${batters.length === 1 ? 'max-width:500px' : ''}">
                 <div class="overlay-header">
-                    <div class="overlay-title">Current Batters</div>
+                    <div class="overlay-title">${batters.length === 1 ? 'Player Profile' : 'Current Batters'}</div>
                 </div>
-                <div class="overlay-body player-stats-flex">
+                <div class="overlay-body ${batters.length === 1 ? '' : 'player-stats-flex'}">
     `;
     
     batters.forEach(bName => {
         const players = DB.getPlayers();
         const p = players.find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim());
-        const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0 };
+        const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
         
         html += `
-            <div class="player-stat-card">
+            <div class="player-stat-card" style="${batters.length === 1 ? 'margin-bottom:0' : ''}">
                 <div class="player-main-info">
                     <div class="player-large-photo">
                         ${p?.photo ? `<img src="${p.photo}" />` : `<div class="photo-placeholder-lg">${bName[0] || '?'}</div>`}
                     </div>
                     <div>
                         <div class="player-lg-name">${bName}</div>
-                        <div class="player-lg-role">${p ? capitalize(p.role || 'Batsman') : 'Batsman'}</div>
+                        <div class="player-lg-role" style="font-size:16px">${p ? capitalize(p.role || 'Player') : 'Batsman'}</div>
                     </div>
                 </div>
                 <div class="player-mini-stats">
                     <div class="m-stat"><div class="m-val">${stats.runs}</div><div class="m-lbl">Runs</div></div>
                     <div class="m-stat"><div class="m-val">${stats.balls}</div><div class="m-lbl">Balls</div></div>
-                    <div class="m-stat"><div class="m-val">${stats.balls > 0 ? ((stats.runs/stats.balls)*100).toFixed(1) : '0.0'}</div><div class="m-lbl">S/R</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.fours}</div><div class="m-lbl">4s</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.sixes}</div><div class="m-lbl">6s</div></div>
                 </div>
             </div>
         `;
