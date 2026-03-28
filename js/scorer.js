@@ -17,11 +17,14 @@ let _pendingTournPayload = null;
 const SCORING_AUTH_KEY = 'cricpro_scoring_auth';
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('tourn-format').addEventListener('change', (e) => {
-        const kg = document.getElementById('knockout-team-count-group');
-        if (kg) kg.style.display = e.target.value === 'knockout' ? 'block' : 'none';
-    });
-    populateTournamentDropdown();
+    const tf = document.getElementById('tourn-format');
+    if (tf) {
+        tf.addEventListener('change', (e) => {
+            const kg = document.getElementById('knockout-team-count-group');
+            if (kg) kg.style.display = e.target.value === 'knockout' ? 'block' : 'none';
+        });
+    }
+
     renderResumeMatches();
     
     // Check for matchId parameter for direct scoring access
@@ -135,8 +138,7 @@ function selectMatchType(type) {
     document.getElementById('tournament-setup-section').style.display = type === 'tournament' ? '' : 'none';
 
     if (type === 'tournament') {
-        const val = document.getElementById('tournament-select') ? document.getElementById('tournament-select').value : 'new';
-        onTournamentSelect(val);
+        onTournamentSelect('new');
     } else if (type === 'instant-nrr') {
         showScreen('instant-nrr');
     } else {
@@ -147,15 +149,6 @@ function selectMatchType(type) {
 function toggleOfficialSettings(val) {
     const el = document.getElementById('official-settings');
     if (el) el.style.display = val === 'official' ? '' : 'none';
-}
-
-function populateTournamentDropdown() {
-    const sel = document.getElementById('tournament-select');
-    if (!sel) return;
-    sel.innerHTML = '<option value="new">Create New Tournament</option>';
-    DB.getTournaments().forEach(t => {
-        sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-    });
 }
 
 function onTournamentSelect(val) {
@@ -413,8 +406,8 @@ function startOfficialMatch(mId) {
     showScreen('setup');
     document.getElementById('type-tournament').click();
     setTimeout(() => {
+        const m = currentMatch;
         document.getElementById('tournament-setup-section').style.display = 'none';
-        document.getElementById('tournament-select').value = m.tournamentId;
         document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
         document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
         document.getElementById('setup-overs').value = m.overs;
@@ -478,7 +471,6 @@ async function loginToMatch() {
                     setTimeout(() => {
                         const m = currentMatch;
                         document.getElementById('tournament-setup-section').style.display = 'none';
-                        document.getElementById('tournament-select').value = m.tournamentId;
                         document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
                         document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
                         document.getElementById('setup-overs').value = m.overs;
@@ -503,7 +495,7 @@ function startNewMatch() {
 
     if (!currentMatch || !currentMatch.isScheduledTemplate) {
         if (currentMatchType === 'tournament') {
-            const sel = document.getElementById('tournament-select').value;
+            const sel = 'new';
             if (sel === 'new') {
                 const tName = document.getElementById('tourn-name').value.trim();
                 const scoringPw = document.getElementById('tourn-scoring-password').value.trim();
@@ -607,11 +599,19 @@ function startNewMatch() {
     } else {
         if (!match) {
             let tournamentId = null, tournamentName = null;
+            // Since tournament-select is gone, we check if we just created a tournament
+            // or if we are in tournament mode (which now always creates a new one first).
+            // Usually, this part of startNewMatch is only reached for SINGLE matches 
+            // or if tournament creation happened and we are proceeding (though we use new tab now).
+            
             if (currentMatchType === 'tournament') {
-                const sel = document.getElementById('tournament-select').value;
-                const tourn = DB.getTournament(sel);
-                if (tourn) {
-                    tournamentId = tourn.id; tournamentName = tourn.name;
+                // If we reach here in tournament mode, it's likely an error unless we handle it.
+                // But for safety, we'll try to find the latest tournament.
+                const allTourns = DB.getTournaments();
+                if (allTourns.length) {
+                    const lastT = allTourns[allTourns.length - 1];
+                    tournamentId = lastT.id;
+                    tournamentName = lastT.name;
                 }
             }
 
