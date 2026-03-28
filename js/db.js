@@ -217,6 +217,7 @@ const DB = {
             tournamentId: config.tournamentId || null,
             tournamentName: config.tournamentName || null,
             scoringPassword: config.scoringPassword || null,
+            scorerName: config.scorerName || '',
             venue: config.venue || '',
             overs: parseInt(config.overs) || 20,
             ballsPerOver: parseInt(config.ballsPerOver) || 6,

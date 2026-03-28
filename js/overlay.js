@@ -61,34 +61,38 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML += `<button onclick="showOverlayPopup('matchstats'); toggleShortcutMenu();" class="btn-tv" id="btn-match-stats-menu">📊 Match Stats</button>`;
     }
 
-    // Socket.io integration
-    const socket = io();
-    if (matchId) {
-        socket.emit('joinMatch', matchId);
-    }
-    if (tournId) {
-        socket.emit('joinTournament', tournId);
-    }
-    socket.on('scoreUpdate', (updatedData) => {
-        console.log("⚡ Real-time Update Received:", updatedData);
-        if (updatedData && updatedData.score) {
-            if ((matchId && updatedData.id === matchId) || (tournId && updatedData.tournamentId === tournId)) {
-                latestSocketScore = updatedData;
+    // Socket.io integration (Graceful Deprecation)
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        if (matchId) {
+            socket.emit('joinMatch', matchId);
+        }
+        if (tournId) {
+            socket.emit('joinTournament', tournId);
+        }
+        socket.on('scoreUpdate', (updatedData) => {
+            console.log("⚡ Real-time Update Received:", updatedData);
+            if (updatedData && updatedData.score) {
+                if ((matchId && updatedData.id === matchId) || (tournId && updatedData.tournamentId === tournId)) {
+                    latestSocketScore = updatedData;
+                }
+                renderOverlay();
+                return;
+            }
+            // Sync local DB with received data
+            if (updatedData && updatedData.id) {
+                const matches = DB.getMatches();
+                const idx = matches.findIndex(m => m.id === updatedData.id);
+                if (idx !== -1) {
+                    matches[idx] = updatedData;
+                    DB.saveMatches(matches);
+                }
             }
             renderOverlay();
-            return;
-        }
-        // Sync local DB with received data
-        if (updatedData && updatedData.id) {
-            const matches = DB.getMatches();
-            const idx = matches.findIndex(m => m.id === updatedData.id);
-            if (idx !== -1) {
-                matches[idx] = updatedData;
-                DB.saveMatches(matches);
-            }
-        }
-        renderOverlay();
-    });
+        });
+    } else {
+        console.warn('Socket.io not found. Using local polling mode.');
+    }
 
     renderOverlay();
     // Intervals reduced as socket handles live updates
@@ -138,6 +142,12 @@ function handleBroadcastCommand(cmd, data) {
             break;
         case 'SHOW_CRR': 
             showCRRGraphic(data); 
+            break;
+        case 'SHOW_TEAM_ROSTER':
+            showTeamRosterGraphic(data);
+            break;
+        case 'SHOW_BATTER_PROFILES':
+            showBatterProfilesGraphic(data);
             break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
@@ -572,7 +582,7 @@ function renderOverlayFromLightPayload(payload) {
         </div>
         <div class="score-center-section">
             <div class="score-top"><span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span><span class="total">${score}</span><span class="phase">LIVE</span><span class="overs">${ov}</span></div>
-            <div class="score-bottom">LIVE UPDATE</div>
+            <div class="score-bottom">${payload.scorerName ? 'SCORER: ' + payload.scorerName.toUpperCase() + ' | SLCRICKPRO LIVE' : 'LIVE UPDATE'}</div>
         </div>
         <div class="bowler-section">
             <div class="player-row"><div class="player-name">${bowler.name}</div><div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div><div class="player-value balls">${b_overs}</div></div>
@@ -822,4 +832,104 @@ function formatCRR(runs, balls) {
 function getShortName(fullName) {
     if (!fullName) return "TBD";
     return fullName.substring(0, 3).toUpperCase();
+}
+
+function showTeamRosterGraphic(data) {
+    const { teamName, players } = data;
+    let html = `
+        <div class="overlay-container show" id="overlay-team">
+            <div class="overlay-card team-card">
+                <div class="overlay-header">
+                    <div class="overlay-title">${teamName}</div>
+                    <div class="overlay-subtitle">TEAM ROSTER</div>
+                </div>
+                <div class="overlay-body roster-grid">
+    `;
+    
+    if (players && players.length > 0) {
+        players.forEach((p, index) => {
+            html += `
+                <div class="roster-item" style="animation: fadeInUp 0.4s ease forwards; animation-delay: ${index * 0.05}s">
+                    <div class="roster-photo">
+                        ${p.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
+                    </div>
+                    <div class="roster-info">
+                        <div class="roster-name">${p.name}</div>
+                        <div class="roster-role">${(p.role || 'Player').toUpperCase()}</div>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        html += '<div style="grid-column: span 2; padding: 20px; text-align: center; color: rgba(255,255,255,0.5);">No registered players in roster</div>';
+    }
+    
+    html += '</div></div></div>';
+    renderBroadcastOverlay(html);
+}
+
+function showBatterProfilesGraphic(data) {
+    const { profiles } = data;
+    if (!profiles || profiles.length === 0) return;
+    
+    let html = `
+        <div class="overlay-container show" id="overlay-players">
+            <div class="overlay-card players-card" style="${profiles.length === 1 ? 'max-width:500px' : ''}">
+                <div class="overlay-header">
+                    <div class="overlay-title">${profiles.length === 1 ? 'PLAYER PROFILE' : 'CURRENT BATTERS'}</div>
+                </div>
+                <div class="overlay-body ${profiles.length === 1 ? '' : 'player-stats-flex'}">
+    `;
+    
+    profiles.forEach(item => {
+        const { name, profile: p, stats } = item;
+        html += `
+            <div class="player-stat-card" style="${profiles.length === 1 ? 'margin-bottom:0' : ''}; animation: slideInLeft 0.5s ease forwards">
+                <div class="player-main-info">
+                    <div class="player-large-photo">
+                        ${p?.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder-lg">${name[0] || '?'}</div>`}
+                    </div>
+                    <div>
+                        <div class="player-lg-name">${name}</div>
+                        <div class="player-lg-role" style="font-size:16px; color:var(--c-primary)">${p ? (p.role || 'Player').toUpperCase() : 'BATSMAN'}</div>
+                    </div>
+                </div>
+                <div class="player-mini-stats">
+                    <div class="m-stat"><div class="m-val">${stats.runs || 0}</div><div class="m-lbl">Runs</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.balls || 0}</div><div class="m-lbl">Balls</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.fours || 0}</div><div class="m-lbl">4s</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.sixes || 0}</div><div class="m-lbl">6s</div></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div></div></div>';
+    renderBroadcastOverlay(html);
+}
+
+let activeBroadcastOverlayId = null;
+function renderBroadcastOverlay(html) {
+    hideAllBroadcastOverlays();
+    hideBroadcastOverlay();
+    const div = document.createElement('div');
+    div.id = 'active-broadcast-wrapper';
+    div.innerHTML = html;
+    div.style.position = 'fixed';
+    div.style.top = '0';
+    div.style.left = '0';
+    div.style.width = '100%';
+    div.style.height = '100%';
+    div.style.pointerEvents = 'none';
+    div.style.zIndex = '13000'; // Make sure it sits on top!
+    document.body.appendChild(div);
+    
+    // Auto hide after 8 seconds
+    activeBroadcastOverlayId = setTimeout(() => hideBroadcastOverlay(), 8000);
+}
+
+function hideBroadcastOverlay() {
+    if (activeBroadcastOverlayId) clearTimeout(activeBroadcastOverlayId);
+    const el = document.getElementById('active-broadcast-wrapper');
+    if (el) el.remove();
 }

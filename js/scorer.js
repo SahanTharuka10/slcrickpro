@@ -635,6 +635,7 @@ function startNewMatch() {
     const dec = document.getElementById('setup-decision').value;
     const battingFirst = dec === 'bat' ? tossWinner : (tossWinner === t1 ? t2 : t1);
     const fieldingFirst = battingFirst === t1 ? t2 : t1;
+    const scorerName = document.getElementById('setup-scorer') ? document.getElementById('setup-scorer').value.trim() : '';
 
     let match = null;
 
@@ -647,6 +648,7 @@ function startNewMatch() {
         match.ballsPerOver = bpo;
         match.playersPerSide = pps;
         match.venue = venue;
+        match.scorerName = scorerName;
         match.tossWinner = tossWinner;
         match.tossDecision = dec;
         match.battingFirst = battingFirst;
@@ -687,6 +689,7 @@ function startNewMatch() {
                 tournamentId, 
                 tournamentName, 
                 scoringPassword, 
+                scorerName,
                 team1: t1, 
                 team2: t2, 
                 overs, 
@@ -2254,4 +2257,82 @@ function escapeHTML(str) {
   return str.replace(/[&<>"']/g, m => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   })[m]);
+}
+
+// ========== HOTKEYS & BROADCASTS ==========
+document.addEventListener('keydown', (e) => {
+    // Only process if we aren't typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.shiftKey) {
+        if (e.key === '1') {
+            e.preventDefault();
+            showTeamOverlay(0);
+            broadcastTeamRoster(0);
+        } else if (e.key === '2') {
+            e.preventDefault();
+            showTeamOverlay(1);
+            broadcastTeamRoster(1);
+        } else if (e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            showPlayerOverlay(false); // Current Batters
+            broadcastCurrentBatters();
+        } else if (e.key.toLowerCase() === 'b') {
+            e.preventDefault();
+            showPlayerOverlay(true); // Striker only
+            broadcastStrikerProfile();
+        }
+    }
+});
+
+function sendBroadcast(cmd, data) {
+    if (!currentMatch) return;
+    const payload = {
+        cmd,
+        data,
+        matchId: currentMatch.id,
+        tournamentId: currentMatch.tournamentId,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('cricpro_broadcast_cmd', JSON.stringify(payload));
+}
+
+function broadcastTeamRoster(teamIdx) {
+    const m = currentMatch;
+    if (!m) return;
+    const teamName = teamIdx === 0 ? m.team1 : m.team2;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
+    
+    const players = rosterIds.map(pid => DB.getPlayerById(pid)).filter(Boolean);
+    sendBroadcast('SHOW_TEAM_ROSTER', { teamName, players });
+}
+
+function broadcastCurrentBatters() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+    const batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+    
+    const profiles = batters.map(bName => {
+        const p = DB.getPlayers().find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim());
+        const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
+        return { name: bName, profile: p, stats };
+    });
+    sendBroadcast('SHOW_BATTER_PROFILES', { profiles });
+}
+
+function broadcastStrikerProfile() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+    const strikerName = inn.strikerIdx === 0 ? inn.batsman1 : inn.batsman2;
+    if (!strikerName) return;
+    
+    const p = DB.getPlayers().find(x => x.name.toLowerCase().trim() === strikerName.toLowerCase().trim());
+    const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
+    
+    sendBroadcast('SHOW_BATTER_PROFILES', { profiles: [{ name: strikerName, profile: p, stats }] });
 }
