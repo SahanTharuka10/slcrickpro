@@ -187,57 +187,72 @@ function toggleMatchConfig(show) {
 
 function renderResumeMatches() {
     const container = document.getElementById('resume-matches-list');
+    if (!container) return;
 
-    // Get live/paused matches that are NOT part of an official tournament
+    // 1. Get ALL matches (live, paused, AND scheduled)
     const matches = DB.getMatches().filter(m => {
-        if (!['live', 'paused'].includes(m.status)) return false;
-        if (m.type === 'tournament') {
-            const t = DB.getTournament(m.tournamentId);
-            if (t) return false; // Hide ALL individual tournament matches, use the Hub instead
-        }
-        return true;
+        // Only show matches that are NOT part of an official tournament OR are specifically scheduled
+        // If it's a tournament match, we usually show it via the Tournament Hub, 
+        // but user wants them "under" or accessible.
+        // For now, let's show all Live/Paused matches and any Scheduled matches not in a tournament.
+        if (['live', 'paused'].includes(m.status)) return true;
+        if (m.status === 'scheduled' && !m.tournamentId) return true;
+        return false;
     });
 
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active'].includes(t.status));
 
     if (!matches.length && !tourns.length) {
-        container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:8px 0">No matches or tournaments to resume.</div>`;
+        container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:20px;text-align:center;background:rgba(255,255,255,0.02);border-radius:12px">No active matches or tournaments.</div>`;
         return;
     }
 
     let html = '';
 
+    // Tournaments first
     tourns.forEach(t => {
+        const locked = (t.scoringPassword || t.password) ? '🔒 ' : '';
+        const matchCount = t.matches ? t.matches.length : 0;
+        
         let actionBtn = '';
         if (t.status === 'requested') {
             actionBtn = `<button class="btn btn-ghost btn-sm" disabled>Pending Approval</button>`;
-        } else if (t.status === 'approved' || t.status === 'active') {
+        } else {
             actionBtn = `<button class="btn btn-green btn-sm" onclick="openTournamentHub('${t.id}')">Open Tournament</button>`;
         }
 
-        const locked = (t.scoringPassword || t.password) ? '🔒 ' : '';
-        html += `<div class="resume-card">
-      <div class="resume-card-info">
-        <h4>${locked}Tournament: ${t.name}</h4>
-        <p>${t.isOfficial ? 'Official' : 'Unofficial'} Tournament · ${t.matches.length} matches</p>
-      </div>
-      ${actionBtn}
-    </div>`;
+        html += `
+            <div class="resume-card" style="border-left: 4px solid var(--c-primary)">
+                <div class="resume-card-info">
+                    <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.6; margin-bottom:4px">Tournament</div>
+                    <h4>${locked}${t.name}</h4>
+                    <p>${t.isOfficial ? 'Official' : 'Unofficial'} · ${matchCount} matches scheduled</p>
+                </div>
+                ${actionBtn}
+            </div>
+        `;
     });
 
+    // Individual Matches
     matches.forEach(m => {
         const inn = m.innings ? m.innings[m.currentInnings] : null;
-        const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : m.status.toUpperCase();
+        const score = m.status === 'scheduled' ? 'Scheduled' : (inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : m.status.toUpperCase());
         const locked = (m.scoringPassword || m.password) ? '🔒 ' : '';
         const tName = m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match';
+        const isLive = ['live', 'paused'].includes(m.status);
 
-        html += `<div class="resume-card">
-      <div class="resume-card-info">
-        <h4>${locked}${m.team1} vs ${m.team2}</h4>
-        <p>${score} · ${tName} · ${m.overs} overs</p>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="resumeMatch('${m.id}')">▶ Resume</button>
-    </div>`;
+        html += `
+            <div class="resume-card" style="border-left: 4px solid ${isLive ? 'var(--c-green)' : 'var(--c-amber)'}">
+                <div class="resume-card-info">
+                    <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.6; margin-bottom:4px">${m.status.toUpperCase()}</div>
+                    <h4>${locked}${m.team1} vs ${m.team2}</h4>
+                    <p>${score} · ${tName} · ${m.overs} overs</p>
+                </div>
+                <button class="btn ${isLive ? 'btn-primary' : 'btn-amber'} btn-sm" onclick="resumeMatch('${m.id}')">
+                    ${isLive ? '▶ Resume' : '🏁 Start'}
+                </button>
+            </div>
+        `;
     });
 
     container.innerHTML = html;
@@ -415,7 +430,7 @@ function renderTournamentMatches() {
             DB.saveMatch(newM);
             t.matches.push(newM.id);
             DB.saveTournament(t);
-            openTournamentMatchesModal(t.id); // Refresh
+            renderTournamentMatches(); // Refresh the list
         };
     }
 
@@ -479,6 +494,7 @@ async function loginToMatch() {
     const pw = document.getElementById('login-password').value.trim();
     if (!pw) { showToast('Password required!', 'error'); return; }
 
+    const baseUrl = window.BACKEND_BASE_URL || 'http://localhost:3000';
     const tournamentId = currentTournament?.id || currentMatch?.tournamentId || null;
 
     try {
@@ -490,7 +506,7 @@ async function loginToMatch() {
                     return;
                 }
             }
-            const fallbackRes = await fetch((BACKEND_BASE_URL || '') + '/api/verify-scoring-password', {
+            const fallbackRes = await fetch(baseUrl + '/api/verify-scoring-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentMatch?.id, type: 'match', password: pw })
@@ -507,7 +523,7 @@ async function loginToMatch() {
             showToast('Invalid password!', 'error');
             return;
         }
-        const res = await fetch((BACKEND_BASE_URL || '') + `/api/tournaments/${tournamentId}/verify-password`, {
+        const res = await fetch(baseUrl + `/api/tournaments/${tournamentId}/verify-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: pw })
@@ -519,26 +535,26 @@ async function loginToMatch() {
                 setTournamentAuthorized(tournamentId, data.token, data.expiresInMs);
             }
             if (currentTournament && !currentMatch) {
-                openTournamentMatchesModal(currentTournament.id);
+                openTournamentHub(currentTournament.id);
                 currentTournament = null;
                 showScreen('setup');
                 return;
             }
             if (currentMatch) {
-                if (currentMatch.isScheduledTemplate) {
+                const matchData = currentMatch;
+                if (matchData.isScheduledTemplate) {
                     showScreen('setup');
                     document.getElementById('type-tournament').click();
                     setTimeout(() => {
-                        const m = currentMatch;
                         document.getElementById('tournament-setup-section').style.display = 'none';
-                        document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
-                        document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
-                        document.getElementById('setup-overs').value = m.overs;
-                        document.getElementById('setup-bpo').value = m.ballsPerOver;
-                        document.getElementById('setup-pps').value = m.playersPerSide || 11;
+                        document.getElementById('team1-name').value = (matchData.team1 !== 'TBD' ? matchData.team1 : '');
+                        document.getElementById('team2-name').value = (matchData.team2 !== 'TBD' ? matchData.team2 : '');
+                        document.getElementById('setup-overs').value = matchData.overs;
+                        document.getElementById('setup-bpo').value = matchData.ballsPerOver;
+                        document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
                     }, 100);
                 } else {
-                    loadMatch(currentMatch);
+                    loadMatch(matchData);
                 }
             }
         } else {
@@ -605,7 +621,7 @@ function startNewMatch() {
                     setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
                     showToast(`Tournament "${tName}" created!`, 'success');
                     renderResumeMatches();
-                    window.open(`score-match.html?tournamentId=${tourn.id}`, '_blank');
+                    // window.open removed as per user request
                     return;
                 }
             } else {
@@ -2030,37 +2046,58 @@ function renderTournamentTeams() {
 
 let editingTeamName = null;
 function openRosterEditor(teamName) {
-    editingTeamName = teamName;
     const t = currentTournament;
-    const roster = t.rosters[teamName] || [];
+    if (!t) return;
+    
+    editingTeamName = teamName || (t.teams && t.teams.length ? t.teams[0] : null);
+    if (!editingTeamName) return;
+
+    if (!t.rosters) t.rosters = {};
+    const roster = t.rosters[editingTeamName] || [];
     
     const panel = document.getElementById('tm-panel-teams');
+    
+    // Team Selector HTML
+    const teamOptions = t.teams.map(name => 
+        `<option value="${escapeHTML(name)}" ${name === editingTeamName ? 'selected' : ''}>${name}</option>`
+    ).join('');
+
     panel.innerHTML = `
-        <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
-            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()">⬅ Back to Teams</button>
-            <div style="font-weight:700;font-size:18px">${teamName} Roster</div>
+        <div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
+            <label class="form-label" style="font-size:12px; opacity:0.6; margin-bottom:8px">Select Team to Manage Squad</label>
+            <select class="form-input" onchange="openRosterEditor(this.value)" style="background:#1a1a2e; border:1px solid var(--c-primary)">
+                ${teamOptions}
+            </select>
         </div>
         
         <div class="form-group" style="position:relative">
-            <label class="form-label">Add Player (Search Name/ID)</label>
-            <input type="text" class="form-input" id="roster-search" placeholder="Type player name..." oninput="handleRosterSearch(this.value)" autocomplete="off" />
-            <div id="roster-suggestions" style="position:absolute;top:100%;left:0;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);z-index:1000;border-radius:12px;max-height:200px;overflow-y:auto;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.8)"></div>
+            <label class="form-label">Search Player for ${editingTeamName}</label>
+            <div style="display:flex; gap:8px">
+                <input type="text" class="form-input" id="roster-search" placeholder="Type player name or ID..." oninput="handleRosterSearch(this.value)" autocomplete="off" />
+            </div>
+            <div id="roster-suggestions" style="position:absolute;top:100%;left:0;right:0;background:#1a1a2e;border:1px solid var(--c-primary);z-index:1000;border-radius:12px;max-height:250px;overflow-y:auto;display:none;box-shadow:0 15px 40px rgba(0,0,0,0.9)"></div>
         </div>
 
-        <div id="roster-list" style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
-            ${roster.length === 0 ? '<div style="text-align:center;padding:20px;opacity:0.5">No players in roster</div>' : roster.map(pid => {
-                const p = DB.getPlayerById(pid);
-                return p ? `
-                    <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.05)">
-                        ${p.photo ? `<img src="${p.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">${p.name[0]}</div>`}
-                        <div style="flex:1">
-                            <div style="font-weight:600;font-size:14px">${p.name}</div>
-                            <div style="font-size:11px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
+        <div style="margin-top:20px">
+            <div style="font-weight:700; font-size:14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center">
+                <span>Current Squad (${roster.length} Players)</span>
+                <span style="font-size:11px; font-weight:normal; opacity:0.6">Repeat to add more</span>
+            </div>
+            <div id="roster-list" style="display:flex; flex-direction:column; gap:8px">
+                ${roster.length === 0 ? '<div style="text-align:center;padding:30px;opacity:0.4;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1)">No players in this squad yet. Search above to add.</div>' : roster.map(pid => {
+                    const p = DB.getPlayerById(pid);
+                    return p ? `
+                        <div class="roster-edit-item" style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid rgba(255,255,255,0.05)">
+                            ${p.photo ? `<img src="${p.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${p.name[0]}</div>`}
+                            <div style="flex:1">
+                                <div style="font-weight:600;font-size:13px">${p.name}</div>
+                                <div style="font-size:10px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
+                            </div>
+                            <button class="btn btn-sm btn-ghost" style="color:var(--c-red);padding:4px 8px; font-size:16px" onclick="removeFromRoster('${p.playerId}')" title="Remove">✖</button>
                         </div>
-                        <button class="btn btn-sm btn-ghost" style="color:var(--c-red);padding:6px" onclick="removeFromRoster('${p.playerId}')">✖</button>
-                    </div>
-                ` : '';
-            }).join('')}
+                    ` : '';
+                }).join('')}
+            </div>
         </div>
     `;
 }
@@ -2079,12 +2116,16 @@ function handleRosterSearch(val) {
     }
     
     sug.innerHTML = filtered.map(p => `
-        <div style="padding:10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:12px" onclick="addToRoster('${p.playerId}')">
-            ${p.photo ? `<img src="${p.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover" />` : `<div style="width:28px;height:28px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:11px">${p.name[0]}</div>`}
-            <div>
-                <div style="font-size:13px;font-weight:600">${p.name}</div>
-                <div style="font-size:11px;opacity:0.5">${p.playerId}</div>
+        <div style="padding:12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:12px; transition:background 0.2s" 
+             onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+             onmouseout="this.style.background='transparent'"
+             onclick="addToRoster('${p.playerId}')">
+            ${p.photo ? `<img src="${p.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:32px;height:32px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${p.name[0]}</div>`}
+            <div style="flex:1">
+                <div style="font-size:14px;font-weight:600">${p.name}</div>
+                <div style="font-size:11px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
             </div>
+            <button class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11px">Add to Squad</button>
         </div>
     `).join('');
     sug.style.display = 'block';
@@ -2127,13 +2168,14 @@ function showTeamOverlay(teamIdx) {
     `;
     
     if (rosterIds.length > 0) {
-        rosterIds.forEach(pid => {
+        rosterIds.forEach((pid, index) => {
             const p = DB.getPlayerById(pid);
             if (p) {
+                const photoSrc = p.photo || '../assets/default-player.png';
                 html += `
-                    <div class="roster-item">
+                    <div class="roster-item" style="animation: fadeInUp 0.4s ease forwards; animation-delay: ${index * 0.05}s">
                         <div class="roster-photo">
-                            ${p.photo ? `<img src="${p.photo}" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
+                            ${p.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
                         </div>
                         <div class="roster-info">
                             <div class="roster-name">${p.name}</div>
@@ -2182,14 +2224,14 @@ function showPlayerOverlay(single, specificName) {
         const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
         
         html += `
-            <div class="player-stat-card" style="${batters.length === 1 ? 'margin-bottom:0' : ''}">
+            <div class="player-stat-card" style="${batters.length === 1 ? 'margin-bottom:0' : ''}; animation: slideInLeft 0.5s ease forwards">
                 <div class="player-main-info">
                     <div class="player-large-photo">
-                        ${p?.photo ? `<img src="${p.photo}" />` : `<div class="photo-placeholder-lg">${bName[0] || '?'}</div>`}
+                        ${p?.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder-lg">${bName[0] || '?'}</div>`}
                     </div>
                     <div>
                         <div class="player-lg-name">${bName}</div>
-                        <div class="player-lg-role" style="font-size:16px">${p ? capitalize(p.role || 'Player') : 'Batsman'}</div>
+                        <div class="player-lg-role" style="font-size:16px; color:var(--c-primary)">${p ? capitalize(p.role || 'Player') : 'Batsman'}</div>
                     </div>
                 </div>
                 <div class="player-mini-stats">

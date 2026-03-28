@@ -497,11 +497,11 @@ const DB = {
 //  BACKEND SYNC → MongoDB Atlas (via Express server)
 // ============================================================
 
-// Default: local server for dev, current domain /api for production (Vercel)
-const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || 
+// Default: local server for dev, current domain for production (Vercel)
+var BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
         ? 'http://localhost:3000' 
-        : window.location.origin + '/api');
+        : window.location.origin);
 
 /**
  * Sync a player or team to MongoDB.
