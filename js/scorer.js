@@ -15,6 +15,9 @@ let _innings_ending = false; // guard to prevent double-modal
 let currentTournament = null;
 let _pendingTournPayload = null;
 const SCORING_AUTH_KEY = 'cricpro_scoring_auth';
+let currentOverlayTeam = null;
+let currentOverlayPlayer = null;
+let activeOverlayId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const tf = document.getElementById('tourn-format');
@@ -55,6 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         showScreen('setup');
     }
+
+    // Global Hotkeys
+    window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        if (e.shiftKey) {
+            if (e.key === '1') { e.preventDefault(); showTeamOverlay(0); }
+            if (e.key === '2') { e.preventDefault(); showTeamOverlay(1); }
+            if (e.key === 'P' || e.key === 'p') { e.preventDefault(); showPlayerOverlay(); }
+        }
+        if (e.key === 'Escape') { hideOverlay(); }
+    });
 });
 
 function getScoringAuthMap() {
@@ -262,6 +277,30 @@ function resumeMatch(id) {
     } else { loadMatch(m); }
 }
 
+let currentTournamentTab = 'matches';
+
+function switchTournamentTab(tab) {
+    currentTournamentTab = tab;
+    const tMatches = document.getElementById('tm-tab-matches');
+    const tTeams = document.getElementById('tm-tab-teams');
+    const pMatches = document.getElementById('tm-panel-matches');
+    const pTeams = document.getElementById('tm-panel-teams');
+
+    if (tab === 'matches') {
+        tMatches.classList.add('active');
+        tTeams.classList.remove('active');
+        pMatches.style.display = 'block';
+        pTeams.style.display = 'none';
+        renderTournamentMatches();
+    } else {
+        tMatches.classList.remove('active');
+        tTeams.classList.add('active');
+        pMatches.style.display = 'none';
+        pTeams.style.display = 'block';
+        renderTournamentTeams();
+    }
+}
+
 function openTournamentHub(id) {
     const t = typeof id === 'object' ? id : DB.getTournament(id);
     if (!t) {
@@ -269,15 +308,27 @@ function openTournamentHub(id) {
         return;
     }
 
-    currentTournament = t;
-    currentMatch = null; 
+    // Auth check
     if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
+        currentTournament = t;
         document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
         document.getElementById('login-password').value = '';
         showScreen('login');
-    } else {
-        openTournamentMatchesModal(t.id);
+        return;
     }
+
+    currentTournament = t;
+    if (!t.rosters) t.rosters = {};
+    
+    document.getElementById('tm-title').textContent = t.name;
+    document.getElementById('btn-add-tourn-match').onclick = () => {
+        _setup_tourn_match_defaults(t);
+        showScreen('setup');
+        setTab('single');
+    };
+
+    switchTournamentTab('matches');
+    openModal('modal-tournament-matches');
 }
 
 function promptTournamentLogin() {
@@ -285,17 +336,15 @@ function promptTournamentLogin() {
     if (tId) openTournamentHub(tId.trim());
 }
 
-function openTournamentMatchesModal(tId) {
-    const t = DB.getTournament(tId);
+function renderTournamentMatches() {
+    const t = currentTournament;
     if (!t) return;
     
-    // Security check: if tournament is password protected, ensure it's authenticated
+    // Security check
     if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
         openTournamentHub(t.id);
         return;
     }
-    
-    document.getElementById('tm-title').textContent = t.name + ' - Matches';
 
     let html = '';
     t.matches.forEach((mId, index) => {
@@ -1943,13 +1992,224 @@ function syncOfficialStats(m, t) {
         if (typeof pushAllStatsAfterTournament === 'function') {
             pushAllStatsAfterTournament(t.id);
         }
-    } else if (t.isOfficial) {
-        // Push only this match's players right now
-        allPids.forEach(pid => {
+    }
+}
+
+// ========== ROSTER & OVERLAYS ==========
+function renderTournamentTeams() {
+    const t = currentTournament;
+    const container = document.getElementById('tm-teams-list');
+    if (!t || !t.teams || !t.teams.length) {
+        container.innerHTML = '<div style="text-align:center;color:white;padding:20px;opacity:0.6">No teams found</div>';
+        return;
+    }
+
+    container.innerHTML = t.teams.map(teamName => {
+        const roster = t.rosters[teamName] || [];
+        return `
+            <div class="card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:12px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:40px;height:40px;background:var(--c-primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">${teamName[0].toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:16px">${teamName}</div>
+                        <div style="font-size:12px;opacity:0.6">${roster.length} Players Registered</div>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-ghost" onclick="openRosterEditor('${escapeHTML(teamName)}')">📋 Edit Roster</button>
+            </div>
+        `;
+    }).join('');
+}
+
+let editingTeamName = null;
+function openRosterEditor(teamName) {
+    editingTeamName = teamName;
+    const t = currentTournament;
+    const roster = t.rosters[teamName] || [];
+    
+    const panel = document.getElementById('tm-panel-teams');
+    panel.innerHTML = `
+        <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()">⬅ Back to Teams</button>
+            <div style="font-weight:700;font-size:18px">${teamName} Roster</div>
+        </div>
+        
+        <div class="form-group" style="position:relative">
+            <label class="form-label">Add Player (Search Name/ID)</label>
+            <input type="text" class="form-input" id="roster-search" placeholder="Type player name..." oninput="handleRosterSearch(this.value)" autocomplete="off" />
+            <div id="roster-suggestions" style="position:absolute;top:100%;left:0;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);z-index:1000;border-radius:12px;max-height:200px;overflow-y:auto;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.8)"></div>
+        </div>
+
+        <div id="roster-list" style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+            ${roster.length === 0 ? '<div style="text-align:center;padding:20px;opacity:0.5">No players in roster</div>' : roster.map(pid => {
+                const p = DB.getPlayerById(pid);
+                return p ? `
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.05)">
+                        ${p.photo ? `<img src="${p.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">${p.name[0]}</div>`}
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:14px">${p.name}</div>
+                            <div style="font-size:11px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
+                        </div>
+                        <button class="btn btn-sm btn-ghost" style="color:var(--c-red);padding:6px" onclick="removeFromRoster('${p.playerId}')">✖</button>
+                    </div>
+                ` : '';
+            }).join('')}
+        </div>
+    `;
+}
+
+function handleRosterSearch(val) {
+    const sug = document.getElementById('roster-suggestions');
+    if (!val || val.length < 1) { sug.style.display = 'none'; return; }
+    
+    const players = DB.getPlayers();
+    const filtered = players.filter(p => p.name.toLowerCase().includes(val.toLowerCase()) || p.playerId.toLowerCase().includes(val.toLowerCase())).slice(0, 5);
+    
+    if (filtered.length === 0) { 
+        sug.innerHTML = '<div style="padding:12px;color:rgba(255,255,255,0.4);font-size:12px;text-align:center">No players found</div>'; 
+        sug.style.display = 'block'; 
+        return; 
+    }
+    
+    sug.innerHTML = filtered.map(p => `
+        <div style="padding:10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:12px" onclick="addToRoster('${p.playerId}')">
+            ${p.photo ? `<img src="${p.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover" />` : `<div style="width:28px;height:28px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:11px">${p.name[0]}</div>`}
+            <div>
+                <div style="font-size:13px;font-weight:600">${p.name}</div>
+                <div style="font-size:11px;opacity:0.5">${p.playerId}</div>
+            </div>
+        </div>
+    `).join('');
+    sug.style.display = 'block';
+}
+
+function addToRoster(pid) {
+    const t = currentTournament;
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    if (!t.rosters[editingTeamName].includes(pid)) {
+        t.rosters[editingTeamName].push(pid);
+        DB.saveTournament(t);
+    }
+    document.getElementById('roster-suggestions').style.display = 'none';
+    document.getElementById('roster-search').value = '';
+    openRosterEditor(editingTeamName);
+}
+
+function removeFromRoster(pid) {
+    const t = currentTournament;
+    t.rosters[editingTeamName] = (t.rosters[editingTeamName] || []).filter(id => id !== pid);
+    DB.saveTournament(t);
+    openRosterEditor(editingTeamName);
+}
+
+function showTeamOverlay(teamIdx) {
+    const m = currentMatch;
+    if (!m) return;
+    const teamName = teamIdx === 0 ? m.team1 : m.team2;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
+    
+    let html = `
+        <div class="overlay-container show" id="overlay-team">
+            <div class="overlay-card team-card">
+                <div class="overlay-header">
+                    <div class="overlay-title">${teamName}</div>
+                    <div class="overlay-subtitle">TEAM ROSTER</div>
+                </div>
+                <div class="overlay-body roster-grid">
+    `;
+    
+    if (rosterIds.length > 0) {
+        rosterIds.forEach(pid => {
             const p = DB.getPlayerById(pid);
-            if (p && typeof pushPlayerStats === 'function') {
-                pushPlayerStats(pid, p.stats);
+            if (p) {
+                html += `
+                    <div class="roster-item">
+                        <div class="roster-photo">
+                            ${p.photo ? `<img src="${p.photo}" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
+                        </div>
+                        <div class="roster-info">
+                            <div class="roster-name">${p.name}</div>
+                            <div class="roster-role">${capitalize(p.role || 'Player')}</div>
+                        </div>
+                    </div>
+                `;
             }
         });
+    } else {
+        html += '<div style="grid-column: span 2; padding: 20px; text-align: center; color: rgba(255,255,255,0.5);">No registered players in roster</div>';
     }
+    
+    html += '</div></div></div>';
+    renderOverlay(html);
+}
+
+function showPlayerOverlay() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+    
+    const batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+    
+    let html = `
+        <div class="overlay-container show" id="overlay-players">
+            <div class="overlay-card players-card">
+                <div class="overlay-header">
+                    <div class="overlay-title">Current Batters</div>
+                </div>
+                <div class="overlay-body player-stats-flex">
+    `;
+    
+    batters.forEach(bName => {
+        const players = DB.getPlayers();
+        const p = players.find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim());
+        const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0 };
+        
+        html += `
+            <div class="player-stat-card">
+                <div class="player-main-info">
+                    <div class="player-large-photo">
+                        ${p?.photo ? `<img src="${p.photo}" />` : `<div class="photo-placeholder-lg">${bName[0] || '?'}</div>`}
+                    </div>
+                    <div>
+                        <div class="player-lg-name">${bName}</div>
+                        <div class="player-lg-role">${p ? capitalize(p.role || 'Batsman') : 'Batsman'}</div>
+                    </div>
+                </div>
+                <div class="player-mini-stats">
+                    <div class="m-stat"><div class="m-val">${stats.runs}</div><div class="m-lbl">Runs</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.balls}</div><div class="m-lbl">Balls</div></div>
+                    <div class="m-stat"><div class="m-val">${stats.balls > 0 ? ((stats.runs/stats.balls)*100).toFixed(1) : '0.0'}</div><div class="m-lbl">S/R</div></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div></div></div>';
+    renderOverlay(html);
+}
+
+function renderOverlay(html) {
+    hideOverlay();
+    const div = document.createElement('div');
+    div.id = 'active-overlay-wrapper';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+    
+    // Auto hide after 8 seconds
+    activeOverlayId = setTimeout(() => hideOverlay(), 8000);
+}
+
+function hideOverlay() {
+    if (activeOverlayId) clearTimeout(activeOverlayId);
+    const el = document.getElementById('active-overlay-wrapper');
+    if (el) el.remove();
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  })[m]);
 }

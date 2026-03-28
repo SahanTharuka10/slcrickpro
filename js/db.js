@@ -334,6 +334,7 @@ const DB = {
             totalTeams: cfg.totalTeams || cfg.teams.length,
             prizes: cfg.prizes || { first: '', second: '', third: '' },
             scoringPassword: cfg.scoringPassword || null,
+            rosters: {}, // { teamName: [playerIds] }
         };
 
         if (t.format === 'knockout') {

@@ -53,6 +53,7 @@ const playerSchema = new mongoose.Schema({
     batStyle:   { type: String },
     bowlStyle:  { type: String },
     jersey:     { type: mongoose.Schema.Types.Mixed },
+    photo:      { type: String }, // Base64 string
     createdAt:  { type: Number },
     stats: {
         matches:      { type: Number, default: 0 },

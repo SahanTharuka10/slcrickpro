@@ -117,10 +117,20 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Jersey Number (Optional)</label>
-                            <input type="number" class="form-input" id="reg-jersey" placeholder="e.g. 7" min="1"
-                                max="99" style="width:140px" />
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Jersey Number (Optional)</label>
+                                <input type="number" class="form-input" id="reg-jersey" placeholder="e.g. 7" min="1"
+                                    max="99" style="width:140px" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Player Photo</label>
+                                <div style="display:flex;gap:8px">
+                                    <input type="file" id="reg-photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)" />
+                                    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('reg-photo-input').click()">📁 Browse</button>
+                                    <button class="btn btn-ghost btn-sm" onclick="startCamera()">📷 Camera</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -133,7 +143,10 @@
                             <span class="id-type">PLAYER ID</span>
                         </div>
                         <div class="id-body">
-                            <div class="id-avatar" id="preview-avatar">?</div>
+                            <div class="id-avatar" id="preview-avatar">
+                                <span id="preview-avatar-placeholder">?</span>
+                                <img id="preview-avatar-img" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:inherit" />
+                            </div>
                             <div class="id-info">
                                 <div class="id-number" id="preview-pid">CP-???</div>
                                 <div class="id-name" id="preview-name">Player Name</div>
@@ -246,6 +259,36 @@
                 </div>
             </div>
             <div id="lookup-result"></div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div class="modal-overlay" id="modal-camera" style="display:none">
+        <div class="modal-box" style="max-width:400px">
+            <div class="modal-title">Take Photo</div>
+            <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1/1;margin-bottom:16px">
+                <video id="camera-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+                <canvas id="camera-canvas" style="display:none"></canvas>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="stopCamera()">Cancel</button>
+                <button class="btn btn-primary" onclick="capturePhoto()">📸 Capture</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div class="modal-overlay" id="modal-camera" style="display:none">
+        <div class="modal-box" style="max-width:400px">
+            <div class="modal-title">Take Photo</div>
+            <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1/1;margin-bottom:16px">
+                <video id="camera-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+                <canvas id="camera-canvas" style="display:none"></canvas>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="stopCamera()">Cancel</button>
+                <button class="btn btn-primary" onclick="capturePhoto()">📸 Capture</button>
+            </div>
         </div>
     </div>
 

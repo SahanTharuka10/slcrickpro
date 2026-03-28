@@ -1,5 +1,7 @@
 // Player Registration JS
 let currentTab = 'reg';
+let capturedPhotoBase64 = null;
+let videoStream = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     populateTeamsDropdown();
@@ -48,7 +50,64 @@ function renderPreview() {
     document.getElementById('preview-style').textContent = batStyle + ' · ' + bowlStyle;
     document.getElementById('preview-date').textContent = 'Issued: ' + new Date().toLocaleDateString('en-GB');
     document.getElementById('preview-jersey').textContent = jersey ? '#' + jersey : '#--';
-    document.getElementById('preview-avatar').textContent = name[0]?.toUpperCase() || '?';
+
+    const avatarPlaceholder = document.getElementById('preview-avatar-placeholder');
+    const avatarImg = document.getElementById('preview-avatar-img');
+    if (capturedPhotoBase64) {
+        avatarPlaceholder.style.display = 'none';
+        avatarImg.style.display = 'block';
+        avatarImg.src = capturedPhotoBase64;
+    } else {
+        avatarPlaceholder.style.display = 'block';
+        avatarPlaceholder.textContent = name[0]?.toUpperCase() || '?';
+        avatarImg.style.display = 'none';
+        avatarImg.src = '';
+    }
+}
+
+// ========== PHOTO HANDLERS ==========
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        capturedPhotoBase64 = e.target.result;
+        renderPreview();
+    };
+    reader.readAsDataURL(file);
+}
+
+async function startCamera() {
+    const modal = document.getElementById('modal-camera');
+    const video = document.getElementById('camera-video');
+    modal.style.display = 'flex';
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { aspectRatio: 1 } });
+        video.srcObject = videoStream;
+    } catch (err) {
+        showToast('❌ Camera access denied', 'error');
+        stopCamera();
+    }
+}
+
+function stopCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    document.getElementById('modal-camera').style.display = 'none';
+}
+
+function capturePhoto() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('camera-canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 400;
+    canvas.height = 400;
+    context.drawImage(video, 0, 0, 400, 400);
+    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    renderPreview();
+    stopCamera();
 }
 
 // ========== REGISTER ==========
@@ -70,6 +129,7 @@ function registerPlayer() {
         batStyle: document.getElementById('reg-bat-style').value,
         bowlStyle: document.getElementById('reg-bowl-style').value,
         jersey: document.getElementById('reg-jersey').value || null,
+        photo: capturedPhotoBase64,
     };
 
     const saved = DB.addPlayer(player);
@@ -94,6 +154,8 @@ function clearForm() {
     });
     const ts = document.getElementById('reg-team');
     if (ts) ts.selectedIndex = 0;
+    capturedPhotoBase64 = null;
+    document.getElementById('reg-photo-input').value = '';
     renderPreview();
 }
 
@@ -250,9 +312,12 @@ function lookupPlayerById() {
 
     container.innerHTML = `<div class="lookup-card">
     <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;flex-wrap:wrap">
-      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#00bcd4,#7c4dff);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;border:2px solid rgba(0,188,212,0.4)">
-        ${escapeHTML(player.name[0]?.toUpperCase() || '?')}
-      </div>
+      ${player.photo ? 
+        `<img src="${player.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--c-primary)" />` :
+        `<div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#00bcd4,#7c4dff);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;border:2px solid rgba(0,188,212,0.4)">
+            ${escapeHTML(player.name[0]?.toUpperCase() || '?')}
+        </div>`
+      }
       <div>
         <div class="lookup-id">${escapeHTML(player.playerId)}</div>
         <div class="lookup-name">${escapeHTML(player.name)}</div>

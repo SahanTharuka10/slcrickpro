@@ -690,15 +690,28 @@
 
     <!-- Tournament Matches Hub Modal -->
     <div class="modal-overlay" id="modal-tournament-matches" style="display:none;z-index:9999">
-        <div class="modal-box" style="max-width:500px">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-box" style="max-width:600px">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                 <div class="modal-title" id="tm-title">Tournament Name</div>
                 <button class="btn btn-sm btn-green" id="btn-add-tourn-match" style="padding: 4px 8px;">➕ Add Match</button>
             </div>
-            <div id="tm-list"
-                style="margin-top:16px;max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+            
+            <div class="tab-bar" style="margin-bottom: 16px;">
+                <button class="tab-btn active" id="tm-tab-matches" onclick="switchTournamentTab('matches')">Matches</button>
+                <button class="tab-btn" id="tm-tab-teams" onclick="switchTournamentTab('teams')">Team Rosters</button>
             </div>
-            <div class="modal-actions" style="flex-direction:column; gap:10px">
+
+            <!-- Matches Panel -->
+            <div id="tm-panel-matches">
+                <div id="tm-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+
+            <!-- Teams Panel -->
+            <div id="tm-panel-teams" style="display:none">
+                <div id="tm-teams-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px"></div>
+            </div>
+
+            <div class="modal-actions" style="flex-direction:column; gap:10px; margin-top: 20px;">
                 <button class="btn btn-red btn-full" id="btn-end-tournament" style="display:none">🏆 End Tournament</button>
                 <button class="btn btn-ghost btn-full" onclick="closeModal('modal-tournament-matches')">Close</button>
             </div>
