@@ -118,10 +118,10 @@ function handleBack() {
     if (currentMatch && (currentMatch.status === 'live' || currentMatch.status === 'paused')) {
         if (confirm('Match is in progress. It will be saved. Go back?')) pauseAndExit(true);
     } else if (currentMatch && currentMatch.tournamentId) {
-        openTournamentMatchesModal(currentMatch.tournamentId);
+        openTournamentHub(currentMatch.tournamentId);
         currentMatch = null;
     } else if (currentTournament) {
-        openTournamentMatchesModal(currentTournament.id);
+        openTournamentHub(currentTournament.id);
         currentTournament = null;
     } else { location.href = '../index.html'; }
 }
@@ -1547,7 +1547,7 @@ function showMatchResult() {
             mrHomeBtn.innerHTML = 'Tournament Summary';
             mrHomeBtn.onclick = () => { closeModal('modal-result'); openTournamentSummary(); };
             mrBackBtn.innerHTML = '📅 Match Schedule';
-            mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentMatchesModal(m.tournamentId); };
+            mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentHub(m.tournamentId); };
         } else {
             mrHomeBtn.innerHTML = '🏠 Home';
             mrHomeBtn.onclick = () => { location.href = '../index.html'; };
@@ -1785,7 +1785,7 @@ function pauseAndExit(noConfirm) {
     showToast('⏸ Match saved! Resume anytime.', 'success');
     setTimeout(() => {
         if (currentMatch.tournamentId) {
-            openTournamentMatchesModal(currentMatch.tournamentId);
+            openTournamentHub(currentMatch.tournamentId);
         } else {
             location.href = '../index.html';
         }
