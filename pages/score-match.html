@@ -43,8 +43,8 @@
                     <span class="tab-text">Start New Match</span>
                 </button>
                 <button class="setup-tab-btn" onclick="switchSetupTab('resume')">
-                    <span class="tab-icon">⏳</span>
-                    <span class="tab-text">Resume Recent</span>
+                    <span class="tab-icon">📅</span>
+                    <span class="tab-text">My Tournament Hub</span>
                 </button>
                 <button class="setup-tab-btn" onclick="switchSetupTab('nrr')">
                     <span class="tab-icon">⚡</span>
@@ -199,11 +199,14 @@
             </div>
         </div>
 
-        <!-- Tab Panel: Resume -->
+        <!-- Tab Panel: Hub -->
         <div id="setup-tab-resume" class="setup-tab-panel">
             <div class="content-container" style="max-width:800px">
                 <div class="card" style="margin-top:0">
-                    <div class="card-head">Resume Existing Match</div>
+                    <div class="card-head">
+                        <span>Recent Tournaments & Matches</span>
+                        <button class="btn btn-ghost btn-sm" onclick="promptTournamentLogin()" style="font-size:12px;color:var(--c-primary)">➕ Login with Tournament ID</button>
+                    </div>
                     <div id="resume-matches-list"></div>
                 </div>
             </div>

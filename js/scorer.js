@@ -241,12 +241,12 @@ function submitMatchRequest() {
 
         DB.addRequest({ tournamentId: tourn.id, requesterName: name, organizerPhone: phone, requestedPassword: pw, type: 'tournament' });
 
+        setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
         _pendingTournPayload = null;
         closeModal('modal-request');
         showToast('Tournament request sent to Admin!');
         window.open(`score-match.html?tournamentId=${tourn.id}`, '_blank');
         renderResumeMatches();
-        populateTournamentDropdown();
     }
 }
 
@@ -263,11 +263,14 @@ function resumeMatch(id) {
 }
 
 function openTournamentHub(id) {
-    const t = DB.getTournament(id);
-    if (!t) return;
+    const t = typeof id === 'object' ? id : DB.getTournament(id);
+    if (!t) {
+        showToast('Tournament not found!', 'error');
+        return;
+    }
 
     currentTournament = t;
-    currentMatch = null; // Important: reset match context
+    currentMatch = null; 
     if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
         document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
         document.getElementById('login-password').value = '';
@@ -275,6 +278,11 @@ function openTournamentHub(id) {
     } else {
         openTournamentMatchesModal(t.id);
     }
+}
+
+function promptTournamentLogin() {
+    const tId = prompt('Enter Tournament ID:');
+    if (tId) openTournamentHub(tId.trim());
 }
 
 function openTournamentMatchesModal(tId) {
@@ -461,10 +469,13 @@ async function loginToMatch() {
             if (data.token) {
                 setTournamentAuthorized(tournamentId, data.token, data.expiresInMs);
             }
-            if (currentTournament) {
+            if (currentTournament && !currentMatch) {
                 openTournamentMatchesModal(currentTournament.id);
                 currentTournament = null;
-            } else if (currentMatch) {
+                showScreen('setup');
+                return;
+            }
+            if (currentMatch) {
                 if (currentMatch.isScheduledTemplate) {
                     showScreen('setup');
                     document.getElementById('type-tournament').click();
@@ -542,8 +553,8 @@ function startNewMatch() {
                         totalTeams: format === 'knockout' ? parseInt(document.getElementById('tourn-team-count').value) : teamLines.length,
                         matchCount: matchCount 
                     });
+                    setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
                     showToast(`Tournament "${tName}" created!`, 'success');
-                    populateTournamentDropdown();
                     renderResumeMatches();
                     window.open(`score-match.html?tournamentId=${tourn.id}`, '_blank');
                     return;
