@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check for matchId parameter for direct scoring access
     const urlParams = new URLSearchParams(window.location.search);
     const mId = urlParams.get('matchId');
+    const tId = urlParams.get('tournamentId');
+
     if (mId) {
         const m = DB.getMatch(mId);
         if (m) {
@@ -44,6 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 resumeMatch(mId);
             }
         }
+    } else if (tId) {
+        showScreen('setup');
+        setTimeout(() => openTournamentHub(tId), 200);
     } else {
         showScreen('setup');
     }
@@ -100,6 +105,24 @@ function handleBack() {
         openTournamentMatchesModal(currentTournament.id);
         currentTournament = null;
     } else { location.href = '../index.html'; }
+}
+
+// ========== SETUP TABS ==========
+function switchSetupTab(tab) {
+    document.querySelectorAll('.setup-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.setup-tab-panel').forEach(p => p.classList.remove('active'));
+
+    const btn = document.querySelector(`.setup-tab-btn[onclick*="'${tab}'"]`);
+    const panel = document.getElementById(`setup-tab-${tab}`);
+
+    if (btn) btn.classList.add('active');
+    if (panel) panel.classList.add('active');
+
+    if (tab === 'nrr') {
+        showScreen('instant-nrr');
+    } else {
+        showScreen('setup');
+    }
 }
 
 // ========== SETUP ==========
@@ -228,6 +251,7 @@ function submitMatchRequest() {
         _pendingTournPayload = null;
         closeModal('modal-request');
         showToast('Tournament request sent to Admin!');
+        window.open(`score-match.html?tournamentId=${tourn.id}`, '_blank');
         renderResumeMatches();
         populateTournamentDropdown();
     }
@@ -529,8 +553,7 @@ function startNewMatch() {
                     showToast(`Tournament "${tName}" created!`, 'success');
                     populateTournamentDropdown();
                     renderResumeMatches();
-                    document.getElementById('tournament-select').value = tourn.id;
-                    onTournamentSelect(tourn.id);
+                    window.open(`score-match.html?tournamentId=${tourn.id}`, '_blank');
                     return;
                 }
             } else {

@@ -35,9 +35,25 @@
 
     <!-- ===== SETUP SCREEN ===== -->
     <div id="screen-setup" class="scorer-screen active">
-        <div class="content-container" style="max-width:720px">
-            <!-- Match Type Selection -->
-            <div style="text-align:center;margin-bottom:36px">
+        <div class="content-container" style="max-width:800px">
+            <!-- SETUP TABS -->
+            <div class="setup-tabs">
+                <button class="setup-tab-btn active" onclick="switchSetupTab('new')">
+                    <span class="tab-icon">➕</span>
+                    <span class="tab-text">Start New Match</span>
+                </button>
+                <button class="setup-tab-btn" onclick="switchSetupTab('resume')">
+                    <span class="tab-icon">⏳</span>
+                    <span class="tab-text">Resume Recent</span>
+                </button>
+                <button class="setup-tab-btn" onclick="switchSetupTab('nrr')">
+                    <span class="tab-icon">⚡</span>
+                    <span class="tab-text">Instant NRR</span>
+                </button>
+            </div>
+
+            <div id="setup-tab-new" class="setup-tab-panel active">
+                <div style="text-align:center;margin-bottom:32px">
                 <div class="hero-badge" style="margin-bottom:16px">Choose Match Type</div>
                 <div class="match-type-selector" id="match-type-selector">
                     <button class="type-btn active" id="type-single" onclick="selectMatchType('single')">
@@ -188,12 +204,17 @@
             <button class="btn btn-primary btn-full" id="start-btn" onclick="startNewMatch()" style="margin-top:10px">
                 🏏 Start Match
             </button>
+            </div>
         </div>
 
-        <!-- Resume Match Card -->
-        <div class="card" style="margin-top:20px" id="resume-section">
-            <div class="card-head">Resume Existing Match</div>
-            <div id="resume-matches-list"></div>
+        <!-- Tab Panel: Resume -->
+        <div id="setup-tab-resume" class="setup-tab-panel">
+            <div class="content-container" style="max-width:800px">
+                <div class="card" style="margin-top:0">
+                    <div class="card-head">Resume Existing Match</div>
+                    <div id="resume-matches-list"></div>
+                </div>
+            </div>
         </div>
     </div>
     </div>

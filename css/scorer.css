@@ -9,6 +9,51 @@
     display: block;
 }
 
+/* Setup Tabs */
+.setup-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    justify-content: center;
+}
+
+.setup-tab-btn {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    padding: 14px 24px;
+    border-radius: 12px;
+    color: var(--c-muted);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 240px;
+}
+
+.setup-tab-btn:hover {
+    border-color: rgba(124, 77, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.setup-tab-btn.active {
+    background: #7c4dff;
+    border-color: #7c4dff;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(124, 77, 255, 0.3);
+}
+
+.setup-tab-panel {
+    display: none;
+}
+
+.setup-tab-panel.active {
+    display: block;
+}
+
 /* Type selector */
 .match-type-selector {
     display: flex;
@@ -211,8 +256,11 @@
     }
 }
 
-.stats-column,
-.input-column {}
+/* Scorer Columns */
+.stats-column {
+    display: flex;
+    flex-direction: column;
+}
 
 /* Striker indicator */
 .striker-name::before {
