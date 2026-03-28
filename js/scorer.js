@@ -126,23 +126,7 @@ function handleBack() {
     } else { location.href = '../index.html'; }
 }
 
-// ========== SETUP TABS ==========
-function switchSetupTab(tab) {
-    document.querySelectorAll('.setup-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.setup-tab-panel').forEach(p => p.classList.remove('active'));
-
-    const btn = document.querySelector(`.setup-tab-btn[onclick*="'${tab}'"]`);
-    const panel = document.getElementById(`setup-tab-${tab}`);
-
-    if (btn) btn.classList.add('active');
-    if (panel) panel.classList.add('active');
-
-    if (tab === 'nrr') {
-        showScreen('instant-nrr');
-    } else {
-        showScreen('setup');
-    }
-}
+// ========== EVENT LISTENERS & INITIALIZATION ==========
 
 // ========== SETUP ==========
 function selectMatchType(type) {
