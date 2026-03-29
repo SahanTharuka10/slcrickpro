@@ -61,69 +61,100 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML += `<button onclick="showOverlayPopup('matchstats'); toggleShortcutMenu();" class="btn-tv" id="btn-match-stats-menu">📊 Match Stats</button>`;
     }
 
-    // Socket.io integration (Graceful Deprecation)
+    // ── Socket.io: Instant push-based updates from the server
     if (typeof io !== 'undefined') {
-        const socket = io();
-        if (matchId) {
-            socket.emit('joinMatch', matchId);
-        }
-        if (tournId) {
-            socket.emit('joinTournament', tournId);
-        }
-        socket.on('scoreUpdate', (updatedData) => {
-            console.log("⚡ Real-time Update Received:", updatedData);
-            if (updatedData && updatedData.score) {
-                if ((matchId && updatedData.id === matchId) || (tournId && updatedData.tournamentId === tournId)) {
+        try {
+            const socket = io({ reconnectionAttempts: 5, timeout: 5000 });
+            if (matchId) socket.emit('joinMatch', matchId);
+            if (tournId) socket.emit('joinTournament', tournId);
+
+            socket.on('scoreUpdate', (updatedData) => {
+                if (!updatedData) return;
+                const isOurs = (matchId && updatedData.id === matchId)
+                             || (tournId && updatedData.tournamentId === tournId);
+                if (!isOurs) return;
+                console.log('⚡ Socket scoreUpdate:', updatedData.id);
+                if (updatedData.score) {
                     latestSocketScore = updatedData;
+                } else {
+                    const matches = DB.getMatches();
+                    const idx = matches.findIndex(m => m.id === updatedData.id);
+                    if (idx !== -1) { matches[idx] = updatedData; DB.saveMatches(matches); }
                 }
                 renderOverlay();
-                return;
-            }
-            // Sync local DB with received data
-            if (updatedData && updatedData.id) {
-                const matches = DB.getMatches();
-                const idx = matches.findIndex(m => m.id === updatedData.id);
-                if (idx !== -1) {
-                    matches[idx] = updatedData;
-                    DB.saveMatches(matches);
-                }
-            }
-            renderOverlay();
-        });
+            });
+            socket.on('connect', () => console.log('🟢 TV: Socket connected'));
+            socket.on('disconnect', () => console.log('🔴 TV: Socket disconnected — API polling continues'));
+        } catch (e) { console.warn('Socket.io init failed:', e.message); }
     } else {
-        console.warn('Socket.io not found. Using local polling mode.');
+        console.warn('Socket.io not loaded — using API polling only.');
     }
 
     renderOverlay();
 
-    // ── Polling fallback: refresh every 2 seconds for live ball-by-ball updates
+    // ── Server API polling: works on ANY device on the same network
+    //    Polls the cached /tv/matches/:id/light endpoint every 3 seconds
+    const baseUrl = window.BACKEND_BASE_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000' : window.location.origin);
+
+    function pollServerScore() {
+        if (document.hidden) return; // Don't poll when tab is hidden
+        if (matchId) {
+            fetch(baseUrl + '/tv/matches/' + matchId + '/light')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data || !data.score) return;
+                    const prevBalls = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.balls : -1;
+                    if (data.score.balls !== prevBalls) {
+                        latestSocketScore = data;
+                        renderOverlay();
+                    }
+                }).catch(() => {});
+        } else if (tournId) {
+            fetch(baseUrl + '/sync/matches')
+                .then(r => r.ok ? r.json() : [])
+                .then(matches => {
+                    if (!Array.isArray(matches)) return null;
+                    const live = matches.find(m => m && m.tournamentId === tournId && (m.status === 'live' || m.status === 'paused'));
+                    if (!live) return null;
+                    if (matchId !== live.id) { matchId = live.id; }
+                    return fetch(baseUrl + '/tv/matches/' + live.id + '/light').then(r => r.ok ? r.json() : null);
+                })
+                .then(data => {
+                    if (!data || !data.score) return;
+                    latestSocketScore = data;
+                    renderOverlay();
+                }).catch(() => {});
+        }
+    }
+
+    // Poll immediately then every 3 seconds
+    setTimeout(pollServerScore, 600);
     refreshInterval = setInterval(() => {
         if (currentPopupView) {
             renderTournamentStats(currentPopupView);
         } else {
-            renderOverlay();
+            pollServerScore();   // Fetch latest from server (cross-device)
+            renderOverlay();     // Also re-render from localStorage (same device)
         }
-    }, 2000);
+    }, 3000);
 
-    // ── Storage event listener (cross-tab updates via localStorage)
+    // ── Storage events: instant cross-tab updates on the same machine
     window.addEventListener('storage', (e) => {
-        // Broadcast hotkey commands (team roster, player profile, etc.)
         if (e.key === 'cricpro_broadcast_cmd') {
             try {
                 const payload = JSON.parse(e.newValue);
                 handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
-            } catch (err) { console.error("Broadcast parse err", err); }
+            } catch (err) { console.error('Broadcast parse err', err); }
         }
-        // Score data updates — 'cricpro_matches' is the real key used by DB._secureSet
         if (e.key === 'cricpro_matches' || e.key === 'cricpro_tournaments' || e.key === 'cricpro_force_update') {
-            if (!currentPopupView) {
-                renderOverlay();
-            } else {
-                renderTournamentStats(currentPopupView);
-            }
+            if (!currentPopupView) renderOverlay();
+            else renderTournamentStats(currentPopupView);
         }
     });
 });
+
 
 function handleBroadcastCommand(cmd, data) {
     if (data && typeof data === 'object') {
