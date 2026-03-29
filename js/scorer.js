@@ -2331,6 +2331,12 @@ function escapeHTML(str) {
   })[m]);
 }
 
+function forceUpdateTV() {
+    localStorage.setItem('cricpro_force_update', Date.now().toString());
+    saveAndRender(); // Ensures current match is saved to DB and triggers storage update
+    showToast('📺 TV Scoreboard forcefully updated!', 'success');
+}
+
 // ========== HOTKEYS & BROADCASTS ==========
 document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;

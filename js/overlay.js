@@ -110,6 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
             } catch (err) { console.error("Broadcast parse err", err); }
         }
+        if (e.key === 'matches' || e.key === 'cricpro_tournaments' || e.key === 'cricpro_force_update') {
+            if (!currentPopupView) {
+                renderOverlay();
+            } else {
+                renderTournamentStats(currentPopupView);
+            }
+        }
     });
 });
 
