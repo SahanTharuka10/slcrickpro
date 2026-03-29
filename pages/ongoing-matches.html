@@ -19,7 +19,7 @@
         <div class="bg-orb orb2"></div>
     </div>
 
-    <!-- Header -->
+    <div class="sub-header">
         <div class="logo">
           <div class="logo-icon">🏏</div>
           <div class="logo-text-animated">
@@ -58,9 +58,16 @@
                 </div>
             </div>
             <div id="tournament-selector" class="tournament-selector-row"></div>
-            <div id="tournament-details" class="table-container"></div>
-            <div id="tournament-bracket" class="bracket-container" style="display:none"></div>
-            <div id="tournament-full-schedule" class="matches-grid" style="display:none"></div>
+            <div id="tournament-view-tabs" class="tab-bar" style="display:none;max-width:640px;margin-top:12px">
+                <button type="button" class="tab-btn active" id="tvt-matches" onclick="switchTournamentPageView('matches')">Matches &amp; stats</button>
+                <button type="button" class="tab-btn" id="tvt-squads" onclick="switchTournamentPageView('squads')">Team squads</button>
+            </div>
+            <div id="tournament-schedule-block">
+                <div id="tournament-details" class="table-container"></div>
+                <div id="tournament-bracket" class="bracket-container" style="display:none"></div>
+                <div id="tournament-full-schedule" class="matches-grid" style="display:none"></div>
+            </div>
+            <div id="tournament-squads-panel" class="table-container" style="display:none"></div>
         </div>
 
         <!-- COMPLETED -->

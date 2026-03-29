@@ -2,6 +2,7 @@
 let currentTab = 'live';
 let selectedTournId = null;
 let selectedTournSubTab = 'standings';
+let tournamentPageView = 'matches';
 let refreshInterval;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,7 +28,10 @@ function startAutoRefresh() {
 
   refreshInterval = setInterval(() => {
     if (currentTab === 'live') renderLive();
-    if (currentTab === 'tournament' && selectedTournId) renderTournDetails(selectedTournId);
+    if (currentTab === 'tournament' && selectedTournId) {
+      renderTournDetails(selectedTournId);
+      if (tournamentPageView === 'squads') renderTournamentSquadsPanel(selectedTournId);
+    }
   }, interval);
 }
 
@@ -136,6 +140,7 @@ function scoreMatchRedirect(id) {
 // ========== TOURNAMENT ==========
 function renderTournamentSelector() {
     const selector = document.getElementById('tournament-selector');
+    const viewTabs = document.getElementById('tournament-view-tabs');
     if (!selector) return;
     const tournaments = DB.getTournaments().filter(t => t.status === 'active');
 
@@ -143,8 +148,11 @@ function renderTournamentSelector() {
         selector.innerHTML = `<p style="color:var(--c-muted); padding:20px;">No active tournaments</p>`;
         const details = document.getElementById('tournament-details');
         if (details) details.innerHTML = '';
+        if (viewTabs) viewTabs.style.display = 'none';
         return;
     }
+
+    if (viewTabs) viewTabs.style.display = 'flex';
 
     selector.innerHTML = tournaments.map(t => {
         const activeClass = selectedTournId === t.id ? 'active' : '';
@@ -158,8 +166,71 @@ function renderTournamentSelector() {
 
 function selectTournament(id) {
     selectedTournId = id;
+    tournamentPageView = 'matches';
     renderTournamentSelector();
     renderTournDetails(id);
+    switchTournamentPageView('matches');
+}
+
+function switchTournamentPageView(mode) {
+    tournamentPageView = mode === 'squads' ? 'squads' : 'matches';
+    const btnM = document.getElementById('tvt-matches');
+    const btnS = document.getElementById('tvt-squads');
+    const block = document.getElementById('tournament-schedule-block');
+    const squads = document.getElementById('tournament-squads-panel');
+    if (btnM) btnM.classList.toggle('active', tournamentPageView === 'matches');
+    if (btnS) btnS.classList.toggle('active', tournamentPageView === 'squads');
+    if (block) block.style.display = tournamentPageView === 'matches' ? '' : 'none';
+    if (squads) {
+        squads.style.display = tournamentPageView === 'squads' ? 'block' : 'none';
+        if (tournamentPageView === 'squads' && selectedTournId) renderTournamentSquadsPanel(selectedTournId);
+    }
+}
+
+function escapeHtmlOngoing(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+}
+
+function renderTournamentSquadsPanel(id) {
+    const t = DB.getTournament(id);
+    const el = document.getElementById('tournament-squads-panel');
+    if (!t || !el) return;
+    if (!t.rosters) t.rosters = {};
+    const defaultPh = '../assets/default-player.svg';
+
+    let html = `
+        <div class="tournament-header-card" style="margin-bottom:16px">
+            <div>
+                <div class="tourn-name">${escapeHtmlOngoing(t.name)}</div>
+                <div class="tourn-format">Squad lists use registered players (photos from Player Registration)</div>
+            </div>
+            <a href="score-match.html?tournamentId=${encodeURIComponent(t.id)}" class="btn btn-primary btn-sm" style="text-decoration:none;white-space:nowrap">Open scorer · Team Rosters</a>
+        </div>`;
+
+    (t.teams || []).forEach(teamName => {
+        const ids = t.rosters[teamName] || [];
+        html += `<div class="card" style="margin-bottom:12px">
+            <div style="font-weight:800;margin-bottom:10px">${escapeHtmlOngoing(teamName)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">`;
+        if (!ids.length) {
+            html += `<span style="opacity:0.65;font-size:13px">No players in this squad yet. In the scorer, open this tournament → <b>Team Rosters</b> and add registered players.</span>`;
+        } else {
+            ids.forEach(pid => {
+                const p = DB.getPlayerById(pid);
+                const src = p && p.photo ? p.photo : defaultPh;
+                const name = p ? p.name : pid;
+                const role = p ? capitalize(p.role || 'Player') : '';
+                html += `<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
+                    <img src="${src}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.12)" onerror="this.onerror=null;this.src='${defaultPh}'" />
+                    <div><div style="font-weight:600;font-size:13px">${escapeHtmlOngoing(name)}</div><div style="font-size:11px;opacity:0.6">${escapeHtmlOngoing(role)}</div></div>
+                </div>`;
+            });
+        }
+        html += `</div></div>`;
+    });
+
+    el.innerHTML = html;
 }
 
 function switchTournSubTab(tab) {

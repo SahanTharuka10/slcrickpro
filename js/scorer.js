@@ -18,6 +18,39 @@ const SCORING_AUTH_KEY = 'cricpro_scoring_auth';
 let currentOverlayTeam = null;
 let currentOverlayPlayer = null;
 let activeOverlayId = null;
+const DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
+
+function getOnCreaseBatterNames(inn) {
+    if (!inn || !Array.isArray(inn.batsmen) || !Array.isArray(inn.currentBatsmenIdx)) return [];
+    const names = [];
+    for (const slot of [0, 1]) {
+        const idx = inn.currentBatsmenIdx[slot];
+        if (idx != null && inn.batsmen[idx]) names.push(inn.batsmen[idx].name);
+    }
+    return names.filter(Boolean);
+}
+
+function getStrikerBatterName(inn) {
+    if (!inn || !Array.isArray(inn.batsmen) || !Array.isArray(inn.currentBatsmenIdx)) return null;
+    const slot = inn.strikerIdx === 1 ? 1 : 0;
+    const idx = inn.currentBatsmenIdx[slot];
+    return idx != null && inn.batsmen[idx] ? inn.batsmen[idx].name : null;
+}
+
+function resolvePlayerProfileForBatter(inn, bName) {
+    if (!bName || !inn || !Array.isArray(inn.batsmen)) return null;
+    const bRec = inn.batsmen.find(x => x.name === bName);
+    if (bRec && bRec.playerId) {
+        const byId = DB.getPlayerById(bRec.playerId);
+        if (byId) return byId;
+    }
+    return DB.getPlayers().find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim()) || null;
+}
+
+function playerPhotoSrc(p) {
+    if (p && p.photo && String(p.photo).trim()) return p.photo;
+    return DEFAULT_PLAYER_PHOTO;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const tf = document.getElementById('tourn-format');
@@ -58,19 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         showScreen('setup');
     }
-
-    // Global Hotkeys
-    window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        
-        if (e.shiftKey) {
-            if (e.key === '1') { e.preventDefault(); showTeamOverlay(0); }
-            if (e.key === '2') { e.preventDefault(); showTeamOverlay(1); }
-            if (e.key === 'P' || e.key === 'p') { e.preventDefault(); showPlayerOverlay(); }
-            if (e.key === 'B' || e.key === 'b') { e.preventDefault(); showPlayerOverlay(true); } // Single/New batter
-        }
-        if (e.key === 'Escape') { hideOverlay(); }
-    });
 });
 
 function getScoringAuthMap() {
@@ -2042,14 +2062,15 @@ function openRosterEditor(teamName) {
     if (!t.rosters) t.rosters = {};
     const roster = t.rosters[editingTeamName] || [];
     
-    const panel = document.getElementById('tm-panel-teams');
-    
+    const listEl = document.getElementById('tm-teams-list');
+    if (!listEl) return;
+
     // Team Selector HTML
     const teamOptions = t.teams.map(name => 
         `<option value="${escapeHTML(name)}" ${name === editingTeamName ? 'selected' : ''}>${name}</option>`
     ).join('');
 
-    panel.innerHTML = `
+    listEl.innerHTML = `
         <div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
             <label class="form-label" style="font-size:12px; opacity:0.6; margin-bottom:8px">Select Team to Manage Squad</label>
             <select class="form-input" onchange="openRosterEditor(this.value)" style="background:#1a1a2e; border:1px solid var(--c-primary)">
@@ -2158,11 +2179,11 @@ function showTeamOverlay(teamIdx) {
         rosterIds.forEach((pid, index) => {
             const p = DB.getPlayerById(pid);
             if (p) {
-                const photoSrc = p.photo || '../assets/default-player.png';
+                const photoSrc = playerPhotoSrc(p);
                 html += `
                     <div class="roster-item" style="animation: fadeInUp 0.4s ease forwards; animation-delay: ${index * 0.05}s">
                         <div class="roster-photo">
-                            ${p.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
+                            <img src="${photoSrc}" alt="" onerror="this.onerror=null;this.src='${DEFAULT_PLAYER_PHOTO}'" />
                         </div>
                         <div class="roster-info">
                             <div class="roster-name">${p.name}</div>
@@ -2190,10 +2211,9 @@ function showPlayerOverlay(single, specificName) {
     if (specificName) {
         batters = [specificName];
     } else if (single) {
-        // Show only striker
-        batters = [inn.strikerIdx === 0 ? inn.batsman1 : inn.batsman2].filter(Boolean);
+        batters = [getStrikerBatterName(inn)].filter(Boolean);
     } else {
-        batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+        batters = getOnCreaseBatterNames(inn);
     }
     
     let html = `
@@ -2206,15 +2226,15 @@ function showPlayerOverlay(single, specificName) {
     `;
     
     batters.forEach(bName => {
-        const players = DB.getPlayers();
-        const p = players.find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim());
+        const p = resolvePlayerProfileForBatter(inn, bName);
         const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
+        const photoSrc = playerPhotoSrc(p);
         
         html += `
             <div class="player-stat-card" style="${batters.length === 1 ? 'margin-bottom:0' : ''}; animation: slideInLeft 0.5s ease forwards">
                 <div class="player-main-info">
                     <div class="player-large-photo">
-                        ${p?.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder-lg">${bName[0] || '?'}</div>`}
+                        <img src="${photoSrc}" alt="" onerror="this.onerror=null;this.src='${DEFAULT_PLAYER_PHOTO}'" />
                     </div>
                     <div>
                         <div class="player-lg-name">${bName}</div>
@@ -2261,27 +2281,31 @@ function escapeHTML(str) {
 
 // ========== HOTKEYS & BROADCASTS ==========
 document.addEventListener('keydown', (e) => {
-    // Only process if we aren't typing in an input field
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
-    if (e.shiftKey) {
-        if (e.key === '1') {
-            e.preventDefault();
-            showTeamOverlay(0);
-            broadcastTeamRoster(0);
-        } else if (e.key === '2') {
-            e.preventDefault();
-            showTeamOverlay(1);
-            broadcastTeamRoster(1);
-        } else if (e.key.toLowerCase() === 'p') {
-            e.preventDefault();
-            showPlayerOverlay(false); // Current Batters
-            broadcastCurrentBatters();
-        } else if (e.key.toLowerCase() === 'b') {
-            e.preventDefault();
-            showPlayerOverlay(true); // Striker only
-            broadcastStrikerProfile();
-        }
+    if (e.key === 'Escape') {
+        hideOverlay();
+        return;
+    }
+
+    if (!e.shiftKey) return;
+
+    if (e.key === '1') {
+        e.preventDefault();
+        showTeamOverlay(0);
+        broadcastTeamRoster(0);
+    } else if (e.key === '2') {
+        e.preventDefault();
+        showTeamOverlay(1);
+        broadcastTeamRoster(1);
+    } else if (e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        showPlayerOverlay(false);
+        broadcastCurrentBatters();
+    } else if (e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        showPlayerOverlay(true);
+        broadcastStrikerProfile();
     }
 });
 
@@ -2313,10 +2337,10 @@ function broadcastCurrentBatters() {
     if (!m) return;
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
-    const batters = [inn.batsman1, inn.batsman2].filter(Boolean);
+    const batters = getOnCreaseBatterNames(inn);
     
     const profiles = batters.map(bName => {
-        const p = DB.getPlayers().find(x => x.name.toLowerCase().trim() === bName.toLowerCase().trim());
+        const p = resolvePlayerProfileForBatter(inn, bName);
         const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
         return { name: bName, profile: p, stats };
     });
@@ -2328,10 +2352,10 @@ function broadcastStrikerProfile() {
     if (!m) return;
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
-    const strikerName = inn.strikerIdx === 0 ? inn.batsman1 : inn.batsman2;
+    const strikerName = getStrikerBatterName(inn);
     if (!strikerName) return;
     
-    const p = DB.getPlayers().find(x => x.name.toLowerCase().trim() === strikerName.toLowerCase().trim());
+    const p = resolvePlayerProfileForBatter(inn, strikerName);
     const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
     
     sendBroadcast('SHOW_BATTER_PROFILES', { profiles: [{ name: strikerName, profile: p, stats }] });

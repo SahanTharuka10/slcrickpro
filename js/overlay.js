@@ -834,6 +834,8 @@ function getShortName(fullName) {
     return fullName.substring(0, 3).toUpperCase();
 }
 
+const OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
+
 function showTeamRosterGraphic(data) {
     const { teamName, players } = data;
     let html = `
@@ -848,10 +850,11 @@ function showTeamRosterGraphic(data) {
     
     if (players && players.length > 0) {
         players.forEach((p, index) => {
+            const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
             html += `
                 <div class="roster-item" style="animation: fadeInUp 0.4s ease forwards; animation-delay: ${index * 0.05}s">
                     <div class="roster-photo">
-                        ${p.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder">${p.name[0]}</div>`}
+                        <img src="${src}" alt="" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
                     </div>
                     <div class="roster-info">
                         <div class="roster-name">${p.name}</div>
@@ -883,11 +886,12 @@ function showBatterProfilesGraphic(data) {
     
     profiles.forEach(item => {
         const { name, profile: p, stats } = item;
+        const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
         html += `
             <div class="player-stat-card" style="${profiles.length === 1 ? 'margin-bottom:0' : ''}; animation: slideInLeft 0.5s ease forwards">
                 <div class="player-main-info">
                     <div class="player-large-photo">
-                        ${p?.photo ? `<img src="${p.photo}" onerror="this.src='../assets/default-player.png'" />` : `<div class="photo-placeholder-lg">${name[0] || '?'}</div>`}
+                        <img src="${src}" alt="" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
                     </div>
                     <div>
                         <div class="player-lg-name">${name}</div>
