@@ -82,10 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML += `<button onclick="showOverlayPopup('matchstats'); toggleShortcutMenu();" class="btn-tv" id="btn-match-stats-menu">📊 Match Stats</button>`;
     }
 
+    // ── Backend URL Discovery ─────────────────────────────────
+    const baseUrl = window.BACKEND_BASE_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000' : window.location.origin);
+
     // ── Socket.io: Instant push-based updates from the server
     if (typeof io !== 'undefined') {
         try {
-            const socket = io({ reconnectionAttempts: 5, timeout: 5000 });
+            const socket = io(baseUrl, { reconnectionAttempts: 5, timeout: 5000 });
             if (matchId) socket.emit('joinMatch', matchId);
             if (tournId) socket.emit('joinTournament', tournId);
 
@@ -104,20 +109,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 renderOverlay();
             });
-            socket.on('connect', () => console.log('🟢 TV: Socket connected'));
+
+            socket.on('broadcastCmd', (payload) => {
+                if (!payload || !payload.cmd) return;
+                console.log('⚡ Socket broadcastCmd:', payload.cmd);
+                handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
+            });
+
+            socket.on('connect', () => console.log('🟢 TV: Socket connected to ' + baseUrl));
+
             socket.on('disconnect', () => console.log('🔴 TV: Socket disconnected — API polling continues'));
         } catch (e) { console.warn('Socket.io init failed:', e.message); }
     } else {
         console.warn('Socket.io not loaded — using API polling only.');
     }
 
+
     renderOverlay();
 
     // ── Server API polling: works on ANY device on the same network
     //    Polls the cached /tv/matches/:id/light endpoint every 3 seconds
-    const baseUrl = window.BACKEND_BASE_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000' : window.location.origin);
+    // (baseUrl is already defined above)
+
 
     function pollServerScore() {
         if (document.hidden) return; // Don't poll when tab is hidden

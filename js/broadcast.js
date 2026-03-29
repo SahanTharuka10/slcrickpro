@@ -27,7 +27,21 @@ const Broadcast = {
         };
         // Use a unique key with timestamp to ensure the 'storage' event fires even if command is same
         localStorage.setItem(BROADCAST_KEYS.COMMAND, JSON.stringify(payload));
-        console.log(`📡 Broadcast Sent: ${cmd}`, data);
+        console.log(`📡 Broadcast Sent (Local): ${cmd}`, data);
+
+        // SYNC TO SERVER (Cross-Device WebSocket Support)
+        const baseUrl = localStorage.getItem('cricpro_backend_url') || 
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                ? 'http://localhost:3000' : window.location.origin);
+                
+        fetch(baseUrl + '/sync/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(d => console.log('✅ Broadcast sync response:', d))
+        .catch(err => console.error('❌ Broadcast sync failed:', err));
     },
 
     /**

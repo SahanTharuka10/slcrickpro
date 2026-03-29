@@ -8,6 +8,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'text/plain' }));
@@ -467,12 +468,19 @@ io.on('connection', (socket) => {
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 function emitUpdate(type, id, data) {
-    const room = type === 'match' ? `match_${id}` : `tournament_${id}`;
-    const lightData = buildLightScorePayload(data) || { id };
-    
-    io.to(room).emit('scoreUpdate', lightData);
-    if (type === 'match' && data?.tournamentId) {
-        io.to(`tournament_${data.tournamentId}`).emit('scoreUpdate', lightData);
+    if (type === 'match') {
+        const room = `match_${id}`;
+        const lightData = buildLightScorePayload(data) || { id };
+        io.to(room).emit('scoreUpdate', lightData);
+        if (data?.tournamentId) {
+            io.to(`tournament_${data.tournamentId}`).emit('scoreUpdate', lightData);
+        }
+    } else if (type === 'tournament') {
+        io.to(`tournament_${id}`).emit('tournamentUpdate', data);
+    } else if (type === 'broadcast') {
+        // Broadcast specific command (popups like Runs Needed, scorecard, etc.)
+        if (id) io.to(`match_${id}`).emit('broadcastCmd', data);
+        if (data.tournamentId) io.to(`tournament_${data.tournamentId}`).emit('broadcastCmd', data);
     }
     io.emit('globalUpdate', { type, id }); // For ticker/ongoing pages
 }
@@ -570,8 +578,23 @@ app.get('/sync/matches', async (req, res) => {
     }
 });
 
+app.post('/sync/broadcast', async (req, res) => {
+    const data = parseBody(req);
+    // data should be the payload from Broadcast.send
+    if (!data || !data.cmd) return res.status(400).json({ error: 'Missing broadcast command' });
+    try {
+        const id = data.matchId || data.tournamentId;
+        emitUpdate('broadcast', id, data);
+        res.json({ ok: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message || 'Failed to sync broadcast' });
+    }
+});
+
 app.get('/tv/matches/:id/light', async (req, res) => {
     try {
+
         await ensureDB();
         const id = req.params.id;
         let payload = await getCachedTvPayload(id);
