@@ -58,31 +58,31 @@ function switchTab(tab) {
 function renderLive() {
   const grid = document.getElementById('live-matches-grid');
   if (!grid) return;
-  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused') && m.publishLive);
+  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') && m.publishLive);
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-state-icon">🏏</div>
-      <div class="empty-state-title">No Live Matches</div>
+      <div class="empty-state-title">No Live or Scheduled Matches</div>
       <div class="empty-state-sub">Start a match and publish it live to see it here</div>
     </div>`;
     return;
   }
 
-  grid.innerHTML = matches.map(m => buildMatchCard(m, true)).join('');
+  grid.innerHTML = matches.map(m => buildMatchCard(m, (m.status === 'live' || m.status === 'paused'))).join('');
 }
 
 function buildMatchCard(m, isLive) {
   const inn0 = m.innings ? m.innings[0] : null;
   const inn1 = m.innings ? m.innings[1] : null;
   const curInn = m.innings ? m.innings[m.currentInnings] : null;
-  const statusColor = m.status === 'live' ? '#00e676' : '#ffc107';
-  const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'paused' ? '⏸ Paused' : '✅ Done');
+  const statusColor = m.status === 'live' ? '#00e676' : (m.status === 'scheduled' ? '#00bcd4' : '#ffc107');
+  const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'scheduled' ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ Done'));
 
-  const score0 = inn0 ? `${inn0.runs}/${inn0.wickets}` : '-';
-  const ov0 = inn0 ? `(${formatOvers(inn0.balls, m.ballsPerOver)} ov)` : '';
-  const score1 = inn1 ? `${inn1.runs}/${inn1.wickets}` : m.status !== 'completed' && m.currentInnings === 1 ? 'Yet to bat' : '-';
-  const ov1 = inn1 ? `(${formatOvers(inn1.balls, m.ballsPerOver)} ov)` : '';
+  const score0 = m.status === 'scheduled' ? '-' : (inn0 ? `${inn0.runs}/${inn0.wickets}` : '-');
+  const ov0 = m.status === 'scheduled' ? '' : (inn0 ? `(${formatOvers(inn0.balls, m.ballsPerOver)} ov)` : '');
+  const score1 = m.status === 'scheduled' ? '-' : (inn1 ? `${inn1.runs}/${inn1.wickets}` : (m.status !== 'completed' && m.currentInnings === 1 ? 'Yet to bat' : '-'));
+  const ov1 = m.status === 'scheduled' ? '' : (inn1 ? `(${formatOvers(inn1.balls, m.ballsPerOver)} ov)` : '');
 
   const crr = curInn ? formatCRR(curInn.runs, curInn.balls) : '0.00';
   let targetInfo = '';
