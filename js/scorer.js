@@ -2328,65 +2328,7 @@ function forceUpdateTV() {
     showToast('📺 TV Scoreboard forcefully updated!', 'success');
 }
 
-// ========== HOTKEYS & BROADCASTS ==========
-document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-
-    if (e.key === 'Escape') {
-        hideOverlay();
-        return;
-    }
-
-    if (e.shiftKey) {
-        if (e.key === '1') {
-            e.preventDefault();
-            broadcastTeamCard(0);
-        } else if (e.key === '2') {
-            e.preventDefault();
-            broadcastTeamCard(1);
-        } else if (e.key.toLowerCase() === 'p') {
-            e.preventDefault();
-            broadcastCurrentBatters();
-        } else if (e.key.toLowerCase() === 'b') {
-            e.preventDefault();
-            broadcastStrikerProfile();
-        }
-    } else {
-        // Basic Scoring Hotkeys
-        if (e.key === '0' || e.key === '.') {
-            e.preventDefault();
-            recordBall({ type: 'dot', runs: 0 });
-        } else if (e.key === '1') {
-            e.preventDefault();
-            recordBall({ type: 'run', runs: 1 });
-        } else if (e.key === '2') {
-            e.preventDefault();
-            recordBall({ type: 'run', runs: 2 });
-        } else if (e.key === '3') {
-            e.preventDefault();
-            recordBall({ type: 'run', runs: 3 });
-        } else if (e.key === '4') {
-            e.preventDefault();
-            recordBall({ type: 'four', runs: 4 });
-        } else if (e.key === '5') {
-            e.preventDefault();
-            recordBall({ type: 'run', runs: 5 });
-        } else if (e.key === '6') {
-            e.preventDefault();
-            recordBall({ type: 'six', runs: 6 });
-        } else if (e.key.toLowerCase() === 'w') {
-            e.preventDefault();
-            openWicketModal();
-        } else if (e.key === '+') {
-            e.preventDefault();
-            recordBall({ type: 'wide', runs: 1 });
-        } else if (e.key === '*') {
-            e.preventDefault();
-            recordBall({ type: 'noball', runs: 1 });
-        }
-    }
-});
-
+// ========== BROADCASTS ==========
 function sendBroadcast(cmd, data) {
     if (!currentMatch) return;
     const payload = {

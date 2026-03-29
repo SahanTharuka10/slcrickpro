@@ -437,40 +437,39 @@
                         <!-- Force Update -->
                         <button class="btn btn-primary btn-full btn-sm" onclick="forceUpdateTV()" style="background:var(--c-amber); color:#000; font-weight:800; border:none;">🔄 Force Update TV Scoreboard</button>
 
-                        <!-- ─── KEYBOARD HOTKEYS ─── -->
-                        <div style="background:rgba(255,255,255,0.04); border-radius:12px; padding:10px; border:1px solid rgba(255,255,255,0.08)">
-                            <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,0.4); margin-bottom:8px; text-transform:uppercase">⌨ TV Hotkeys (Keyboard Shortcuts)</div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">                                <!-- Shift+1: Team 1 Card -->
+                        <!-- ─── BROADCAST QUICK-ACTIONS ─── -->
+                        <div style="background:rgba(255,255,255,0.04); border-radius:12px; padding:8px; border:1px solid rgba(255,255,255,0.08)">
+                            <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,0.4); margin-bottom:6px; text-transform:uppercase">📺 Broadcast Quick-Actions</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px">
+                                <!-- Team 1 Card -->
                                 <button onclick="broadcastTeamCard(0)"
-                                    style="background:linear-gradient(135deg,#1565c0,#1976d2); border:none; border-radius:10px; padding:10px 8px; cursor:pointer; text-align:left; color:#fff; min-height:60px">
-                                    <div style="font-size:9px; font-weight:900; letter-spacing:2px; opacity:0.7; margin-bottom:4px">SHIFT + 1</div>
-                                    <div style="font-size:13px; font-weight:900">🛡️ TEAM 1 CARD</div>
-                                    <div style="font-size:10px; opacity:0.7">Show team info</div>
+                                    style="background:linear-gradient(135deg,#1565c0,#1976d2); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
+                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 1 CARD</div>
+                                    <div style="font-size:9px; opacity:0.7">Show info</div>
                                 </button>
 
-                                <!-- Shift+2: Team 2 Card -->
+                                <!-- Team 2 Card -->
                                 <button onclick="broadcastTeamCard(1)"
-                                    style="background:linear-gradient(135deg,#4527a0,#5e35b1); border:none; border-radius:10px; padding:10px 8px; cursor:pointer; text-align:left; color:#fff; min-height:60px">
-                                    <div style="font-size:9px; font-weight:900; letter-spacing:2px; opacity:0.7; margin-bottom:4px">SHIFT + 2</div>
-                                    <div style="font-size:13px; font-weight:900">🛡️ TEAM 2 CARD</div>
-                                    <div style="font-size:10px; opacity:0.7">Show team info</div>
+                                    style="background:linear-gradient(135deg,#4527a0,#5e35b1); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
+                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 2 CARD</div>
+                                    <div style="font-size:9px; opacity:0.7">Show info</div>
                                 </button>
 
-                                <!-- Shift+P: Current Batters -->
+                                <!-- Current Batters -->
                                 <button onclick="broadcastCurrentBatters();"
-                                    style="background:linear-gradient(135deg,#2e7d32,#43a047); border:none; border-radius:10px; padding:10px 8px; cursor:pointer; text-align:left; color:#fff; min-height:60px">
-                                    <div style="font-size:9px; font-weight:900; letter-spacing:2px; opacity:0.7; margin-bottom:4px">SHIFT + P</div>
-                                    <div style="font-size:13px; font-weight:900">🏏 CURRENT BATTERS</div>
-                                    <div style="font-size:10px; opacity:0.7">Both on crease</div>
+                                    style="background:linear-gradient(135deg,#2e7d32,#43a047); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
+                                    <div style="font-size:11px; font-weight:900">🏏 CURRENT BATTERS</div>
+                                    <div style="font-size:9px; opacity:0.7">Both crease</div>
                                 </button>
 
-                                <!-- Shift+B: Striker Profile -->
+                                <!-- Striker Profile -->
                                 <button onclick="broadcastStrikerProfile();"
-                                    style="background:linear-gradient(135deg,#c62828,#ef5350); border:none; border-radius:10px; padding:10px 8px; cursor:pointer; text-align:left; color:#fff; min-height:60px">
-                                    <div style="font-size:9px; font-weight:900; letter-spacing:2px; opacity:0.7; margin-bottom:4px">SHIFT + B</div>
-                                    <div style="font-size:13px; font-weight:900">⚡ STRIKER PROFILE</div>
-                                    <div style="font-size:10px; opacity:0.7">New batter card</div>
+                                    style="background:linear-gradient(135deg,#c62828,#ef5350); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
+                                    <div style="font-size:11px; font-weight:900">⚡ STRIKER PROFILE</div>
+                                    <div style="font-size:9px; opacity:0.7">New card</div>
                                 </button>
+                            </div>
+                        </div>
 
                             </div>
                         </div>

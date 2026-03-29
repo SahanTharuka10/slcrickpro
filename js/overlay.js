@@ -1019,27 +1019,66 @@ function hideBroadcastOverlay() {
 }
 function showBigEventGraphic(data) {
     const { type } = data; // FOUR, SIX, WICKET
-    let color = '#FFD700'; // Gold for 4s/6s
-    let text = type;
-    let bg = 'rgba(0,0,0,0.85)';
+    let themeColor = '#FFD700'; // Gold
+    let label = type;
+    let sublabel = 'BOUNDARY';
+    let bgGradient = 'linear-gradient(135deg, rgba(20,20,20,0.98), rgba(0,0,0,1))';
     
-    if (type === 'WICKET') {
-        color = '#ff1744';
-        bg = 'rgba(0,0,0,0.9)';
+    if (type === 'SIX') {
+        themeColor = '#7c4dff'; // Vivid Purple
+        sublabel = 'MAXIMIZED';
+    } else if (type === 'WICKET') {
+        themeColor = '#ff1744'; // Bright Red
+        sublabel = 'OUT!';
     }
+
+    // Split label into spans for staggered animation
+    const labelHtml = label.split('').map(char => `<span class="be-char" style="display:inline-block">${char}</span>`).join('');
 
     const html = `
         <div id="big-event-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; 
-            align-items:center; justify-content:center; background:${bg}; z-index:20000; overflow:hidden">
-            <div id="big-event-content" style="text-align:center; transform: scale(0)">
-                <div style="font-size:120px; font-weight:900; color:${color}; text-shadow: 0 0 30px ${color}66; 
-                    letter-spacing:15px; font-style:italic; line-height:1">${text}</div>
-                <div style="width:200px; height:8px; background:${color}; margin: 20px auto; border-radius:4px"></div>
-                <div style="font-size:24px; color:#fff; letter-spacing:8px; opacity:0.8; font-weight:800">SLCRICKPRO LIVE</div>
+            align-items:center; justify-content:center; background:${bgGradient}; z-index:20000; overflow:hidden; font-family:'Outfit', sans-serif">
+            
+            <!-- Dynamic Background Light Streak -->
+            <div id="be-light-streak" style="position:absolute; width:200%; height:150px; background:linear-gradient(90deg, transparent, ${themeColor}11, transparent); 
+                transform:rotate(-45deg) translateY(-200%); filter:blur(30px); opacity:0.5"></div>
+
+            <!-- Animated Background Glow -->
+            <div id="be-glow" style="position:absolute; width:800px; height:800px; background:radial-gradient(circle, ${themeColor}11 0%, transparent 70%); 
+                filter:blur(60px); border-radius:50%; opacity:0"></div>
+
+            <div id="big-event-container" style="position:relative; text-align:center; transform:perspective(1200px) rotateX(15deg); opacity:0">
+                <!-- Top Decorative Line -->
+                <div class="be-divider" style="width:0%; height:2px; background:linear-gradient(90deg, transparent, ${themeColor}, transparent); margin:0 auto 25px; opacity:0.6"></div>
+                
+                <!-- Main Text with Premium 3D Effect -->
+                <div id="be-main-text" style="font-size:180px; font-weight:900; color:#fff; letter-spacing:15px; 
+                    text-shadow: 
+                        0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 
+                        0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,0.3), 
+                        0 3px 5px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.25), 
+                        0 10px 10px rgba(0,0,0,0.2), 0 20px 20px rgba(0,0,0,0.15),
+                        0 0 40px ${themeColor}33;
+                    line-height:0.8; margin-bottom:15px; perspective: 1000px">${labelHtml}</div>
+                
+                <!-- Sublabel Glass Pill -->
+                <div id="be-sub-box" style="display:inline-block; padding:10px 50px; background:rgba(255,255,255,0.03); 
+                    backdrop-filter:blur(15px); border:1px solid rgba(255,255,255,0.1); border-radius:100px; 
+                    margin-top:15px; transform:translateY(20px); opacity:0">
+                    <span style="font-size:26px; font-weight:800; color:${themeColor}; letter-spacing:12px; text-transform:uppercase">${sublabel}</span>
+                </div>
+
+                <!-- Bottom Decorative Line -->
+                <div class="be-divider" style="width:0%; height:2px; background:linear-gradient(90deg, transparent, ${themeColor}, transparent); margin:35px auto 0; opacity:0.6"></div>
             </div>
-            <!-- Decorative particles/lines -->
-            <div class="be-line" style="position:absolute; top:20%; left:-100%; width:100%; height:2px; background:${color}44"></div>
-            <div class="be-line" style="position:absolute; bottom:20%; right:-100%; width:100%; height:2px; background:${color}44"></div>
+
+            <!-- Side Borders Overlay -->
+            <div id="be-frame" style="position:absolute; top:40px; left:40px; right:40px; bottom:40px; border:1px solid ${themeColor}11; pointer-events:none; opacity:0"></div>
+
+            <!-- Footer -->
+            <div style="position:absolute; bottom:4%; width:100%; text-align:center; letter-spacing:6px; color:rgba(255,255,255,0.3); font-weight:700; font-size:13px">
+                BROADCAST MASTER • POWERED BY SLCRICKPRO
+            </div>
         </div>
     `;
 
@@ -1048,20 +1087,39 @@ function showBigEventGraphic(data) {
     wrapper.innerHTML = html;
     document.body.appendChild(wrapper);
 
-    const timeline = gsap.timeline();
-    timeline.to('#big-event-content', { scale: 1.2, duration: 0.5, ease: 'back.out(1.7)' })
-            .to('#big-event-content', { scale: 1, duration: 0.2 })
-            .to('.be-line', { x: '200%', duration: 1, stagger: 0.2, ease: 'power2.inOut' }, 0);
-
-    // Dynamic flashing effect for 6s
-    if (type === 'SIX') {
-        timeline.to('#big-event-content', { filter: 'brightness(1.5)', color: '#fff', repeat: 3, yoyo: true, duration: 0.1 }, 0.5);
+    // Font check
+    if (!document.getElementById('font-outfit')) {
+        const link = document.createElement('link');
+        link.id = 'font-outfit';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap';
+        document.head.appendChild(link);
     }
 
-    // Auto cleanup after 3 seconds
+    const tl = gsap.timeline();
+    
+    // Entrance Animation
+    tl.to('#big-event-overlay', { opacity: 1, duration: 0.3 })
+      .to('#be-glow', { opacity: 1, scale: 1.2, duration: 1, ease: 'power2.out' }, 0)
+      .to('#be-frame', { opacity: 1, scale: 0.98, duration: 1, ease: 'power2.out' }, 0)
+      .to('#big-event-container', { opacity: 1, rotateX: 0, duration: 1, ease: 'power4.out' }, 0.2)
+      .to('.be-divider', { width: '85%', duration: 0.8, ease: 'expo.out' }, 0.4)
+      .from('.be-char', { y: 100, opacity: 0, rotateY: 180, duration: 0.8, stagger: 0.08, ease: 'back.out(1.5)' }, 0.3)
+      .to('#be-sub-box', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(2)' }, 0.7)
+      .to('#be-light-streak', { y: '500%', duration: 1.5, ease: 'power2.inOut' }, 0.3);
+
+    // Dynamic looping effects
+    if (type === 'SIX') {
+        tl.to('.be-char', { y: -8, repeat: -1, yoyo: true, duration: 0.15, stagger: 0.05, ease: 'power1.inOut' }, 1);
+        tl.to('#be-glow', { scale: 1.5, opacity: 0.3, duration: 0.6, repeat: -1, yoyo: true }, 0.5);
+    } else if (type === 'WICKET') {
+        tl.fromTo('#big-event-overlay', { background: '#880000' }, { background: bgGradient, duration: 0.5, ease: 'power4.out' }, 0);
+        tl.to('#be-main-text', { scale: 1.05, repeat: -1, yoyo: true, duration: 0.1, ease: 'power1.inOut' }, 0.8);
+    }
+
+    // Auto Hide
     setTimeout(() => {
-        gsap.to('#big-event-overlay', { opacity: 0, duration: 0.5, onComplete: () => {
-            wrapper.remove();
-        }});
-    }, 3500);
+        tl.timeScale(1.5).reverse();
+        setTimeout(() => wrapper.remove(), 800);
+    }, 4500);
 }
