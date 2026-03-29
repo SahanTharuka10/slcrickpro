@@ -288,6 +288,12 @@ function submitMatchRequest() {
 function resumeMatch(id) {
     const m = DB.getMatch(id);
     if (!m) return;
+
+    if (m.tournamentId && isTournamentAuthorized(m.tournamentId)) {
+        loadMatch(m);
+        return;
+    }
+
     if (m.scoringPassword || m.password) {
         currentMatch = m;
         currentTournament = null; // Important: reset tournament context
@@ -331,6 +337,7 @@ function openTournamentHub(id) {
     // Auth check
     if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
         currentTournament = t;
+        currentMatch = null;
         document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
         document.getElementById('login-password').value = '';
         showScreen('login');
@@ -338,6 +345,7 @@ function openTournamentHub(id) {
     }
 
     currentTournament = t;
+    currentMatch = null;
     if (!t.rosters) t.rosters = {};
     
     document.getElementById('tm-title').textContent = t.name;
