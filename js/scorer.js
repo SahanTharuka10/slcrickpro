@@ -963,9 +963,27 @@ function recordBall(event) {
     applyBall(inn, event);
     saveAndRender();
 
-    // TV Broadcast for Big Events
-    if (event.type === 'four') sendBroadcast('SHOW_BIG_EVENT', { type: 'FOUR' });
-    else if (event.type === 'six') sendBroadcast('SHOW_BIG_EVENT', { type: 'SIX' });
+    // TV Broadcast for Big Events (Enriched with Player Metadata)
+    if (['four', 'six'].includes(event.type) || (event.wicket && !event.type?.includes('wide') && !event.type?.includes('noball'))) {
+        const strikerName = getStrikerBatterName(inn);
+        const strikerProfile = resolvePlayerProfileForBatter(inn, strikerName);
+        const strikerStats = inn.batsmen.find(x => x.name === strikerName) || { runs: 0, balls: 0 };
+        const bowler = inn.bowlers[inn.currentBowlerIdx] || { name: 'Bowler' };
+        
+        const payload = {
+            type: event.type.toUpperCase(),
+            playerName: strikerName,
+            playerPhoto: playerPhotoSrc(strikerProfile),
+            playerRuns: strikerStats.runs,
+            playerBalls: strikerStats.balls,
+            bowlerName: bowler.name,
+            teamName: inn.battingTeam,
+            matchScore: `${inn.runs}/${inn.wickets}`
+        };
+
+        if (event.wicket) payload.type = 'WICKET';
+        sendBroadcast('SHOW_BIG_EVENT', payload);
+    }
 
     // Check order matters: over end first, then innings end
     checkEndOfOver(inn);
