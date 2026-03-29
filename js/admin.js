@@ -370,3 +370,81 @@ function encodeProductImage(input, targetId) {
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
 }
+
+function openAddPlayer() {
+    document.getElementById('add-player-name').value = '';
+    document.getElementById('add-player-role').value = 'batsman';
+    document.getElementById('add-player-photo').value = '';
+    document.getElementById('add-player-file').value = '';
+    document.getElementById('add-player-preview').style.display = 'none';
+    document.getElementById('add-player-preview').src = '';
+    document.getElementById('modal-add-player').style.display = 'flex';
+}
+
+function encodePlayerImage(input, targetId) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        // Resize image to keep payload small for DB sync
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 150; // Keep it small for avatars
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                document.getElementById(targetId).value = dataUrl;
+                
+                const preview = document.getElementById('add-player-preview');
+                preview.src = dataUrl;
+                preview.style.display = 'block';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function saveNewPlayer() {
+    const name = document.getElementById('add-player-name').value.trim();
+    if (!name) {
+        showToast('Please enter a player name', 'error');
+        return;
+    }
+    const role = document.getElementById('add-player-role').value;
+    const photo = document.getElementById('add-player-photo').value; // base64
+
+    // Generate new player object
+    const p = DB.savePlayer({
+        name: name,
+        role: role,
+        photo: photo || null
+    });
+
+    if (p) {
+        showToast('✅ Player Registered: ' + p.playerId, 'success');
+        closeModal('modal-add-player');
+        renderPlayersAdmin(); // refresh the player list
+    } else {
+        showToast('❌ Failed to register player', 'error');
+    }
+}

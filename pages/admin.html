@@ -138,7 +138,10 @@
                     <h3 class="section-hd" style="margin-bottom:8px">Player Management</h3>
                     <p style="color:var(--c-muted);margin-bottom:0;">View and delete players from the system.</p>
                 </div>
-                <input type="text" class="form-input" id="admin-player-search" placeholder="🔍 Search players..." style="width:250px" oninput="renderPlayersAdmin()" />
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-green" onclick="openAddPlayer()">➕ Register Player</button>
+                    <input type="text" class="form-input" id="admin-player-search" placeholder="🔍 Search players..." style="width:250px" oninput="renderPlayersAdmin()" />
+                </div>
             </div>
             <div id="admin-players-list"></div>
         </div>
@@ -392,6 +395,39 @@
             <div class="modal-actions">
                 <button class="btn btn-ghost" onclick="closeModal('modal-edit-product')">Cancel</button>
                 <button class="btn btn-green" onclick="saveProductEdit()">Save Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Add Modal -->
+    <div class="modal-overlay" id="modal-add-player" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Register New Player</div>
+
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="add-player-name" placeholder="e.g. Kumar Sangakkara" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                <select class="form-input" id="add-player-role">
+                    <option value="batsman">🏏 Batsman</option>
+                    <option value="bowler">⚾ Bowler</option>
+                    <option value="allrounder">⭐ All-Rounder</option>
+                    <option value="wicketkeeper">🧤 Wicketkeeper</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Player Photo (Optional)</label>
+                <input type="hidden" id="add-player-photo" />
+                <input type="file" id="add-player-file" accept="image/*" style="margin-top:8px"
+                    onchange="encodePlayerImage(this, 'add-player-photo')" />
+                <div style="font-size: 12px; color: var(--c-muted); margin-top: 4px;">Choose a square photo for best TV Overlay results.</div>
+                <img id="add-player-preview" src="" style="width:100px; height:100px; object-fit:cover; border-radius:50%; margin-top:10px; display:none; border:2px solid var(--c-primary)" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-add-player')">Cancel</button>
+                <button class="btn btn-green" onclick="saveNewPlayer()">Register Player</button>
             </div>
         </div>
     </div>

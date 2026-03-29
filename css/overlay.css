@@ -27,9 +27,9 @@ body {
     display: flex;
     align-items: center;
     border-radius: 30px;
-    background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 2px 5px rgba(255,255,255,0.8);
-    color: #111;
+    background: #00ff00; /* Chroma key completely transparent */
+    box-shadow: none;
+    color: #fff;
     position: relative;
 }
 
@@ -57,16 +57,16 @@ body {
 .logo-circle {
     width: 44px;
     height: 32px;
-    background: #fff;
+    background: linear-gradient(135deg, #1b1642 0%, #292265 100%);
     border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
+    font-weight: 900;
     font-size: 14px;
-    color: #111;
-    border: 1px solid #ddd;
+    color: #fff;
+    border: 2px solid #e61b4d;
 }
 
 /* Batsman and Bowler Panels */
@@ -91,9 +91,10 @@ body {
 
 .player-row .player-name {
     flex: 1;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    color: #212533;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -102,29 +103,32 @@ body {
 }
 
 .player-row .player-name .striker-mark {
-    color: #212533;
+    color: #ffd600;
     margin-right: 6px;
     font-size: 10px;
     width: 10px;
     display: inline-block;
     text-align: center;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .player-value.runs {
-    font-weight: 800;
-    width: 35px;
+    font-weight: 900;
+    width: 40px;
     text-align: right;
-    color: #111;
-    font-size: 14px;
+    color: #fff;
+    font-size: 15px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
 }
 
 .player-value.balls {
     font-size: 12px;
-    font-weight: 600;
-    width: 30px;
+    font-weight: 700;
+    width: 35px;
     text-align: right;
-    color: #666;
+    color: #ffd600;
     margin-left: 5px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 /* Center score section */
@@ -138,7 +142,8 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255,255,255,0.2);
+    border: 2px solid #e61b4d;
     z-index: 10;
     position: relative;
     padding: 4px 0;

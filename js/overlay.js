@@ -550,7 +550,15 @@ function renderOverlay() {
         </div>
     `;
 
-document.getElementById('overlay-container').innerHTML = html;
+    document.getElementById('overlay-container').innerHTML = html;
+
+    const sb = document.getElementById('scorer-badge');
+    if (m.scorerName && sb) {
+        document.getElementById('scorer-name-val').textContent = m.scorerName.toUpperCase();
+        sb.style.display = 'block';
+    } else if (sb) {
+        sb.style.display = 'none';
+    }
 }
 
 function renderOverlayFromLightPayload(payload) {
@@ -589,7 +597,7 @@ function renderOverlayFromLightPayload(payload) {
         </div>
         <div class="score-center-section">
             <div class="score-top"><span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span><span class="total">${score}</span><span class="phase">LIVE</span><span class="overs">${ov}</span></div>
-            <div class="score-bottom">${payload.scorerName ? 'SCORER: ' + payload.scorerName.toUpperCase() + ' | SLCRICKPRO LIVE' : 'LIVE UPDATE'}</div>
+            <div class="score-bottom">SLCRICKPRO LIVE UPDATE</div>
         </div>
         <div class="bowler-section">
             <div class="player-row"><div class="player-name">${bowler.name}</div><div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div><div class="player-value balls">${b_overs}</div></div>
@@ -598,6 +606,14 @@ function renderOverlayFromLightPayload(payload) {
         <div class="team-logo-box right"><div class="logo-circle">${t2Short}</div></div>
     `;
     document.getElementById('overlay-container').innerHTML = html;
+
+    const sb = document.getElementById('scorer-badge');
+    if (payload.scorerName && sb) {
+        document.getElementById('scorer-name-val').textContent = payload.scorerName.toUpperCase();
+        sb.style.display = 'block';
+    } else if (sb) {
+        sb.style.display = 'none';
+    }
 }
 
 function renderTournamentStats(view) {
