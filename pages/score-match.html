@@ -468,23 +468,23 @@
                         <div style="background:rgba(255,255,255,0.04); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.08)">
                             <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,0.4); margin-bottom:10px; text-transform:uppercase">📺 Visual Graphics Controls</div>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
-                                <button onclick="broadcastTeamCard(0)"
-                                    style="background:rgba(21,101,192,0.1); border:1px solid rgba(21,101,192,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#7ecbff; text-align:left; transition:0.2s">
+                                <button onclick="event.stopPropagation(); broadcastTeamCard(0)"
+                                    style="background:rgba(21,101,192,0.1); border:1px solid rgba(21,101,192,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#7ecbff; text-align:left; transition:0.2s; pointer-events:auto !important">
                                     <div style="font-size:11px; font-weight:900">🛡️ TEAM 1 CARD</div>
                                     <div style="font-size:9px; opacity:0.6">Quick stats</div>
                                 </button>
-                                <button onclick="broadcastTeamCard(1)"
-                                    style="background:rgba(69,39,160,0.1); border:1px solid rgba(69,39,160,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#b39ddb; text-align:left; transition:0.2s">
+                                <button onclick="event.stopPropagation(); broadcastTeamCard(1)"
+                                    style="background:rgba(69,39,160,0.1); border:1px solid rgba(69,39,160,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#b39ddb; text-align:left; transition:0.2s; pointer-events:auto !important">
                                     <div style="font-size:11px; font-weight:900">🛡️ TEAM 2 CARD</div>
                                     <div style="font-size:9px; opacity:0.6">Quick stats</div>
                                 </button>
-                                <button onclick="broadcastCurrentBatters();"
-                                    style="background:rgba(46,125,50,0.1); border:1px solid rgba(46,125,50,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#69f0ae; text-align:left; transition:0.2s">
+                                <button onclick="event.stopPropagation(); broadcastCurrentBatters();"
+                                    style="background:rgba(46,125,50,0.1); border:1px solid rgba(46,125,50,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#69f0ae; text-align:left; transition:0.2s; pointer-events:auto !important">
                                     <div style="font-size:11px; font-weight:900">🏏 BOTH BATTERS</div>
                                     <div style="font-size:9px; opacity:0.6">Crease info</div>
                                 </button>
-                                <button onclick="broadcastStrikerProfile();"
-                                    style="background:rgba(198,40,40,0.1); border:1px solid rgba(198,40,40,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#ff8a80; text-align:left; transition:0.2s">
+                                <button onclick="event.stopPropagation(); broadcastStrikerProfile();"
+                                    style="background:rgba(198,40,40,0.1); border:1px solid rgba(198,40,40,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#ff8a80; text-align:left; transition:0.2s; pointer-events:auto !important">
                                     <div style="font-size:11px; font-weight:900">⚡ STRIKER PROFILE</div>
                                     <div style="font-size:9px; opacity:0.6">Detailed card</div>
                                 </button>
@@ -493,125 +493,24 @@
 
                         <!-- Standard Quick Metrics -->
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.2); border-radius:10px" onclick="Broadcast.showRunsNeeded()">
+                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.2); border-radius:10px; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.showRunsNeeded()">
                                 🚀 RUNS<br>NEEDED
                             </button>
-                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.2); border-radius:10px" onclick="Broadcast.showCRR()">
+                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.2); border-radius:10px; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.showCRR()">
                                 📈 CURRENT<br>RUN RATE
                             </button>
                         </div>
 
                         <!-- Master Controls -->
                         <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px">
-                            <button class="btn btn-red btn-full btn-sm" style="font-weight:900; letter-spacing:1px; height:42px; border-radius:10px; text-transform:uppercase" onclick="Broadcast.stopAll()">⏹ STOP ALL OVERLAYS</button>
-                            <button class="btn btn-ghost btn-full btn-sm" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber); border-radius:10px; height:42px" onclick="location.reload()">🔄 RESET</button>
+                            <button class="btn btn-red btn-full btn-sm" style="font-weight:900; letter-spacing:1px; height:42px; border-radius:10px; text-transform:uppercase; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.stopAll()">⏹ STOP ALL OVERLAYS</button>
+                            <button class="btn btn-ghost btn-full btn-sm" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber); border-radius:10px; height:42px; pointer-events:auto !important" onclick="event.stopPropagation(); location.reload()">🔄 RESET</button>
                         </div>
                     </div>
                 </div> <!-- End Broadcast card -->
             </div> <!-- End input-column -->
         </div> <!-- End scorer-layout -->
     </div> <!-- End screen-scoring -->
-                    <div style="display:flex; flex-direction:column; gap:12px">
-
-                        <!-- Force Update -->
-                        <button class="btn btn-primary btn-full btn-sm" onclick="forceUpdateTV()" style="background:var(--c-amber); color:#000; font-weight:800; border:none;">🔄 Force Update TV Scoreboard</button>
-
-                        <!-- ─── BROADCAST QUICK-ACTIONS ─── -->
-                        <div style="background:rgba(255,255,255,0.04); border-radius:12px; padding:8px; border:1px solid rgba(255,255,255,0.08)">
-                            <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,0.4); margin-bottom:6px; text-transform:uppercase">📺 Broadcast Quick-Actions</div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px">
-                                <!-- Team 1 Card -->
-                                <button onclick="broadcastTeamCard(0)"
-                                    style="background:linear-gradient(135deg,#1565c0,#1976d2); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
-                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 1 CARD</div>
-                                    <div style="font-size:9px; opacity:0.7">Show info</div>
-                                </button>
-
-                                <!-- Team 2 Card -->
-                                <button onclick="broadcastTeamCard(1)"
-                                    style="background:linear-gradient(135deg,#4527a0,#5e35b1); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
-                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 2 CARD</div>
-                                    <div style="font-size:9px; opacity:0.7">Show info</div>
-                                </button>
-
-                                <!-- Current Batters -->
-                                <button onclick="broadcastCurrentBatters();"
-                                    style="background:linear-gradient(135deg,#2e7d32,#43a047); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
-                                    <div style="font-size:11px; font-weight:900">🏏 CURRENT BATTERS</div>
-                                    <div style="font-size:9px; opacity:0.7">Both crease</div>
-                                </button>
-
-                                <!-- Striker Profile -->
-                                <button onclick="broadcastStrikerProfile();"
-                                    style="background:linear-gradient(135deg,#c62828,#ef5350); border:none; border-radius:8px; padding:8px; cursor:pointer; text-align:left; color:#fff; min-height:45px">
-                                    <div style="font-size:11px; font-weight:900">⚡                                      <div style="font-size:11px; font-weight:900">⚡ STRIKER PROFILE</div>
-                                     <div style="font-size:9px; opacity:0.7">New card</div>
-                                 </button>
-                             </div>
-                         </div>
- 
-                         <!-- ─── INSTANT HOTKEYS (Small & Clickable) ─── -->
-                         <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:12px; border:1px solid rgba(255,193,7,0.2); margin-top:10px">
-                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-                                 <div style="font-size:11px; font-weight:900; color:var(--c-amber); letter-spacing:1px; text-transform:uppercase">⚡ INSTANT HOTKEYS</div>
-                                 <div style="font-size:10px; color:rgba(255,255,255,0.4)" id="hk-sync-status">SYNCED</div>
-                             </div>
-                             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px">
-                                 <button onclick="recordBall({type:'four',runs:4})" 
-                                     style="background:#ffc107; color:#000; border:none; border-radius:8px; font-weight:900; height:45px; font-size:16px; cursor:pointer; box-shadow:0 4px 12px rgba(255,193,7,0.3)">4</button>
-                                 <button onclick="recordBall({type:'six',runs:6})" 
-                                     style="background:#7c4dff; color:#fff; border:none; border-radius:8px; font-weight:900; height:45px; font-size:16px; cursor:pointer; box-shadow:0 4px 12px rgba(124,77,255,0.3)">6</button>
-                                 <button onclick="openWicketModal()" 
-                                     style="background:#ff1744; color:#fff; border:none; border-radius:8px; font-weight:900; height:45px; font-size:16px; cursor:pointer; box-shadow:0 4px 12px rgba(255,23,68,0.3)">W</button>
-                             </div>
-                             <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:10px; color:var(--c-muted); opacity:0.8">
-                                 <span id="hk-team1-name">Team A</span>
-                                 <span style="font-weight:900; color:var(--c-amber)">VS</span>
-                                 <span id="hk-team2-name" style="text-align:right">Team B</span>
-                             </div>
-                         </div>
-                                    <div style="font-size:9px; opacity:0.7">New card</div>
-                                </button>
-                            </div>
-                        </div>
-
-                            </div>
-                        </div>
-
-                        <!-- Standard broadcast buttons -->
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn btn-primary" style="height:70px; font-size:14px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.3)" onclick="Broadcast.showRunsNeeded()">
-                                🚀 RUNS<br>NEEDED
-                            </button>
-                            <button class="btn btn-primary" style="height:70px; font-size:14px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.3)" onclick="Broadcast.showCRR()">
-                                📈 CURRENT<br>RUN RATE
-                            </button>
-                        </div>
-
-                        <!-- Next Match Graphic -->
-                        <div style="background: rgba(255,255,255,0.03); padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
-                            <div style="font-size:11px; font-weight:700; margin-bottom:8px; color:var(--c-muted)">COMING UP NEXT ARTWORK</div>
-                            <div class="grid-2" style="gap:8px; margin-bottom:8px">
-                                <input type="text" class="form-input btn-sm" id="broadcast-next-a" placeholder="Team A">
-                                <input type="text" class="form-input btn-sm" id="broadcast-next-b" placeholder="Team B">
-                            </div>
-                            <button class="btn btn-amber btn-full btn-sm" style="font-weight:800" onclick="Broadcast.publishNextMatch()">🎨 Publish Next Match Animation</button>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn btn-ghost btn-full" style="border-color:var(--c-border); font-weight:700" onclick="Broadcast.showScorecard()">📋 FULL SCORECARD</button>
-                            <button class="btn btn-ghost btn-full" style="border-color:var(--c-border); font-weight:700" onclick="Broadcast.showSummary()">🏆 TOURN. SUMMARY</button>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px">
-                            <button class="btn btn-red btn-full btn-sm" style="font-weight:900; letter-spacing:1px; height:40px" onclick="Broadcast.stopAll()">⏹ STOP / CLEAR ALL</button>
-                            <button class="btn btn-ghost btn-full btn-sm" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber)" onclick="location.reload()" title="Refresh Scorer State">🔄 RESET UI</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ===== TOURNAMENT SUMMARY SCREEN ===== -->
     <div id="screen-tournament-summary" class="scorer-screen" style="display:none">

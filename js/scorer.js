@@ -2355,9 +2355,16 @@ function broadcastTeamCard(teamIdx) {
     const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
     const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
     
-    const players = rosterIds.map(pid => DB.getPlayerById(pid)).filter(Boolean);
-    // Use the first player or a team logo if available. For now, we'll send the roster
-    // and let the overlay decide how to render the 'card' vs 'roster' view.
+    const players = rosterIds.slice(0, 11).map(pid => {
+        const p = DB.getPlayerById(pid);
+        if (!p) return null;
+        return {
+            name: p.name,
+            role: p.role || 'Player',
+            photo: playerPhotoSrc(p)
+        };
+    }).filter(Boolean);
+    
     sendBroadcast('SHOW_TEAM_CARD', { teamName, players });
 }
 

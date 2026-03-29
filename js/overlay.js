@@ -912,43 +912,147 @@ function showTeamRosterGraphic(data) {
 
 function showTeamCardGraphic(data) {
     const { teamName, players } = data;
-    // For Team Card, we show a simplified "Main Profile" for the team
-    // often featuring the Captain or a team representative photo
-    const representative = (players && players.length > 0) ? players[0] : { name: "Team Representative" };
-    const src = (representative && representative.photo && String(representative.photo).trim()) 
-                ? representative.photo 
-                : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    if (!players || players.length === 0) return;
 
-    let html = `
-        <div class="overlay-container show" id="overlay-team-card">
-            <div class="overlay-card team-main-card" style="max-width:600px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards">
-                <div class="overlay-header" style="background: linear-gradient(90deg, #1a237e, #0d47a1); border-bottom: 3px solid var(--c-primary)">
-                    <div class="overlay-title" style="font-size:32px">${teamName}</div>
-                    <div class="overlay-subtitle">OFFICIAL SQUAD INFO</div>
+    // Create the HTML for the player grid (up to 11 players)
+    const playersHtml = players.slice(0, 11).map((p, idx) => {
+        const src = (p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+        return `
+            <div class="squad-player-item" style="opacity:0; transform:translateY(30px)">
+                <div class="squad-photo-wrapper">
+                    <img src="${src}" class="squad-photo" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                    <div class="squad-photo-ring"></div>
                 </div>
-                <div class="overlay-body" style="display:flex; gap:30px; align-items:center; padding:30px">
-                    <div class="team-card-image" style="width:180px; height:180px; border-radius:15px; overflow:hidden; border:4px solid var(--c-primary); flex-shrink:0; background:#000 shadow: 0 10px 20px rgba(0,0,0,0.4)">
-                        <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
-                    </div>
-                    <div style="flex-grow:1">
-                        <div style="font-size:14px; color:var(--c-primary); font-weight:900; letter-spacing:2px; margin-bottom:8px">TEAM CAPTAIN / LEAD</div>
-                        <div style="font-size:28px; font-weight:900; margin-bottom:15px">${representative.name}</div>
-                        <div class="team-stat-row" style="display:flex; gap:15px">
-                            <div style="background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px; border-left:3px solid var(--c-primary)">
-                                <div style="font-size:10px; opacity:0.6; font-weight:800">PLAYERS</div>
-                                <div style="font-size:18px; font-weight:900">${players.length}</div>
-                            </div>
-                            <div style="background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px; border-left:3px solid var(--c-amber)">
-                                <div style="font-size:10px; opacity:0.6; font-weight:800">REGION</div>
-                                <div style="font-size:18px; font-weight:900">${teamName.split(' ')[0]}</div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="squad-player-info">
+                    <div class="squad-player-name">${p.name.toUpperCase()}</div>
+                    <div class="squad-player-role">${p.role || 'Player'}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const html = `
+        <div class="overlay-container show" id="overlay-team-squad">
+            <style>
+                #overlay-team-squad {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    background: radial-gradient(circle at center, rgba(13, 71, 161, 0.4) 0%, rgba(0,0,0,0.85) 100%);
+                    backdrop-filter: blur(10px);
+                }
+                .squad-main-container {
+                    width: 90%;
+                    max-width: 1200px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .squad-header {
+                    text-align: center;
+                    margin-bottom: 40px;
+                    border-bottom: 4px solid #ff1744;
+                    padding-bottom: 10px;
+                    width: 100%;
+                }
+                .squad-header-sub {
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: #ffc107;
+                    letter-spacing: 4px;
+                }
+                .squad-header-title {
+                    font-size: 52px;
+                    font-weight: 950;
+                    color: #fff;
+                    text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                }
+                .squad-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 30px;
+                    width: 100%;
+                    justify-items: center;
+                }
+                .squad-player-item {
+                    width: 180px;
+                    text-align: center;
+                    transition: 0.3s;
+                }
+                .squad-photo-wrapper {
+                    position: relative;
+                    width: 130px;
+                    height: 130px;
+                    margin: 0 auto 15px;
+                }
+                .squad-photo {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 50%;
+                    background: rgba(255,255,255,0.1);
+                    border: 4px solid #fff;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                }
+                .squad-photo-ring {
+                    position: absolute;
+                    top: -5px;
+                    left: -5px;
+                    right: -5px;
+                    bottom: -5px;
+                    border: 2px solid #ff1744;
+                    border-radius: 50%;
+                    animation: pulse 2s infinite;
+                }
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 0.5; }
+                    50% { transform: scale(1.05); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.5; }
+                }
+                .squad-player-name {
+                    font-weight: 900;
+                    font-size: 14px;
+                    color: #fff;
+                    margin-bottom: 4px;
+                    background: rgba(255,255,255,0.1);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                }
+                .squad-player-role {
+                    font-size: 11px;
+                    color: #ffc107;
+                    font-weight: 800;
+                    letter-spacing: 1px;
+                }
+            </style>
+            <div class="squad-main-container">
+                <div class="squad-header">
+                    <div class="squad-header-sub">OFFICIAL PLAYING XI</div>
+                    <div class="squad-header-title">${teamName.toUpperCase()}</div>
+                </div>
+                <div class="squad-grid">
+                    ${playersHtml}
                 </div>
             </div>
         </div>
     `;
+
     renderBroadcastOverlay(html);
+
+    // Staggered GSAP Animation
+    setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to('.squad-player-item', {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "back.out(1.7)"
+            });
+        } else {
+            document.querySelectorAll('.squad-player-item').forEach(el => el.style.opacity = '1');
+        }
+    }, 100);
 }
 
 function showBatterProfilesGraphic(data) {
