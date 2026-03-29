@@ -1896,6 +1896,11 @@ function saveAndRender() {
         renderScoring();
         // Signal TV overlay in other tabs to refresh immediately
         localStorage.setItem('cricpro_force_update', Date.now().toString());
+        // Update hotkey label team names
+        const t1el = document.getElementById('hk-team1-name');
+        const t2el = document.getElementById('hk-team2-name');
+        if (t1el) t1el.textContent = currentMatch.team1 || 'Team A';
+        if (t2el) t2el.textContent = currentMatch.team2 || 'Team B';
     }
 }
 function openModal(id) { const e = document.getElementById(id); if (e) e.style.display = 'flex'; }

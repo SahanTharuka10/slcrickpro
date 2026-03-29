@@ -770,20 +770,25 @@ function pullLiveUpdates() {
                     // Smart merge: only overwrite local match if cloud match is strictly newer
                     const localMatches = DB.getMatches();
                     const merged = [...localMatches];
-                    
+                    let anyUpdated = false;
+
                     data.forEach(cloudMatch => {
                         const localIdx = merged.findIndex(m => m.id === cloudMatch.id);
                         if (localIdx === -1) {
                             merged.push(cloudMatch);
+                            anyUpdated = true;
                         } else {
                             const localMatch = merged[localIdx];
                             // Only update if cloud version is newer
                             if ((cloudMatch.lastUpdated || 0) > (localMatch.lastUpdated || 0)) {
                                 merged[localIdx] = cloudMatch;
+                                anyUpdated = true;
                             }
                         }
                     });
                     DB.saveMatches(merged);
+                    // Signal overlay tabs to re-render if any score changed
+                    if (anyUpdated) localStorage.setItem('cricpro_force_update', Date.now().toString());
                 }
                 if (isScorer && !window.hasFetchedCloudOnce) {
                     DB.saveMatches(data);
