@@ -501,15 +501,58 @@ async function loginToMatch() {
     const baseUrl = window.BACKEND_BASE_URL || 'http://localhost:3000';
     const tournamentId = currentTournament?.id || currentMatch?.tournamentId || null;
 
-    try {
-        if (!tournamentId) {
-            if (currentMatch && (currentMatch.scoringPassword || currentMatch.password)) {
-                const localPw = currentMatch.scoringPassword || currentMatch.password;
-                if (pw === localPw) {
-                    loadMatch(currentMatch);
+    // 1. LOCAL CHECK FIRST
+    if (!tournamentId) {
+        if (currentMatch && (currentMatch.scoringPassword || currentMatch.password)) {
+            const localPw = currentMatch.scoringPassword || currentMatch.password;
+            if (pw === localPw) {
+                loadMatch(currentMatch);
+                return;
+            } else {
+                showToast('Invalid password!', 'error');
+                return;
+            }
+        }
+    } else {
+        const localT = DB.getTournament(tournamentId);
+        if (localT && localT.scoringPassword) {
+            if (localT.scoringPassword === pw) {
+                setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
+                if (currentTournament && !currentMatch) {
+                    openTournamentHub(currentTournament.id);
+                    currentTournament = null;
+                    showScreen('setup');
                     return;
                 }
+                if (currentMatch) {
+                    const matchData = currentMatch;
+                    if (matchData.isScheduledTemplate) {
+                        showScreen('setup');
+                        document.getElementById('type-tournament').click();
+                        setTimeout(() => {
+                            document.getElementById('tournament-setup-section').style.display = 'none';
+                            document.getElementById('team1-name').value = (matchData.team1 !== 'TBD' ? matchData.team1 : '');
+                            document.getElementById('team2-name').value = (matchData.team2 !== 'TBD' ? matchData.team2 : '');
+                            document.getElementById('setup-overs').value = matchData.overs;
+                            document.getElementById('setup-bpo').value = matchData.ballsPerOver;
+                            document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
+                        }, 100);
+                    } else {
+                        loadMatch(matchData);
+                    }
+                }
+                return;
+            } else if (!localT.isOfficial) {
+                // If it's purely local and unofficial, password failed. Don't fetch backend.
+                showToast('Invalid password!', 'error');
+                return;
             }
+        }
+    }
+
+    // 2. BACKEND FALLBACK
+    try {
+        if (!tournamentId) {
             const fallbackRes = await fetch(baseUrl + '/api/verify-scoring-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -527,6 +570,7 @@ async function loginToMatch() {
             showToast('Invalid password!', 'error');
             return;
         }
+
         const res = await fetch(baseUrl + `/api/tournaments/${tournamentId}/verify-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
