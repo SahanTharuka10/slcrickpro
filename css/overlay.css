@@ -1,4 +1,4 @@
-/* Live TV Overlay Styles - Official Classic Scoreboard */
+/* Live TV Overlay Styles - SLCRICKPRO Classic Scoreboard v2.0 */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
@@ -19,64 +19,72 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Main Scoreboard Bar ─────────────────────────────────── */
 .overlay-container {
-    width: calc(100% - 40px);
+    width: calc(100% - 60px);
     max-width: none;
-    height: 54px;
-    margin: 0 auto 40px;
+    height: 56px;
+    margin: 0 auto 36px;
     display: flex;
     align-items: center;
-    border-radius: 30px;
-    background: #00ff00; /* Chroma key completely transparent */
-    box-shadow: none;
-    color: #fff;
+    border-radius: 32px;
+    background: #ffffff;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.30);
+    color: #1a1a2e;
     position: relative;
+    overflow: visible; /* allow center pill to bleed out */
 }
 
-/* Logos on left and right */
+/* ─── Team Logo Boxes (far left & far right) ──────────────── */
 .team-logo-box {
-    width: 80px;
+    width: 64px;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    flex-shrink: 0;
     z-index: 2;
 }
 
 .team-logo-box.left {
-    border-top-left-radius: 30px;
-    border-bottom-left-radius: 30px;
+    border-top-left-radius: 32px;
+    border-bottom-left-radius: 32px;
+    background: #f4f4f8;
+    border-right: 1px solid #e8e8f0;
 }
 
 .team-logo-box.right {
-    border-top-right-radius: 30px;
-    border-bottom-right-radius: 30px;
+    border-top-right-radius: 32px;
+    border-bottom-right-radius: 32px;
+    background: #f4f4f8;
+    border-left: 1px solid #e8e8f0;
 }
 
+/* The letter badge inside each logo box */
 .logo-circle {
-    width: 44px;
-    height: 32px;
-    background: linear-gradient(135deg, #1b1642 0%, #292265 100%);
-    border-radius: 6px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    width: 38px;
+    height: 38px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-size: 14px;
-    color: #fff;
-    border: 2px solid #e61b4d;
+    font-size: 15px;
+    color: #1a1a2e;
+    border: 1.5px solid #e0e0ea;
+    letter-spacing: 0;
 }
 
-/* Batsman and Bowler Panels */
+/* ─── Batsmen & Bowler Panels (white area) ─────────────────── */
 .batsmen-section,
 .bowler-section {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 20px;
+    padding: 0 16px;
     min-width: 0;
     height: 100%;
 }
@@ -84,182 +92,195 @@ body {
 .player-row {
     display: flex;
     align-items: center;
-    line-height: 1.2;
-    font-size: 14px;
+    line-height: 1.25;
+    font-size: 13px;
     margin: 1px 0;
 }
 
+/* Player name — dark on white */
 .player-row .player-name {
     flex: 1;
     font-weight: 800;
     text-transform: uppercase;
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    color: #1a1a2e;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
+    font-size: 12.5px;
+    letter-spacing: 0.3px;
 }
 
+/* Strike indicator (▶) */
 .player-row .player-name .striker-mark {
-    color: #ffd600;
-    margin-right: 6px;
-    font-size: 10px;
+    color: #1a1a2e;
+    margin-right: 5px;
+    font-size: 9px;
     width: 10px;
     display: inline-block;
     text-align: center;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
+/* Runs — bold dark */
 .player-value.runs {
     font-weight: 900;
-    width: 40px;
+    width: 32px;
     text-align: right;
-    color: #fff;
-    font-size: 15px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    color: #1a1a2e;
+    font-size: 14px;
 }
 
+/* Balls in brackets — muted gray */
 .player-value.balls {
-    font-size: 12px;
-    font-weight: 700;
-    width: 35px;
+    font-size: 11.5px;
+    font-weight: 600;
+    width: 30px;
     text-align: right;
-    color: #ffd600;
-    margin-left: 5px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    color: #7a7a9a;
+    margin-left: 3px;
 }
 
-/* Center score section */
+/* ─── Center Score Pill ─────────────────────────────────────── */
 .score-center-section {
-    background: linear-gradient(90deg, #1b1642 0%, #292265 50%, #1b1642 100%);
+    background: linear-gradient(160deg, #1b1642 0%, #252060 50%, #1b1642 100%);
     color: #fff;
-    height: 68px; /* Protrudes top and bottom */
-    width: 440px;
-    border-radius: 34px;
+    /* Bleeds above and below the white bar */
+    height: 72px;
+    width: 380px;
+    flex-shrink: 0;
+    border-radius: 36px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255,255,255,0.2);
-    border: 2px solid #e61b4d;
+    box-shadow: 0 8px 28px rgba(27, 22, 66, 0.55);
     z-index: 10;
     position: relative;
-    padding: 4px 0;
+    padding: 5px 0 4px;
+    gap: 0;
 }
 
+/* Top row: A v B  [score badge]  [P1 badge]  RR */
 .score-top {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 16px;
-    margin-bottom: 3px;
-    margin-top: 1px;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 2px;
 }
 
+/* "A v B" text */
 .score-top .teams {
-    color: #d8dbed;
+    color: #c8ceeb;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 15px;
+    letter-spacing: 1px;
+    font-size: 13px;
+    font-weight: 700;
 }
 
 .score-top .teams span.v {
     text-transform: lowercase;
-    margin: 0 4px;
-    font-size: 13px;
-    color: #8c90ad;
+    margin: 0 2px;
+    font-size: 12px;
+    color: #6e74a0;
 }
 
+/* Score badge  0-0  */
 .score-top .total {
-    background: linear-gradient(135deg, #e61b4d 0%, #ba0e38 100%); /* Pinkish red */
-    padding: 2px 14px;
-    font-size: 18px;
+    background: #e32459;
+    padding: 2px 11px;
+    font-size: 16px;
     font-weight: 900;
-    border-radius: 12px;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(230, 27, 77, 0.4);
+    border-radius: 10px;
+    letter-spacing: 1px;
+    color: #fff;
 }
 
+/* Over rate */
 .score-top .overs {
     color: #fff;
     font-weight: 800;
-    font-size: 16px;
+    font-size: 14px;
 }
 
+/* Phase badge  P1 / P2 */
 .score-top .phase {
-    background: #007bb5;
-    padding: 1px 6px;
-    font-size: 12px;
+    background: #0077b6;
+    padding: 1px 7px;
+    font-size: 11px;
     border-radius: 6px;
     font-weight: 800;
-    margin-right: -4px;
+    color: #fff;
+    letter-spacing: 0.5px;
 }
 
+/* Bottom row: "TOSS: A CHOSE TO BAT" */
 .score-bottom {
-    font-size: 12px;
+    font-size: 10.5px;
     font-weight: 600;
-    color: #b9bdd6;
+    color: #8890b8;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
 }
 
-/* Recent Balls styling */
+/* ─── Recent Balls (bowler side) ─────────────────────────────── */
 .recent-balls-row {
     display: flex;
     align-items: center;
     gap: 4px;
-    height: 20px;
-    margin-left: 20px; /* Offset to align with bowler name */
+    height: 18px;
+    margin-left: 0;
+    margin-top: 1px;
 }
 
 .recent-ball {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 1.5px solid #212533;
+    border: 1.5px solid #c0c0d4;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 9px;
     font-weight: 800;
-    color: #212533;
+    color: #555;
     background: transparent;
 }
 
 .recent-ball.dot {
     background: transparent;
+    border-color: #ddd;
     color: transparent;
 }
 
 .recent-ball.runs {
     background: transparent;
-    border-color: #212533;
+    border-color: #555;
+    color: #333;
 }
 
 .recent-ball.boundary {
-    background: #212533;
+    background: #1a1a2e;
     color: #fff;
-    border-color: #212533;
+    border-color: #1a1a2e;
 }
 
 .recent-ball.six {
-    background: #212533;
+    background: #1a1a2e;
     color: #fff;
-    border-color: #212533;
+    border-color: #1a1a2e;
 }
 
 .recent-ball.wicket {
-    background: #e61b4d;
+    background: #e32459;
     color: #fff;
-    border-color: #e61b4d;
+    border-color: #e32459;
 }
 
 .recent-ball.extra {
-    background: #888;
+    background: #aaa;
     color: #fff;
-    border-color: #888;
+    border-color: #aaa;
 }
