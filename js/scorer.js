@@ -1890,11 +1890,15 @@ function pauseAndExit(noConfirm) {
 }
 
 // ========== HELPERS ==========
+// BroadcastChannel for instant same-browser cross-tab TV display updates
+const _scorerBC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('cricpro_live') : null;
+
 function saveAndRender() {
     if (currentMatch) {
         DB.saveMatch(currentMatch);
         renderScoring();
-        // Signal TV overlay in other tabs to refresh immediately
+        // Signal TV overlay: BroadcastChannel (instant, same browser) + localStorage (cross-tab fallback)
+        if (_scorerBC) _scorerBC.postMessage({ type: 'score_update', matchId: currentMatch.id, ts: Date.now() });
         localStorage.setItem('cricpro_force_update', Date.now().toString());
         // Update hotkey label team names
         const t1el = document.getElementById('hk-team1-name');

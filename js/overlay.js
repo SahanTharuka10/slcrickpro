@@ -3,6 +3,7 @@ let tournId = new URLSearchParams(window.location.search).get('tournament');
 let refreshInterval;
 let currentPopupView = null;
 let latestSocketScore = null;
+let latestSocketScoreTime = 0; // track when socket data was received
 
 function toggleShortcutMenu() {
     const menu = document.getElementById('shortcut-menu');
@@ -25,6 +26,26 @@ function closeOverlayPopup() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Instant same-device cross-tab communication
+    if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('cricpro_live');
+        bc.onmessage = (event) => {
+            if (event.data && event.data.type === 'score_update') {
+                if (matchId !== event.data.matchId && !tournId) {
+                    matchId = event.data.matchId;
+                }
+                renderOverlay();
+            }
+        };
+    }
+    
+    // Fallback for cross-tab updates via localStorage (if BroadcastChannel fails)
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'cricpro_force_update') {
+            renderOverlay();
+        }
+    });
+
     if (!matchId && !tournId) {
         document.getElementById('overlay-container').innerHTML = '<div style="padding: 20px; font-weight: bold; color: #ff0000; background: white; border-radius: 10px;">No Match or Tournament ID specified!</div>';
         return;
@@ -440,124 +461,90 @@ function hideAllOverlays() {
 }
 
 function renderOverlay() {
+    // Always read fresh match data from localStorage (DB)
+    // Only fall back to socket light payload if DB has no live match
+    const freshMatch = matchId ? DB.getMatch(matchId)
+        : DB.getMatches().find(mt => mt.tournamentId === tournId && (mt.status === 'live' || mt.status === 'paused'));
+
+    if (freshMatch && freshMatch.innings && freshMatch.innings[freshMatch.currentInnings]) {
+        // We have full, fresh data — always prefer this over stale socket cache
+        latestSocketScore = null; // clear stale socket cache
+        return _renderOverlayFromMatch(freshMatch);
+    }
+
+    // No local data — try socket light payload as fallback
     if (latestSocketScore && latestSocketScore.score) {
         return renderOverlayFromLightPayload(latestSocketScore);
     }
 
-    let m = null;
-    if (matchId) {
-        m = DB.getMatch(matchId);
-    } else if (tournId) {
-        m = DB.getMatches().find(mt => mt.tournamentId === tournId && (mt.status === 'live' || mt.status === 'paused'));
-    }
+    // No match found — hide
+    document.getElementById('overlay-container').style.display = 'none';
+    document.getElementById('overlay-container').innerHTML = '';
+}
 
-    if (!m) {
-        document.getElementById('overlay-container').style.display = 'none';
-        document.getElementById('overlay-container').innerHTML = '';
-        return;
-    }
-
-    document.getElementById('overlay-container').style.display = 'flex';
-
+// ─── Full match renderer ─────────────────────────────────────────────────────
+function _renderOverlayFromMatch(m) {
+    const container = document.getElementById('overlay-container');
+    if (!container) return;
     const curInn = m.innings[m.currentInnings];
-    if (!curInn) {
-        document.getElementById('overlay-container').style.display = 'none';
-        return;
-    }
+    if (!curInn) { container.style.display = 'none'; return; }
+    container.style.display = 'flex';
 
-    // Team info
-    const t1Name = curInn.battingTeam || "T1";
-    const t2Name = curInn.bowlingTeam || "T2";
-    const t1Short = getShortName(t1Name);
-    const t2Short = getShortName(t2Name);
+    const t1Short = getShortName(curInn.battingTeam || 'T1');
+    const t2Short = getShortName(curInn.bowlingTeam || 'T2');
+    const score   = curInn.runs + '-' + curInn.wickets;
+    const ov      = formatOvers(curInn.balls, m.ballsPerOver);
 
-    // Score & Overs
-    const score = curInn.runs + '-' + curInn.wickets;
-    const ov = formatOvers(curInn.balls, m.ballsPerOver);
-    const rr = formatCRR(curInn.runs, curInn.balls);
+    const si  = curInn.currentBatsmenIdx[curInn.strikerIdx];
+    const nsi = curInn.currentBatsmenIdx[curInn.strikerIdx === 0 ? 1 : 0];
+    const striker    = curInn.batsmen[si]  || { name:'Batsman 1', runs:0, balls:0 };
+    const nonStriker = curInn.batsmen[nsi] || { name:'Batsman 2', runs:0, balls:0 };
+    const bowler     = curInn.bowlers[curInn.currentBowlerIdx] || { name:'Bowler', wickets:0, runs:0, balls:0 };
+    const b_overs    = formatOvers(bowler.balls || 0, m.ballsPerOver);
 
-    // Batsmen info
-    const strikerRealIdx = curInn.currentBatsmenIdx[curInn.strikerIdx];
-    let striker = curInn.batsmen[strikerRealIdx];
-    if (!striker) striker = { name: 'Batsman 1', runs: 0, balls: 0 };
+    const ballsToShow = curInn.currentOver.slice(Math.max(0, curInn.currentOver.length - 6));
+    const recentBallsHtml = ballsToShow.map(b => {
+        let cls='', lbl=b.runs||'0';
+        if (b.wicket)              { cls='wicket';   lbl='W'; }
+        else if (b.type==='six')   { cls='six';      lbl='6'; }
+        else if (b.type==='four')  { cls='boundary'; lbl='4'; }
+        else if (b.type==='wide')  { cls='extra';    lbl='Wd'; }
+        else if (b.type==='noball'){ cls='extra';    lbl='Nb'; }
+        else if (b.type==='bye')   { cls='extra';    lbl='B'+b.runs; }
+        else if (b.type==='legbye'){ cls='extra';    lbl='Lb'+b.runs; }
+        else if (b.runs===0)       { cls='dot';      lbl='0'; }
+        else                       { cls='runs'; }
+        return `<div class="recent-ball ${cls}">${lbl}</div>`;
+    }).join('');
 
-    const nonStrikerSlot = curInn.strikerIdx === 0 ? 1 : 0;
-    const nonStrikerRealIdx = curInn.currentBatsmenIdx[nonStrikerSlot];
-    let nonStriker = curInn.batsmen[nonStrikerRealIdx];
-    if (!nonStriker) nonStriker = { name: 'Batsman 2', runs: 0, balls: 0 };
-
-    // Bowler info
-    let bowler = curInn.bowlers[curInn.currentBowlerIdx];
-    if (!bowler) bowler = { name: 'Bowler', wickets: 0, runs: 0, balls: 0 };
-    const b_overs = formatOvers(bowler.balls || 0, m.ballsPerOver);
-
-    // Last 6 Balls (Current Over array)
-    let recentBallsHtml = '';
-    let startIdx = Math.max(0, curInn.currentOver.length - 6); // Max 6 balls shown
-    const ballsToShow = curInn.currentOver.slice(startIdx);
-
-    if (ballsToShow.length > 0) {
-        recentBallsHtml = ballsToShow.map(b => {
-            let cls = '';
-            let lbl = b.runs || '0';
-
-            if (b.wicket) { cls = 'wicket'; lbl = 'W'; }
-            else if (b.type === 'six') { cls = 'six'; lbl = '6'; }
-            else if (b.type === 'four') { cls = 'boundary'; lbl = '4'; }
-            else if (b.type === 'wide') { cls = 'extra'; lbl = 'Wd'; }
-            else if (b.type === 'noball') { cls = 'extra'; lbl = 'Nb'; }
-            else if (b.type === 'bye') { cls = 'extra'; lbl = 'B' + b.runs; }
-            else if (b.type === 'legbye') { cls = 'extra'; lbl = 'Lb' + b.runs; }
-            else if (b.runs === 0) { cls = 'dot'; lbl = '0'; }
-            else { cls = 'runs'; }
-
-            return `<div class="recent-ball ${cls}">${lbl}</div>`;
-        }).join('');
-    }
-
-    let bottomText = `<span style="color:#fff">NEED </span>`;
     const ovNum = Math.floor(curInn.balls / m.ballsPerOver);
-    let phase = 'P1';
-    if (m.overs > 20) {
-        if (ovNum >= 10 && ovNum < 40) phase = 'P2';
-        else if (ovNum >= 40) phase = 'P3';
-    } else {
-        if (ovNum >= 6) phase = 'P2';
-    }
+    const phase = m.overs>20 ? (ovNum>=40?'P3':ovNum>=10?'P2':'P1') : (ovNum>=6?'P2':'P1');
 
-    if (m.currentInnings === 1 && m.innings[0]) {
-        const target = m.innings[0].runs + 1;
-        const need = target - curInn.runs;
+    let bottomText;
+    if (m.currentInnings===1 && m.innings[0]) {
+        const need      = m.innings[0].runs + 1 - curInn.runs;
         const ballsLeft = (m.overs * m.ballsPerOver) - curInn.balls;
-        if (need > 0) {
-            bottomText = `NEED <span style="color:#fff">${need}</span> RUNS FROM <span style="color:#fff">${ballsLeft}</span> BALLS`;
-        } else if (need === 0) {
-            bottomText = `<span style="color:#fff">SCORES LEVEL</span>`;
-        } else {
-            bottomText = `<span style="color:#fff">🎉 WON BY ${m.playersPerSide - curInn.wickets - 1} WICKETS</span>`;
-        }
+        bottomText = need>0  ? `NEED <span style="color:#fff">${need}</span> FROM <span style="color:#fff">${ballsLeft}</span> BALLS`
+                   : need===0? `<span style="color:#fff">SCORES LEVEL</span>`
+                             : `<span style="color:#fff">🎉 WON BY ${m.playersPerSide-curInn.wickets-1} WICKETS</span>`;
     } else {
-        bottomText = `TOSS: ${m.tossWinner || 'TBD'} CHOSE TO ${m.tossDecision ? m.tossDecision.toUpperCase() : 'BAT'}`;
+        bottomText = `TOSS: ${m.tossWinner||'TBD'} CHOSE TO ${(m.tossDecision||'bat').toUpperCase()}`;
     }
 
-    const html = `
-        <div class="team-logo-box left">
-            <div class="logo-circle">${t1Short}</div>
-        </div>
-        
+    container.innerHTML = `
+        <div class="team-logo-box left"><div class="logo-circle">${t1Short}</div></div>
         <div class="batsmen-section">
             <div class="player-row">
-                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx === 0 ? '▶' : '&nbsp;'}</span> ${striker.name}</div>
-                <div class="player-value runs">${striker.runs || 0}</div>
-                <div class="player-value balls">${striker.balls || 0}</div>
+                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span> ${striker.name}</div>
+                <div class="player-value runs">${striker.runs||0}</div>
+                <div class="player-value balls">${striker.balls||0}</div>
             </div>
             <div class="player-row">
-                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx === 1 ? '▶' : '&nbsp;'}</span> ${nonStriker.name}</div>
-                <div class="player-value runs">${nonStriker.runs || 0}</div>
-                <div class="player-value balls">${nonStriker.balls || 0}</div>
+                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span> ${nonStriker.name}</div>
+                <div class="player-value runs">${nonStriker.runs||0}</div>
+                <div class="player-value balls">${nonStriker.balls||0}</div>
             </div>
         </div>
-        
         <div class="score-center-section">
             <div class="score-top">
                 <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
@@ -565,29 +552,17 @@ function renderOverlay() {
                 <span class="phase">${phase}</span>
                 <span class="overs">${ov}</span>
             </div>
-            <div class="score-bottom">
-                ${bottomText}
-            </div>
+            <div class="score-bottom">${bottomText}</div>
         </div>
-        
         <div class="bowler-section">
             <div class="player-row">
                 <div class="player-name">${bowler.name}</div>
-                <div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div>
+                <div class="player-value runs">${bowler.wickets||0}-${bowler.runs||0}</div>
                 <div class="player-value balls">${b_overs}</div>
             </div>
-            <div class="recent-balls-row">
-                ${recentBallsHtml}
-            </div>
+            <div class="recent-balls-row">${recentBallsHtml}</div>
         </div>
-        
-        <div class="team-logo-box right">
-            <div class="logo-circle">${t2Short}</div>
-        </div>
-    `;
-
-    document.getElementById('overlay-container').innerHTML = html;
-
+        <div class="team-logo-box right"><div class="logo-circle">${t2Short}</div></div>`;
 }
 
 function renderOverlayFromLightPayload(payload) {
