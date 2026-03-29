@@ -462,6 +462,7 @@ function endTournamentManually(tournId) {
     const t = DB.getTournament(tournId);
     if (t) {
         t.status = 'completed';
+        t.rosters = {}; // Clear rosters when tournament is COMPLETED
         DB.saveTournament(t);
         showToast('Tournament marked as COMPLETED!', 'success');
         closeModal('modal-tournament-matches');
@@ -2130,7 +2131,7 @@ function renderTournamentTeams() {
                     <div style="width:40px;height:40px;background:var(--c-primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">${teamName[0].toUpperCase()}</div>
                     <div>
                         <div style="font-weight:700;font-size:16px">${teamName}</div>
-                        <div style="font-size:12px;opacity:0.6">${roster.length} Players Registered</div>
+                        <div style="font-size:12px;opacity:0.6">${roster.filter(n => n && n.trim()).length} / 11 Players Registered</div>
                     </div>
                 </div>
                 <button class="btn btn-sm btn-ghost" onclick="openRosterEditor('${escapeHTML(teamName)}')">📋 Edit Roster</button>
@@ -2153,98 +2154,54 @@ function openRosterEditor(teamName) {
     const listEl = document.getElementById('tm-teams-list');
     if (!listEl) return;
 
-    // Team Selector HTML
-    const teamOptions = t.teams.map(name => 
-        `<option value="${escapeHTML(name)}" ${name === editingTeamName ? 'selected' : ''}>${name}</option>`
-    ).join('');
+    // We want 11 blanks
+    let inputsHtml = '';
+    for (let i = 0; i < 11; i++) {
+        const val = roster[i] || '';
+        inputsHtml += `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <div style="width:24px;font-size:12px;opacity:0.5;font-weight:700">${i + 1}</div>
+                <input type="text" class="form-input roster-player-input" 
+                       value="${escapeHTML(val)}" placeholder="Player Name" 
+                       style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.1); height:36px; font-size:13px" />
+            </div>
+        `;
+    }
 
     listEl.innerHTML = `
-        <div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
-            <label class="form-label" style="font-size:12px; opacity:0.6; margin-bottom:8px">Select Team to Manage Squad</label>
-            <select class="form-input" onchange="openRosterEditor(this.value)" style="background:#1a1a2e; border:1px solid var(--c-primary)">
-                ${teamOptions}
-            </select>
+        <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center">
+            <div style="font-weight:900; color:var(--c-amber); font-size:14px">📝 ROSTER: ${editingTeamName}</div>
+            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()" style="font-size:11px">← Back to List</button>
         </div>
-        
-        <div class="form-group" style="position:relative">
-            <label class="form-label">Search Player for ${editingTeamName}</label>
-            <div style="display:flex; gap:8px">
-                <input type="text" class="form-input" id="roster-search" placeholder="Type player name or ID..." oninput="handleRosterSearch(this.value)" autocomplete="off" />
-            </div>
-            <div id="roster-suggestions" style="position:absolute;top:100%;left:0;right:0;background:#1a1a2e;border:1px solid var(--c-primary);z-index:1000;border-radius:12px;max-height:250px;overflow-y:auto;display:none;box-shadow:0 15px 40px rgba(0,0,0,0.9)"></div>
+
+        <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
+            ${inputsHtml}
         </div>
 
         <div style="margin-top:20px">
-            <div style="font-weight:700; font-size:14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center">
-                <span>Current Squad (${roster.length} Players)</span>
-                <span style="font-size:11px; font-weight:normal; opacity:0.6">Repeat to add more</span>
-            </div>
-            <div id="roster-list" style="display:flex; flex-direction:column; gap:8px">
-                ${roster.length === 0 ? '<div style="text-align:center;padding:30px;opacity:0.4;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed rgba(255,255,255,0.1)">No players in this squad yet. Search above to add.</div>' : roster.map(pid => {
-                    const p = DB.getPlayerById(pid);
-                    return p ? `
-                        <div class="roster-edit-item" style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid rgba(255,255,255,0.05)">
-                            ${p.photo ? `<img src="${p.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${p.name[0]}</div>`}
-                            <div style="flex:1">
-                                <div style="font-weight:600;font-size:13px">${p.name}</div>
-                                <div style="font-size:10px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
-                            </div>
-                            <button class="btn btn-sm btn-ghost" style="color:var(--c-red);padding:4px 8px; font-size:16px" onclick="removeFromRoster('${p.playerId}')" title="Remove">✖</button>
-                        </div>
-                    ` : '';
-                }).join('')}
-            </div>
+            <button class="btn btn-primary btn-full" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Roster</button>
         </div>
     `;
 }
 
-function handleRosterSearch(val) {
-    const sug = document.getElementById('roster-suggestions');
-    if (!val || val.length < 1) { sug.style.display = 'none'; return; }
-    
-    const players = DB.getPlayers();
-    const filtered = players.filter(p => p.name.toLowerCase().includes(val.toLowerCase()) || p.playerId.toLowerCase().includes(val.toLowerCase())).slice(0, 5);
-    
-    if (filtered.length === 0) { 
-        sug.innerHTML = '<div style="padding:12px;color:rgba(255,255,255,0.4);font-size:12px;text-align:center">No players found</div>'; 
-        sug.style.display = 'block'; 
-        return; 
-    }
-    
-    sug.innerHTML = filtered.map(p => `
-        <div style="padding:12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:12px; transition:background 0.2s" 
-             onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
-             onmouseout="this.style.background='transparent'"
-             onclick="addToRoster('${p.playerId}')">
-            ${p.photo ? `<img src="${p.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--c-primary)" />` : `<div style="width:32px;height:32px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${p.name[0]}</div>`}
-            <div style="flex:1">
-                <div style="font-size:14px;font-weight:600">${p.name}</div>
-                <div style="font-size:11px;opacity:0.5">${p.playerId} · ${capitalize(p.role || 'Player')}</div>
-            </div>
-            <button class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11px">Add to Squad</button>
-        </div>
-    `).join('');
-    sug.style.display = 'block';
-}
-
-function addToRoster(pid) {
+function saveRoster(teamName) {
     const t = currentTournament;
-    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
-    if (!t.rosters[editingTeamName].includes(pid)) {
-        t.rosters[editingTeamName].push(pid);
-        DB.saveTournament(t);
-    }
-    document.getElementById('roster-suggestions').style.display = 'none';
-    document.getElementById('roster-search').value = '';
-    openRosterEditor(editingTeamName);
-}
-
-function removeFromRoster(pid) {
-    const t = currentTournament;
-    t.rosters[editingTeamName] = (t.rosters[editingTeamName] || []).filter(id => id !== pid);
+    if (!t) return;
+    
+    const inputs = document.querySelectorAll('.roster-player-input');
+    const newRoster = [];
+    inputs.forEach(inp => {
+        newRoster.push(inp.value.trim());
+    });
+    
+    if (!t.rosters) t.rosters = {};
+    t.rosters[teamName] = newRoster;
+    
     DB.saveTournament(t);
-    openRosterEditor(editingTeamName);
+    showToast('Roster saved for ' + teamName, 'success');
+    renderTournamentTeams();
 }
+
 
 function showTeamOverlay(teamIdx) {
     const m = currentMatch;
