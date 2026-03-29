@@ -223,8 +223,14 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_TEAM_ROSTER':
             showTeamRosterGraphic(data);
             break;
+        case 'SHOW_TEAM_CARD':
+            showTeamCardGraphic(data);
+            break;
         case 'SHOW_BATTER_PROFILES':
             showBatterProfilesGraphic(data);
+            break;
+        case 'SHOW_BIG_EVENT':
+            showBigEventGraphic(data);
             break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
@@ -904,6 +910,47 @@ function showTeamRosterGraphic(data) {
     renderBroadcastOverlay(html);
 }
 
+function showTeamCardGraphic(data) {
+    const { teamName, players } = data;
+    // For Team Card, we show a simplified "Main Profile" for the team
+    // often featuring the Captain or a team representative photo
+    const representative = (players && players.length > 0) ? players[0] : { name: "Team Representative" };
+    const src = (representative && representative.photo && String(representative.photo).trim()) 
+                ? representative.photo 
+                : OVERLAY_DEFAULT_PLAYER_PHOTO;
+
+    let html = `
+        <div class="overlay-container show" id="overlay-team-card">
+            <div class="overlay-card team-main-card" style="max-width:600px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards">
+                <div class="overlay-header" style="background: linear-gradient(90deg, #1a237e, #0d47a1); border-bottom: 3px solid var(--c-primary)">
+                    <div class="overlay-title" style="font-size:32px">${teamName}</div>
+                    <div class="overlay-subtitle">OFFICIAL SQUAD INFO</div>
+                </div>
+                <div class="overlay-body" style="display:flex; gap:30px; align-items:center; padding:30px">
+                    <div class="team-card-image" style="width:180px; height:180px; border-radius:15px; overflow:hidden; border:4px solid var(--c-primary); flex-shrink:0; background:#000 shadow: 0 10px 20px rgba(0,0,0,0.4)">
+                        <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                    </div>
+                    <div style="flex-grow:1">
+                        <div style="font-size:14px; color:var(--c-primary); font-weight:900; letter-spacing:2px; margin-bottom:8px">TEAM CAPTAIN / LEAD</div>
+                        <div style="font-size:28px; font-weight:900; margin-bottom:15px">${representative.name}</div>
+                        <div class="team-stat-row" style="display:flex; gap:15px">
+                            <div style="background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px; border-left:3px solid var(--c-primary)">
+                                <div style="font-size:10px; opacity:0.6; font-weight:800">PLAYERS</div>
+                                <div style="font-size:18px; font-weight:900">${players.length}</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.05); padding:10px 15px; border-radius:8px; border-left:3px solid var(--c-amber)">
+                                <div style="font-size:10px; opacity:0.6; font-weight:800">REGION</div>
+                                <div style="font-size:18px; font-weight:900">${teamName.split(' ')[0]}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    renderBroadcastOverlay(html);
+}
+
 function showBatterProfilesGraphic(data) {
     const { profiles } = data;
     if (!profiles || profiles.length === 0) return;
@@ -969,4 +1016,52 @@ function hideBroadcastOverlay() {
     if (activeBroadcastOverlayId) clearTimeout(activeBroadcastOverlayId);
     const el = document.getElementById('active-broadcast-wrapper');
     if (el) el.remove();
+}
+function showBigEventGraphic(data) {
+    const { type } = data; // FOUR, SIX, WICKET
+    let color = '#FFD700'; // Gold for 4s/6s
+    let text = type;
+    let bg = 'rgba(0,0,0,0.85)';
+    
+    if (type === 'WICKET') {
+        color = '#ff1744';
+        bg = 'rgba(0,0,0,0.9)';
+    }
+
+    const html = `
+        <div id="big-event-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; 
+            align-items:center; justify-content:center; background:${bg}; z-index:20000; overflow:hidden">
+            <div id="big-event-content" style="text-align:center; transform: scale(0)">
+                <div style="font-size:120px; font-weight:900; color:${color}; text-shadow: 0 0 30px ${color}66; 
+                    letter-spacing:15px; font-style:italic; line-height:1">${text}</div>
+                <div style="width:200px; height:8px; background:${color}; margin: 20px auto; border-radius:4px"></div>
+                <div style="font-size:24px; color:#fff; letter-spacing:8px; opacity:0.8; font-weight:800">SLCRICKPRO LIVE</div>
+            </div>
+            <!-- Decorative particles/lines -->
+            <div class="be-line" style="position:absolute; top:20%; left:-100%; width:100%; height:2px; background:${color}44"></div>
+            <div class="be-line" style="position:absolute; bottom:20%; right:-100%; width:100%; height:2px; background:${color}44"></div>
+        </div>
+    `;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'big-event-wrapper';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+
+    const timeline = gsap.timeline();
+    timeline.to('#big-event-content', { scale: 1.2, duration: 0.5, ease: 'back.out(1.7)' })
+            .to('#big-event-content', { scale: 1, duration: 0.2 })
+            .to('.be-line', { x: '200%', duration: 1, stagger: 0.2, ease: 'power2.inOut' }, 0);
+
+    // Dynamic flashing effect for 6s
+    if (type === 'SIX') {
+        timeline.to('#big-event-content', { filter: 'brightness(1.5)', color: '#fff', repeat: 3, yoyo: true, duration: 0.1 }, 0.5);
+    }
+
+    // Auto cleanup after 3 seconds
+    setTimeout(() => {
+        gsap.to('#big-event-overlay', { opacity: 0, duration: 0.5, onComplete: () => {
+            wrapper.remove();
+        }});
+    }, 3500);
 }

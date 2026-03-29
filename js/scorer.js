@@ -984,6 +984,11 @@ function recordBall(event) {
     pushHistory();
     applyBall(inn, event);
     saveAndRender();
+
+    // TV Broadcast for Big Events
+    if (event.type === 'four') sendBroadcast('SHOW_BIG_EVENT', { type: 'FOUR' });
+    else if (event.type === 'six') sendBroadcast('SHOW_BIG_EVENT', { type: 'SIX' });
+
     // Check order matters: over end first, then innings end
     checkEndOfOver(inn);
     checkEndOfInnings(inn, null);
@@ -1285,6 +1290,9 @@ function confirmWicket() {
     currentPendingWicket = dismissedSlot;
     closeModal('modal-wicket');
     saveAndRender();
+    
+    // TV Broadcast for Wicket
+    sendBroadcast('SHOW_BIG_EVENT', { type: 'WICKET' });
 
     // Check end of over first
     const overDone = checkEndOfOver(inn);
@@ -2329,24 +2337,53 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    if (!e.shiftKey) return;
-
-    if (e.key === '1') {
-        e.preventDefault();
-        showTeamOverlay(0);
-        broadcastTeamRoster(0);
-    } else if (e.key === '2') {
-        e.preventDefault();
-        showTeamOverlay(1);
-        broadcastTeamRoster(1);
-    } else if (e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        showPlayerOverlay(false);
-        broadcastCurrentBatters();
-    } else if (e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        showPlayerOverlay(true);
-        broadcastStrikerProfile();
+    if (e.shiftKey) {
+        if (e.key === '1') {
+            e.preventDefault();
+            broadcastTeamCard(0);
+        } else if (e.key === '2') {
+            e.preventDefault();
+            broadcastTeamCard(1);
+        } else if (e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            broadcastCurrentBatters();
+        } else if (e.key.toLowerCase() === 'b') {
+            e.preventDefault();
+            broadcastStrikerProfile();
+        }
+    } else {
+        // Basic Scoring Hotkeys
+        if (e.key === '0' || e.key === '.') {
+            e.preventDefault();
+            recordBall({ type: 'dot', runs: 0 });
+        } else if (e.key === '1') {
+            e.preventDefault();
+            recordBall({ type: 'run', runs: 1 });
+        } else if (e.key === '2') {
+            e.preventDefault();
+            recordBall({ type: 'run', runs: 2 });
+        } else if (e.key === '3') {
+            e.preventDefault();
+            recordBall({ type: 'run', runs: 3 });
+        } else if (e.key === '4') {
+            e.preventDefault();
+            recordBall({ type: 'four', runs: 4 });
+        } else if (e.key === '5') {
+            e.preventDefault();
+            recordBall({ type: 'run', runs: 5 });
+        } else if (e.key === '6') {
+            e.preventDefault();
+            recordBall({ type: 'six', runs: 6 });
+        } else if (e.key.toLowerCase() === 'w') {
+            e.preventDefault();
+            openWicketModal();
+        } else if (e.key === '+') {
+            e.preventDefault();
+            recordBall({ type: 'wide', runs: 1 });
+        } else if (e.key === '*') {
+            e.preventDefault();
+            recordBall({ type: 'noball', runs: 1 });
+        }
     }
 });
 
@@ -2371,6 +2408,19 @@ function broadcastTeamRoster(teamIdx) {
     
     const players = rosterIds.map(pid => DB.getPlayerById(pid)).filter(Boolean);
     sendBroadcast('SHOW_TEAM_ROSTER', { teamName, players });
+}
+
+function broadcastTeamCard(teamIdx) {
+    const m = currentMatch;
+    if (!m) return;
+    const teamName = teamIdx === 0 ? m.team1 : m.team2;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
+    
+    const players = rosterIds.map(pid => DB.getPlayerById(pid)).filter(Boolean);
+    // Use the first player or a team logo if available. For now, we'll send the roster
+    // and let the overlay decide how to render the 'card' vs 'roster' view.
+    sendBroadcast('SHOW_TEAM_CARD', { teamName, players });
 }
 
 function broadcastCurrentBatters() {
