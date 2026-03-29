@@ -434,7 +434,7 @@ function saveNewPlayer() {
     const photo = document.getElementById('add-player-photo').value; // base64
 
     // Generate new player object
-    const p = DB.savePlayer({
+    const p = DB.addPlayer({
         name: name,
         role: role,
         photo: photo || null
