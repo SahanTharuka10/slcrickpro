@@ -555,6 +555,7 @@ app.post('/sync/match', async (req, res) => {
         const update = { _id: data.id, data };
         if (data.scoringPassword) {
             update.scoring_password = await bcrypt.hash(data.scoringPassword, 10);
+            data.isLocked = true; // Mark as locked in the public JSON
             delete data.scoringPassword; // Don't store plain in JSON data field
         }
         await Match.findByIdAndUpdate(data.id, update, { upsert: true });
@@ -618,6 +619,7 @@ app.post('/sync/tournament', async (req, res) => {
         const update = { _id: data.id, data };
         if (data.scoringPassword) {
             update.scoring_password = await bcrypt.hash(data.scoringPassword, 10);
+            data.isLocked = true; // Mark as locked in the public JSON
             delete data.scoringPassword;
         }
         await Tournament.findByIdAndUpdate(data.id, update, { upsert: true });
@@ -636,6 +638,31 @@ app.get('/sync/tournaments', async (req, res) => {
         res.json(tournaments.map(t => t.data));
     } catch (e) {
         res.status(500).json({ error: e.message || 'Failed to fetch tournaments' });
+    }
+});
+
+app.post('/verify-password', async (req, res) => {
+    const { id, type, password } = req.body;
+    if (!id || !type || !password) return res.status(400).json({ error: 'Missing parameters' });
+    try {
+        await ensureDB();
+        let record = null;
+        if (type === 'match') {
+            record = await Match.findById(id);
+        } else if (type === 'tournament') {
+            record = await Tournament.findById(id);
+        }
+
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+        
+        // If there's no password set, it's effectively verified (or not locked)
+        if (!record.scoring_password) return res.json({ verified: true });
+
+        const isMatch = await bcrypt.compare(password, record.scoring_password);
+        res.json({ verified: isMatch });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Verification failed' });
     }
 });
 

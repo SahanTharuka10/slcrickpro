@@ -822,7 +822,15 @@ function pullLiveUpdates() {
     if (isScorer) window.hasFetchedCloudOnce = true;
 }
 
-// All pages poll every 12s to stay in sync with lower UI/network overhead.
-setInterval(pullLiveUpdates, 12000);
-// Everyone grabs an initial clone on page boot
+// ============================================================
+// CONTEXT-AWARE POLLING (Dynamic refresh based on page type)
+// ============================================================
+const _isPublicPage = window.location.pathname.includes('ongoing-matches.html');
+const _isOverlay = window.location.pathname.includes('overlay.html');
+const _pollInterval = _isOverlay ? 3000 : (_isPublicPage ? 5000 : 15000);
+
+console.log(`📡 Cloud Sync Active: ${_pollInterval/1000}s interval (${_isOverlay ? 'TV' : (_isPublicPage ? 'Public' : 'Main')})`);
+
+setInterval(pullLiveUpdates, _pollInterval);
+// Initial grab on page boot
 setTimeout(pullLiveUpdates, 500);

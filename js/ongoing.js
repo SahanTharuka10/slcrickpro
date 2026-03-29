@@ -78,6 +78,7 @@ function buildMatchCard(m, isLive) {
   const curInn = m.innings ? m.innings[m.currentInnings] : null;
   const statusColor = m.status === 'live' ? '#00e676' : (m.status === 'scheduled' ? '#00bcd4' : '#ffc107');
   const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'scheduled' ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ Done'));
+  const hasPw = (m.scoringPassword || m.password || m.isLocked);
 
   const score0 = m.status === 'scheduled' ? '-' : (inn0 ? `${inn0.runs}/${inn0.wickets}` : '-');
   const ov0 = m.status === 'scheduled' ? '' : (inn0 ? `(${formatOvers(inn0.balls, m.ballsPerOver)} ov)` : '');
@@ -97,40 +98,44 @@ function buildMatchCard(m, isLive) {
   const typeLabel = m.type === 'tournament' ? `Tournament` : 'Single Match';
   const subText = m.knockout ? `KO Match ${m.knockout.matchNum}` : (m.venue || 'Home');
 
-  return `<div class="match-card ${isLive ? 'live-card' : ''}" onclick="openMatchDetail('${m.id}')">
-    <div class="match-card-header">
-      <span class="match-type-badge badge badge-${m.type === 'tournament' ? 'amber' : 'blue'}">${typeLabel}</span>
-      <span style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</span>
-    </div>
-    <div class="match-teams" onclick="openMatchDetail('${m.id}')">
-      <div class="match-vs-row">
-        <span class="match-team-name">${m.password ? '🔒 ' : ''}${m.team1}</span>
-        <span class="match-vs-sep">vs</span>
-        <span class="match-team-name">${m.team2}</span>
-      </div>
-      <div class="match-score-row" style="margin-top:14px">
-        <div class="match-team-score">
-          <div class="match-score-val">${score0}</div>
-          <div class="match-score-overs">${ov0}</div>
+  return `
+    <div class="match-card ${isLive ? 'live-card' : ''}" onclick="openMatchDetail('${m.id}')">
+        <div class="match-card-header" style="justify-content: space-between">
+            <div style="display:flex; gap:6px; align-items:center">
+                <span class="match-type-badge badge badge-${m.type === 'tournament' ? 'amber' : 'blue'}">${typeLabel}</span>
+                ${hasPw ? `<span style="font-size:9px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 6px; border-radius:4px; font-weight:800; letter-spacing:0.5px">🔒 LOCKED</span>` : ''}
+            </div>
+            <span style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</span>
         </div>
-        <div class="match-team-score">
-          <div class="match-score-val" style="color:${m.currentInnings === 1 ? '#fff' : 'rgba(255,255,255,0.4)'}">${score1}</div>
-          <div class="match-score-overs">${ov1}</div>
+        <div class="match-teams">
+            <div class="match-vs-row">
+                <span class="match-team-name">${m.team1}</span>
+                <span class="match-vs-sep">vs</span>
+                <span class="match-team-name">${m.team2}</span>
+            </div>
+            <div class="match-score-row" style="margin-top:14px">
+                <div class="match-team-score">
+                    <div class="match-score-val">${score0}</div>
+                    <div class="match-score-overs">${ov0}</div>
+                </div>
+                <div class="match-team-score">
+                    <div class="match-score-val" style="color:${m.currentInnings === 1 ? '#fff' : 'rgba(255,255,255,0.4)'}">${score1}</div>
+                    <div class="match-score-overs">${ov1}</div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="match-meta">
-      <span class="match-crr">CRR: ${crr}</span>
-      <span class="match-target-info" style="color:#ffc107">${targetInfo}</span>
-      <span class="match-crr">${m.overs} ov · ${subText}</span>
-    </div>
-    ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
-    <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; display:flex; justify-content:flex-end">
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
-            ${m.status === 'scheduled' ? '🏏 Start Scoring' : '🔑 Resume Scoring'}
-        </button>
-    </div>` : ''}
-  </div>`;
+        <div class="match-meta">
+            <span class="match-crr">CRR: ${crr}</span>
+            <span class="match-target-info" style="color:#ffc107">${targetInfo}</span>
+            <span class="match-crr">${m.overs} ov · ${subText}</span>
+        </div>
+        ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
+        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end">
+            <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
+                ${m.status === 'scheduled' ? '🏏 Start Scoring' : '🔑 Resume Scoring'}
+            </button>
+        </div>` : ''}
+    </div>`;
 }
 
 function scoreMatchRedirect(id) {
@@ -521,6 +526,13 @@ function openMatchDetail(id) {
     if (modal && content) {
         content.innerHTML = renderMatchDetailContent(m);
         modal.style.display = 'flex';
+        
+        // GSAP Premium Entrance
+        gsap.fromTo('.scorecard-container', 
+            { opacity: 0, y: 30, scale: 0.95, rotateX: 10 }, 
+            { opacity: 1, y: 0, scale: 1, rotateX: 0, duration: 0.6, ease: 'back.out(1.4)' }
+        );
+        gsap.from('.sc-table tbody tr', { opacity: 0, x: -20, stagger: 0.05, duration: 0.4, delay: 0.2 });
     }
 }
 
@@ -528,62 +540,67 @@ function renderMatchDetailContent(m) {
     const inn0 = m.innings ? m.innings[0] : null;
     const inn1 = m.innings ? m.innings[1] : null;
 
-    const renderInningsTable = (inn, teamName) => {
+    const renderInningsTable = (inn, teamName, isCurrent) => {
         if (!inn) return `<div class="sc-extras">No data for ${teamName} innings</div>`;
         
         const totalScore = `${inn.runs}/${inn.wickets}`;
         const totalOvers = formatOvers(inn.balls, m.ballsPerOver);
         
         let batsmenHtml = inn.batsmen.map(b => `
-            <tr>
+            <tr style="${b.status === 'Batting' ? 'background:rgba(0,230,118,0.05)' : ''}">
                 <td>
-                    <div class="sc-name">${b.name}</div>
-                    <div class="sc-status">${b.status || 'Not Out'}</div>
+                    <div style="font-weight:700; color:#fff">${b.name} ${b.status === 'Batting' ? '<span style="color:#00e676; font-size:10px">★</span>' : ''}</div>
+                    <div style="font-size:10px; opacity:0.6">${b.status || 'Yet to Bat'}</div>
                 </td>
-                <td class="sc-val">${b.runs}</td>
-                <td class="sc-muted-val">${b.balls}</td>
-                <td class="sc-muted-val">${b.fours}</td>
-                <td class="sc-muted-val">${b.sixes}</td>
-                <td class="sc-muted-val">${formatSR(b.runs, b.balls)}</td>
+                <td style="font-weight:800; color:var(--c-primary)">${b.runs}</td>
+                <td style="opacity:0.7">${b.balls}</td>
+                <td style="opacity:0.7">${b.fours}</td>
+                <td style="opacity:0.7">${b.sixes}</td>
+                <td style="font-weight:700; color:rgba(255,255,255,0.4)">${formatSR(b.runs, b.balls)}</td>
             </tr>
         `).join('');
 
         let bowlersHtml = inn.bowlers.map(b => `
             <tr>
-                <td class="sc-name">${b.name}</td>
-                <td class="sc-val">${formatOvers(b.balls, m.ballsPerOver)}</td>
-                <td class="sc-muted-val">${b.maidens || 0}</td>
-                <td class="sc-muted-val">${b.runs}</td>
-                <td class="sc-val" style="color:#00e676">${b.wickets}</td>
-                <td class="sc-muted-val">${formatEcon(b.runs, b.balls, m.ballsPerOver)}</td>
+                <td style="font-weight:700; color:#fff">${b.name}</td>
+                <td style="opacity:0.7">${formatOvers(b.balls, m.ballsPerOver)}</td>
+                <td style="opacity:0.7">${b.maidens || 0}</td>
+                <td style="opacity:0.7">${b.runs}</td>
+                <td style="font-weight:800; color:#ff1744">${b.wickets}</td>
+                <td style="font-weight:700; color:rgba(255,255,255,0.4)">${formatEcon(b.runs, b.balls, m.ballsPerOver)}</td>
             </tr>
         `).join('');
 
         const extras = inn.extras || { total: 0, wd: 0, nb: 0, b: 0, lb: 0 };
-        const extrasText = `Extras: ${extras.total || 0} (Wd:${extras.wd || 0}, Nb:${extras.nb || 0}, By:${extras.b || 0}, Lb:${extras.lb || 0})`;
+        const extrasText = `Extras: <b>${extras.total || 0}</b> (Wd:${extras.wd || 0}, Nb:${extras.nb || 0}, By:${extras.b || 0}, Lb:${extras.lb || 0})`;
 
         return `
-            <div class="scorecard-inn-header">
-                <div class="scorecard-inn-name">${teamName} Innings</div>
-                <div class="scorecard-inn-total">${totalScore} <span class="scorecard-inn-overs">(${totalOvers} ov)</span></div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; margin-bottom:24px; position:relative; overflow:hidden">
+                <div style="position:absolute; top:0; right:0; padding:8px 16px; background:rgba(255,255,255,0.05); font-size:10px; font-weight:800; letter-spacing:1px; color:var(--c-muted)">${teamName.toUpperCase()}</div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px">
+                    <div style="font-size:24px; font-weight:900; color:#fff; letter-spacing:-0.5px">${totalScore} <span style="font-size:14px; color:var(--c-muted); font-weight:400; margin-left:8px">(${totalOvers} ov)</span></div>
+                    <div style="font-size:10px; font-weight:800; background:var(--c-primary-dark); color:var(--c-primary); padding:4px 10px; border-radius:4px">${isCurrent ? 'INNINGS IN PROGRESS' : 'INNINGS COMPLETED'}</div>
+                </div>
+                
+                <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.3); letter-spacing:1px; margin-bottom:10px; padding-left:4px">BATTING</div>
+                <table class="data-table" style="margin-bottom:16px; background:transparent">
+                    <thead>
+                        <tr><th style="background:transparent">Name</th><th style="background:transparent">R</th><th style="background:transparent">B</th><th style="background:transparent">4s</th><th style="background:transparent">6s</th><th style="background:transparent">SR</th></tr>
+                    </thead>
+                    <tbody>${batsmenHtml}</tbody>
+                </table>
+
+                <div style="background:rgba(0,0,0,0.2); padding:10px 16px; border-radius:8px; font-size:12px; color:var(--c-muted); margin-bottom:24px">${extrasText}</div>
+
+                <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.3); letter-spacing:1px; margin-bottom:10px; padding-left:4px">BOWLING</div>
+                <table class="data-table" style="background:transparent">
+                    <thead>
+                        <tr><th style="background:transparent">Bowler</th><th style="background:transparent">O</th><th style="background:transparent">M</th><th style="background:transparent">R</th><th style="background:transparent">W</th><th style="background:transparent">Econ</th></tr>
+                    </thead>
+                    <tbody>${bowlersHtml}</tbody>
+                </table>
             </div>
-            
-            <table class="sc-table">
-                <thead>
-                    <tr><th>Batsman</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>
-                </thead>
-                <tbody>${batsmenHtml}</tbody>
-            </table>
-
-            <div class="sc-extras">${extrasText}</div>
-
-            <div class="scorecard-inn-name" style="margin-bottom:12px; font-size:12px">Bowling</div>
-            <table class="sc-table">
-                <thead>
-                    <tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr>
-                </thead>
-                <tbody>${bowlersHtml}</tbody>
-            </table>
         `;
     };
 
@@ -591,27 +608,29 @@ function renderMatchDetailContent(m) {
     const subInfo = `${m.overs} overs · ${m.venue || 'Home'} · ${typeLabel}`;
 
     return `
-        <div class="scorecard-container">
-            <div class="scorecard-header-flex">
-                <div>
-                    <h1 class="scorecard-title">${m.team1} vs ${m.team2}</h1>
-                    <div class="scorecard-subtitle">${subInfo}</div>
+        <div class="scorecard-container" style="padding:0; background:transparent; perspective: 1000px">
+            <div style="padding:32px 32px 24px; background: linear-gradient(135deg, #1a1a1a, #000); border-radius: 20px 20px 0 0; border-bottom: 1px solid rgba(255,255,255,0.1)">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+                    <span class="match-type-badge badge badge-${m.type === 'tournament' ? 'amber' : 'blue'}" style="margin:0">${typeLabel}</span>
+                    <a href="overlay.html?match=${m.id}" target="_blank" class="btn btn-amber btn-sm" style="text-decoration:none; font-weight:800; box-shadow: 0 4px 15px rgba(255,193,7,0.2)">
+                        📺 TV BROADCAST
+                    </a>
                 </div>
-                <a href="overlay.html?match=${m.id}" target="_blank" class="btn btn-amber btn-sm" style="text-decoration:none">
-                    📺 TV Streaming Overlay
-                </a>
+                <h1 style="font-size:32px; font-weight:900; color:#fff; letter-spacing:-1px; margin-bottom:4px">${m.team1} <span style="font-weight:400; font-family:'JetBrains Mono'; opacity:0.3; font-size:20px; vertical-align:middle; margin:0 12px">VS</span> ${m.team2}</h1>
+                <div style="font-size:13px; font-weight:600; color:var(--c-muted); opacity:0.7">${subInfo}</div>
             </div>
 
-            <div style="background:rgba(255,193,7,0.1); padding:12px; border-radius:10px; text-align:center; font-weight:900; color:#ffc107; font-size:16px; margin-bottom:20px">
-                ${m.result || 'Match in Progress'}
-            </div>
+            <div style="padding:24px 32px 32px">
+                <div style="background:rgba(255,193,7,0.05); border:1px solid rgba(255,193,7,0.2); padding:16px; border-radius:12px; text-align:center; font-weight:900; color:#ffc107; font-size:16px; margin-bottom:28px; letter-spacing:1px; text-transform:uppercase">
+                    ${m.result || (m.status === 'live' ? '🔴 LIVE ACTION' : '⏸ MATCH PAUSED')}
+                </div>
 
-            ${renderInningsTable(inn0, m.battingFirst || m.team1)}
-            ${inn1 ? `<hr style="border-color:var(--c-border); margin:40px 0">` : ''}
-            ${inn1 ? renderInningsTable(inn1, m.fieldingFirst || m.team2) : ''}
+                ${renderInningsTable(inn0, m.battingFirst || m.team1, m.currentInnings === 0)}
+                ${inn1 ? renderInningsTable(inn1, m.fieldingFirst || m.team2, m.currentInnings === 1) : ''}
 
-            <div style="margin-top:30px; display:flex; gap:12px">
-                <button class="btn btn-ghost" style="flex:1" onclick="closeMatchDetail()">Close</button>
+                <div style="margin-top:32px">
+                    <button class="btn btn-ghost btn-full" style="height:50px; font-weight:800; border-color:rgba(255,255,255,0.1)" onclick="closeMatchDetail()">Close Scorecard</button>
+                </div>
             </div>
         </div>
     `;

@@ -195,70 +195,86 @@ function renderResumeMatches() {
     if (!container) return;
 
     // 1. Get ALL matches (live, paused, AND scheduled)
-    const matches = DB.getMatches().filter(m => {
-        // Only show matches that are NOT part of an official tournament OR are specifically scheduled
-        // If it's a tournament match, we usually show it via the Tournament Hub, 
-        // but user wants them "under" or accessible.
-        // For now, let's show all Live/Paused matches and any Scheduled matches not in a tournament.
-        if (['live', 'paused'].includes(m.status)) return true;
-        if (m.status === 'scheduled' && !m.tournamentId) return true;
-        return false;
-    });
-
+    const allMatches = DB.getMatches();
+    const liveMatches = allMatches.filter(m => ['live', 'paused'].includes(m.status));
+    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' && !m.tournamentId);
+    
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active'].includes(t.status));
 
-    if (!matches.length && !tourns.length) {
-        container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:20px;text-align:center;background:rgba(255,255,255,0.02);border-radius:12px">No active matches or tournaments.</div>`;
+    if (!liveMatches.length && !scheduledMatches.length && !tourns.length) {
+        container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:32px;text-align:center;background:rgba(255,255,255,0.02);border-radius:16px;border:1px dashed rgba(255,255,255,0.1)">No active matches or tournaments.</div>`;
         return;
     }
 
     let html = '';
 
-    // Tournaments first
-    tourns.forEach(t => {
-        const locked = (t.scoringPassword || t.password) ? '🔒 ' : '';
-        const matchCount = t.matches ? t.matches.length : 0;
-        
-        let actionBtn = '';
-        if (t.status === 'requested') {
-            actionBtn = `<button class="btn btn-ghost btn-sm" disabled>Pending Approval</button>`;
-        } else {
-            actionBtn = `<button class="btn btn-green btn-sm" onclick="openTournamentHub('${t.id}')">Open Tournament</button>`;
-        }
-
-        html += `
-            <div class="resume-card" style="border-left: 4px solid var(--c-primary)">
-                <div class="resume-card-info">
-                    <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.6; margin-bottom:4px">Tournament</div>
-                    <h4>${locked}${t.name}</h4>
-                    <p>${t.isOfficial ? 'Official' : 'Unofficial'} · ${matchCount} matches scheduled</p>
+    // --- TOURANMENTS SECTION ---
+    if (tourns.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--c-primary); margin:20px 0 12px 10px; opacity:0.8">🏆 ACTIVE TOURNAMENTS</div>`;
+        tourns.forEach(t => {
+            const hasPw = (t.scoringPassword || t.password || t.isLocked);
+            const statusLabel = t.status === 'requested' ? 'Pending Approval' : 'Ready to Score';
+            
+            html += `
+                <div class="resume-card" style="border-left: 4px solid var(--c-primary); background:linear-gradient(90deg, rgba(var(--c-primary-rgb),0.1), transparent)">
+                    <div class="resume-card-info">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                            <span style="font-size:10px; background:rgba(var(--c-primary-rgb),0.2); color:var(--c-primary); padding:2px 8px; border-radius:100px; font-weight:800">${statusLabel}</span>
+                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
+                        </div>
+                        <h4 style="font-size:18px; font-weight:800">${t.name}</h4>
+                        <p style="opacity:0.7">${t.isOfficial ? 'Official' : 'Unofficial'} · ${t.matches ? t.matches.length : 0} matches</p>
+                    </div>
+                    ${t.status !== 'requested' ? `<button class="btn btn-primary btn-sm" onclick="openTournamentHub('${t.id}')">Dashboard</button>` : ''}
                 </div>
-                ${actionBtn}
-            </div>
-        `;
-    });
+            `;
+        });
+    }
 
-    // Individual Matches
-    matches.forEach(m => {
-        const inn = m.innings ? m.innings[m.currentInnings] : null;
-        const score = m.status === 'scheduled' ? 'Scheduled' : (inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : m.status.toUpperCase());
-        const locked = (m.scoringPassword || m.password) ? '🔒 ' : '';
-        const tName = m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match';
-        const isLive = ['live', 'paused'].includes(m.status);
-
-        html += `
-            <div class="resume-card" style="border-left: 4px solid ${isLive ? 'var(--c-green)' : 'var(--c-amber)'}">
-                <div class="resume-card-info">
-                    <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.6; margin-bottom:4px">${m.status.toUpperCase()}</div>
-                    <h4>${locked}${m.team1} vs ${m.team2}</h4>
-                    <p>${score} · ${tName} · ${m.overs} overs</p>
+    // --- LIVE MATCHES SECTION ---
+    if (liveMatches.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#00e676; margin:24px 0 12px 10px; opacity:0.8">🔴 ONGOING MATCHES</div>`;
+        liveMatches.forEach(m => {
+            const inn = m.innings ? m.innings[m.currentInnings] : null;
+            const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : 'Match in Progress';
+            const hasPw = (m.scoringPassword || m.password || m.isLocked);
+            
+            html += `
+                <div class="resume-card" style="border-left: 4px solid #00e676; background:linear-gradient(90deg, rgba(0,230,118,0.05), transparent)">
+                    <div class="resume-card-info">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                            <span style="font-size:10px; background:rgba(0,230,118,0.15); color:#00e676; padding:2px 8px; border-radius:100px; font-weight:800">${m.status.toUpperCase()}</span>
+                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
+                        </div>
+                        <h4 style="font-size:18px; font-weight:800">${m.team1} vs ${m.team2}</h4>
+                        <p style="opacity:0.7">${score} · ${m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match'}</p>
+                    </div>
+                    <button class="btn btn-green btn-sm" onclick="resumeMatch('${m.id}')">▶ Resume</button>
                 </div>
-                <button class="btn ${isLive ? 'btn-primary' : 'btn-amber'} btn-sm" onclick="resumeMatch('${m.id}')">
-                    ${isLive ? '▶ Resume' : '🏁 Start'}
-                </button>
-            </div>
-        `;
-    });
+            `;
+        });
+    }
+
+    // --- SCHEDULED MATCHES SECTION ---
+    if (scheduledMatches.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--c-amber); margin:24px 0 12px 10px; opacity:0.8">📅 SCHEDULED MATCHES</div>`;
+        scheduledMatches.forEach(m => {
+            const hasPw = (m.scoringPassword || m.password || m.isLocked);
+            html += `
+                <div class="resume-card" style="border-left: 4px solid var(--c-amber); background:linear-gradient(90deg, rgba(255,193,7,0.05), transparent)">
+                    <div class="resume-card-info">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                            <span style="font-size:10px; background:rgba(255,193,7,0.15); color:var(--c-amber); padding:2px 8px; border-radius:100px; font-weight:800">SCHEDULED</span>
+                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
+                        </div>
+                        <h4 style="font-size:18px; font-weight:800">${m.team1} vs ${m.team2}</h4>
+                        <p style="opacity:0.7">${m.overs} Overs · Single Match · ${m.venue || 'No Venue Specified'}</p>
+                    </div>
+                    <button class="btn btn-amber btn-sm" onclick="resumeMatch('${m.id}')">🏁 Start</button>
+                </div>
+            `;
+        });
+    }
 
     container.innerHTML = html;
 }
@@ -513,85 +529,12 @@ async function loginToMatch() {
             if (pw === localPw) {
                 loadMatch(currentMatch);
                 return;
-            } else {
-                showToast('Invalid password!', 'error');
-                return;
             }
         }
     } else {
         const localT = DB.getTournament(tournamentId);
-        if (localT && localT.scoringPassword) {
-            if (localT.scoringPassword === pw) {
-                setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
-                if (currentTournament && !currentMatch) {
-                    openTournamentHub(currentTournament.id);
-                    currentTournament = null;
-                    showScreen('setup');
-                    return;
-                }
-                if (currentMatch) {
-                    const matchData = currentMatch;
-                    if (matchData.isScheduledTemplate) {
-                        showScreen('setup');
-                        document.getElementById('type-tournament').click();
-                        setTimeout(() => {
-                            document.getElementById('tournament-setup-section').style.display = 'none';
-                            document.getElementById('team1-name').value = (matchData.team1 !== 'TBD' ? matchData.team1 : '');
-                            document.getElementById('team2-name').value = (matchData.team2 !== 'TBD' ? matchData.team2 : '');
-                            document.getElementById('setup-overs').value = matchData.overs;
-                            document.getElementById('setup-bpo').value = matchData.ballsPerOver;
-                            document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
-                            
-                            const datalist = document.getElementById('team-suggestions');
-                            if (datalist && localT && localT.teams) {
-                                datalist.innerHTML = localT.teams.map(t => `<option value="${t}"></option>`).join('');
-                            }
-                        }, 100);
-                    } else {
-                        loadMatch(matchData);
-                    }
-                }
-                return;
-            } else if (!localT.isOfficial) {
-                // If it's purely local and unofficial, password failed. Don't fetch backend.
-                showToast('Invalid password!', 'error');
-                return;
-            }
-        }
-    }
-
-    // 2. BACKEND FALLBACK
-    try {
-        if (!tournamentId) {
-            const fallbackRes = await fetch(baseUrl + '/api/verify-scoring-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentMatch?.id, type: 'match', password: pw })
-            });
-            const fallbackData = await fallbackRes.json();
-            if (fallbackData.ok) {
-                if (currentMatch && currentMatch.isScheduledTemplate) {
-                    showScreen('setup');
-                } else if (currentMatch) {
-                    loadMatch(currentMatch);
-                }
-                return;
-            }
-            showToast('Invalid password!', 'error');
-            return;
-        }
-
-        const res = await fetch(baseUrl + `/api/tournaments/${tournamentId}/verify-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: pw })
-        });
-        const data = await res.json();
-        
-        if (data.ok) {
-            if (data.token) {
-                setTournamentAuthorized(tournamentId, data.token, data.expiresInMs);
-            }
+        if (localT && localT.scoringPassword && localT.scoringPassword === pw) {
+            setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
             if (currentTournament && !currentMatch) {
                 openTournamentHub(currentTournament.id);
                 currentTournament = null;
@@ -599,41 +542,43 @@ async function loginToMatch() {
                 return;
             }
             if (currentMatch) {
-                const matchData = currentMatch;
-                if (matchData.isScheduledTemplate) {
-                    showScreen('setup');
-                    document.getElementById('type-tournament').click();
-                    setTimeout(() => {
-                        document.getElementById('tournament-setup-section').style.display = 'none';
-                        document.getElementById('team1-name').value = (matchData.team1 !== 'TBD' ? matchData.team1 : '');
-                        document.getElementById('team2-name').value = (matchData.team2 !== 'TBD' ? matchData.team2 : '');
-                        document.getElementById('setup-overs').value = matchData.overs;
-                        document.getElementById('setup-bpo').value = matchData.ballsPerOver;
-                        document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
-
-                        const datalist = document.getElementById('team-suggestions');
-                        if (datalist && tournamentId) {
-                            fetch(baseUrl + '/api/tournaments/' + tournamentId)
-                                .then(r => r.json())
-                                .then(data => {
-                                    if (data && data.teams) {
-                                        datalist.innerHTML = data.teams.map(t => `<option value="${t}"></option>`).join('');
-                                    }
-                                }).catch(() => {});
-                        }
-                    }, 100);
-                } else {
-                    loadMatch(matchData);
-                }
+                loadMatch(currentMatch);
+                return;
             }
+        }
+    }
+
+    // 2. CLOUD CHECK / BACKEND VERIFICATION
+    try {
+        const type = currentTournament ? 'tournament' : 'match';
+        const id = currentTournament ? currentTournament.id : currentMatch.id;
+        
+        const response = await fetch(baseUrl + '/verify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, type, password: pw })
+        });
+        const result = await response.json();
+
+        if (result.verified) {
+            if (type === 'tournament') {
+                setTournamentAuthorized(id, 'cloud-token', 1000 * 60 * 60 * 24);
+                if (currentTournament) openTournamentHub(currentTournament.id);
+                currentTournament = null;
+                showScreen('setup');
+            } else {
+                loadMatch(currentMatch);
+            }
+            showToast('Access Granted!');
         } else {
-            showToast(data.error || 'Invalid password!', 'error');
+            showToast('Invalid password!', 'error');
         }
     } catch (e) {
-        console.error(e);
-        showToast('Security verification failed. Check backend connection.', 'error');
+        console.error("Cloud auth error", e);
+        showToast('Cloud authentication failed. Check your connection.', 'error');
     }
 }
+
 
 function startNewMatch() {
     let existingOfficialTournamentId = null;
@@ -804,6 +749,39 @@ function startNewMatch() {
 
 function loadMatch(m) {
     currentMatch = m;
+
+    if (m.isScheduledTemplate) {
+        showScreen('setup');
+        // If it's a tournament match, pre-fill and possibly hide some parts
+        if (m.tournamentId) {
+            document.getElementById('type-tournament').click();
+            setTimeout(() => {
+                const tourneySetup = document.getElementById('tournament-setup-section');
+                if (tourneySetup) tourneySetup.style.display = 'none';
+                
+                document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
+                document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
+                document.getElementById('setup-overs').value = m.overs;
+                document.getElementById('setup-bpo').value = m.ballsPerOver;
+                document.getElementById('setup-pps').value = m.playersPerSide || 11;
+                
+                const t = DB.getTournament(m.tournamentId);
+                const dl = document.getElementById('team-suggestions');
+                if (dl && t && t.teams) {
+                    dl.innerHTML = t.teams.map(team => `<option value="${team}"></option>`).join('');
+                }
+            }, 100);
+        } else {
+            document.getElementById('type-single').click();
+            setTimeout(() => {
+                document.getElementById('team1-name').value = m.team1 || '';
+                document.getElementById('team2-name').value = m.team2 || '';
+                document.getElementById('setup-overs').value = m.overs || 20;
+            }, 100);
+        }
+        return;
+    }
+
     m.status = 'live';
 
     // Auto-populate player datalist for suggestions in official tournaments
