@@ -91,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         showScreen('setup');
     }
-
-    if (typeof switchSetupTab === 'function') switchSetupTab('new');
 });
 
 function getScoringAuthMap() {
@@ -150,38 +148,6 @@ function handleBack() {
 
 // ========== EVENT LISTENERS & INITIALIZATION ==========
 
-
-// ========== SETUP TABS ==========
-function switchSetupTab(tabName) {
-    // Toggle Buttons
-    document.querySelectorAll('.setup-tab-btn').forEach(btn => {
-        const isTarget = (tabName === 'new' && btn.innerText.includes('NEW')) ||
-                         (tabName === 'resume' && btn.innerText.includes('RESUME')) ||
-                         (tabName === 'nrr' && btn.innerText.includes('NRR'));
-        btn.classList.toggle('active', isTarget);
-    });
-
-    // Toggle Panels
-    document.querySelectorAll('.setup-panel').forEach(panel => {
-        panel.style.display = panel.id === `panel-setup-${tabName}` ? 'block' : 'none';
-        panel.classList.toggle('active', panel.id === `panel-setup-${tabName}`);
-    });
-
-    // Special handling for NRR
-    if (tabName === 'nrr') {
-        const placeholder = document.getElementById('instant-nrr-placeholder');
-        if (placeholder && !placeholder.innerHTML.trim()) {
-            placeholder.innerHTML = `
-                <div class="card" style="text-align:center; padding:40px">
-                    <div style="font-size:48px; margin-bottom:20px">⚡</div>
-                    <h3>Instant NRR Calculator</h3>
-                    <p style="margin-bottom:24px; opacity:0.7">Quickly calculate Net Run Rate for any match scenario.</p>
-                    <button class="btn btn-amber" onclick="showScreen('instant-nrr')">Launch Calculator</button>
-                </div>
-            `;
-        }
-    }
-}
 
 // ========== SETUP ==========
 function selectMatchType(type) {
@@ -373,16 +339,6 @@ function openTournamentHub(id) {
         return;
     }
 
-    // Auth check
-    if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
-        currentTournament = t;
-        currentMatch = null;
-        document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
-        document.getElementById('login-password').value = '';
-        showScreen('login');
-        return;
-    }
-
     currentTournament = t;
     currentMatch = null;
     if (!t.rosters) t.rosters = {};
@@ -407,12 +363,6 @@ function renderTournamentMatches() {
     const t = currentTournament;
     if (!t) return;
     
-    // Security check
-    if (t.scoringPassword && !isTournamentAuthorized(t.id)) {
-        openTournamentHub(t.id);
-        return;
-    }
-
     let html = '';
     t.matches.forEach((mId, index) => {
         const m = DB.getMatch(mId);
@@ -423,7 +373,8 @@ function renderTournamentMatches() {
         let matchName = `Match ${index + 1}`;
         let subInfo = 'Scheduled';
         let cardStyle = '';
-        let locked = (m.scoringPassword || m.password) ? '🔒 ' : '';
+        const pw = (m.scoringPassword || m.password || (t && t.scoringPassword));
+        let locked = pw ? '🔒 ' : '';
 
         if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
