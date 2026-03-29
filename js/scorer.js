@@ -498,6 +498,12 @@ function startOfficialMatch(mId) {
         document.getElementById('setup-overs').value = m.overs;
         document.getElementById('setup-bpo').value = m.ballsPerOver;
         document.getElementById('setup-pps').value = m.playersPerSide || 11;
+        
+        const datalist = document.getElementById('team-suggestions');
+        if (datalist && currentTournament && currentTournament.teams) {
+            datalist.innerHTML = currentTournament.teams.map(t => `<option value="${t}"></option>`).join('');
+        }
+        
         currentMatch.isScheduledTemplate = true;
     }, 100);
 }
@@ -544,6 +550,11 @@ async function loginToMatch() {
                             document.getElementById('setup-overs').value = matchData.overs;
                             document.getElementById('setup-bpo').value = matchData.ballsPerOver;
                             document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
+                            
+                            const datalist = document.getElementById('team-suggestions');
+                            if (datalist && localT && localT.teams) {
+                                datalist.innerHTML = localT.teams.map(t => `<option value="${t}"></option>`).join('');
+                            }
                         }, 100);
                     } else {
                         loadMatch(matchData);
@@ -608,6 +619,17 @@ async function loginToMatch() {
                         document.getElementById('setup-overs').value = matchData.overs;
                         document.getElementById('setup-bpo').value = matchData.ballsPerOver;
                         document.getElementById('setup-pps').value = matchData.playersPerSide || 11;
+
+                        const datalist = document.getElementById('team-suggestions');
+                        if (datalist && tournamentId) {
+                            fetch(baseUrl + '/api/tournaments/' + tournamentId)
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data && data.teams) {
+                                        datalist.innerHTML = data.teams.map(t => `<option value="${t}"></option>`).join('');
+                                    }
+                                }).catch(() => {});
+                        }
                     }, 100);
                 } else {
                     loadMatch(matchData);

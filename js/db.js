@@ -367,7 +367,7 @@ const DB = {
             }
         }
 
-        // Init standings (only for League, effectively)
+        // Init standings & rosters
         t.teams.forEach(team => {
             t.standings[team] = {
                 played: 0, won: 0, lost: 0, tied: 0,
@@ -375,6 +375,7 @@ const DB = {
                 runsScored: 0, ballsFaced: 0,
                 runsConceded: 0, ballsBowled: 0,
             };
+            if (!t.rosters[team]) t.rosters[team] = [];
         });
 
         this.saveTournament(t);
