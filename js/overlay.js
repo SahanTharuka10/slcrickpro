@@ -95,22 +95,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderOverlay();
-    // Intervals reduced as socket handles live updates
+
+    // ── Polling fallback: refresh every 2 seconds for live ball-by-ball updates
     refreshInterval = setInterval(() => {
         if (currentPopupView) {
             renderTournamentStats(currentPopupView);
+        } else {
+            renderOverlay();
         }
-    }, 10000); // Only for stats/standings
+    }, 2000);
 
-    // BROADCAST COMMAND LISTENER
+    // ── Storage event listener (cross-tab updates via localStorage)
     window.addEventListener('storage', (e) => {
+        // Broadcast hotkey commands (team roster, player profile, etc.)
         if (e.key === 'cricpro_broadcast_cmd') {
             try {
                 const payload = JSON.parse(e.newValue);
                 handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
             } catch (err) { console.error("Broadcast parse err", err); }
         }
-        if (e.key === 'matches' || e.key === 'cricpro_tournaments' || e.key === 'cricpro_force_update') {
+        // Score data updates — 'cricpro_matches' is the real key used by DB._secureSet
+        if (e.key === 'cricpro_matches' || e.key === 'cricpro_tournaments' || e.key === 'cricpro_force_update') {
             if (!currentPopupView) {
                 renderOverlay();
             } else {

@@ -1891,7 +1891,12 @@ function pauseAndExit(noConfirm) {
 
 // ========== HELPERS ==========
 function saveAndRender() {
-    if (currentMatch) { DB.saveMatch(currentMatch); renderScoring(); }
+    if (currentMatch) {
+        DB.saveMatch(currentMatch);
+        renderScoring();
+        // Signal TV overlay in other tabs to refresh immediately
+        localStorage.setItem('cricpro_force_update', Date.now().toString());
+    }
 }
 function openModal(id) { const e = document.getElementById(id); if (e) e.style.display = 'flex'; }
 function closeModal(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
