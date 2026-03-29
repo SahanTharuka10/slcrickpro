@@ -552,13 +552,6 @@ function renderOverlay() {
 
     document.getElementById('overlay-container').innerHTML = html;
 
-    const sb = document.getElementById('scorer-badge');
-    if (m.scorerName && sb) {
-        document.getElementById('scorer-name-val').textContent = m.scorerName.toUpperCase();
-        sb.style.display = 'block';
-    } else if (sb) {
-        sb.style.display = 'none';
-    }
 }
 
 function renderOverlayFromLightPayload(payload) {
@@ -607,13 +600,6 @@ function renderOverlayFromLightPayload(payload) {
     `;
     document.getElementById('overlay-container').innerHTML = html;
 
-    const sb = document.getElementById('scorer-badge');
-    if (payload.scorerName && sb) {
-        document.getElementById('scorer-name-val').textContent = payload.scorerName.toUpperCase();
-        sb.style.display = 'block';
-    } else if (sb) {
-        sb.style.display = 'none';
-    }
 }
 
 function renderTournamentStats(view) {
