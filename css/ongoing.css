@@ -271,7 +271,14 @@
     border-radius: 14px;
     padding: 16px;
     margin-bottom: 10px;
-    transition: background 0.2s;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.leader-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .leader-rank {

@@ -342,13 +342,13 @@ function buildTournSubTab(t, tab) {
     if (tab === 'batting') {
         const batsmen = getBestBatsmen(t.id);
         if (!batsmen.length) return '<div class="empty-state">No batting data yet</div>';
-        return batsmen.slice(0, 10).map((b, i) => leaderCard(i + 1, b.name, b.team, b.runs, 'Runs', `SR: ${b.sr}`)).join('');
+        return batsmen.slice(0, 10).map((b, i) => leaderCard(i + 1, b.name, b.team, b.runs, 'Runs', `SR: ${b.sr}`, t.id, t.name)).join('');
     }
 
     if (tab === 'bowling') {
         const bowlers = getBestBowlers(t.id);
         if (!bowlers.length) return '<div class="empty-state">No bowling data yet</div>';
-        return bowlers.slice(0, 10).map((b, i) => leaderCard(i + 1, b.name, b.team, b.wickets, 'Wkts', `Econ: ${b.econ}`)).join('');
+        return bowlers.slice(0, 10).map((b, i) => leaderCard(i + 1, b.name, b.team, b.wickets, 'Wkts', `Econ: ${b.econ}`, t.id, t.name)).join('');
     }
 
     if (tab === 'nrr') {
@@ -461,9 +461,10 @@ function getBestBowlers(tournId) {
         .sort((a, b) => b.wickets - a.wickets || parseFloat(a.econ) - parseFloat(b.econ));
 }
 
-function leaderCard(rank, name, team, statVal, statLbl, sub) {
+function leaderCard(rank, name, team, statVal, statLbl, sub, tournId, tournName) {
     const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
-    return `<div class="leader-card">
+    const clickHandler = tournId ? `onclick="handlePlayerStatsClick('${name}', '${tournId}', '${tournName || ''}')"` : '';
+    return `<div class="leader-card" ${clickHandler} style="${tournId ? 'cursor:pointer' : ''}">
         <div class="leader-rank">${medal}</div>
         <div class="leader-avatar">${name.charAt(0)}</div>
         <div class="leader-info">
