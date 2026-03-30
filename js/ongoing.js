@@ -142,8 +142,18 @@ function buildMatchCard(m, isLive) {
             <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
                 📊 Scorecard
             </button>
+            ${m.tournamentId ? `<button class="btn btn-amber btn-sm" style="font-weight:800; color:#000; font-size:10px; border-radius:4px" onclick="event.stopPropagation(); goToTournament('${m.tournamentId}')">🏆 TOURNAMENT</button>` : ''}
         </div>` : '')}
     </div>`;
+}
+
+function goToTournament(id) {
+    const tabBtn = document.getElementById('tab-tournaments');
+    if (tabBtn) tabBtn.click();
+    
+    selectedTournId = id;
+    renderTournDetails(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function scoreMatchRedirect(id) {
@@ -301,7 +311,7 @@ function renderTournDetails(id) {
                 <div class="tsm-item"><div class="tsm-val">${completedMatches}</div><div class="tsm-lbl">Played</div></div>
                 <div class="tsm-item"><div class="tsm-val" style="color:#00e676">${liveMatches}</div><div class="tsm-lbl">Live</div></div>
                 <div class="tsm-item" style="display:flex;align-items:center;margin-left:15px">
-                    <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:700" onclick="window.print()">Report</button>
+                    <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:700" onclick="generateTournamentPDF('${t.id}')">Report</button>
                     <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; margin-left:10px; padding:10px 14px; font-size:12px; font-weight:700">Display</a>
                 </div>
             </div>
@@ -316,8 +326,15 @@ function renderTournDetails(id) {
         <div id="tourn-sub-content"></div>
     `;
     
-    // Auto-select first tab
-    switchTournSubTab(isKO ? 'bracket' : 'standings');
+    // Auto-select tab (preserve if already on tournament view)
+    let defaultTab = isKO ? 'bracket' : 'standings';
+    if (selectedTournId === id && selectedTournSubTab) {
+        // Validation to ensure it doesn't try to open 'standings' on a KO tournament if it was just changed
+        if (selectedTournSubTab === 'standings' && isKO) defaultTab = 'bracket';
+        else if (selectedTournSubTab === 'bracket' && !isKO) defaultTab = 'standings';
+        else defaultTab = selectedTournSubTab;
+    }
+    switchTournSubTab(defaultTab);
 }
 
 function buildTournSubTab(t, tab) {
@@ -513,12 +530,43 @@ function computeTournamentStandings(t) {
 function renderRecent() {
     const grid = document.getElementById('recent-matches-grid');
     if (!grid) return;
-    const matches = DB.getMatches().filter(m => m.status === 'completed' && m.publishLive);
-    if (!matches.length) {
-        grid.innerHTML = `<p style="padding:20px; color:var(--c-muted)">No recently completed matches</p>`;
-        return;
+    
+    const allRecentMatches = DB.getMatches().filter(m => m.status === 'completed' && m.publishLive);
+    
+    // Identify all tournaments that have at least one completed match or are fully finished
+    const allTournaments = DB.getTournaments();
+    const completedTournaments = allTournaments.filter(t => {
+        const tMatches = t.matches.map(id => DB.getMatch(id)).filter(m => m);
+        // If tournament has matches and all are completed
+        return tMatches.length > 0 && tMatches.every(m => m.status === 'completed');
+    });
+
+    const singleMatches = allRecentMatches.filter(m => !m.tournamentId);
+    
+    let html = '';
+    
+    if (completedTournaments.length > 0) {
+        html += `<h3 style="grid-column:1/-1; margin-bottom:12px; font-weight:800; color:#ffc107; border-left:4px solid #ffc107; padding-left:12px; font-size:18px; letter-spacing:1px">COMPLETED TOURNAMENTS</h3>`;
+        html += completedTournaments.map(t => `
+            <div class="match-card tournament-card" style="border-color:rgba(255, 193, 7, 0.3); background:rgba(255,193,7,0.05); position:relative" onclick="goToTournament('${t.id}')">
+                <div style="font-size:10px; font-weight:800; color:#ffc107; margin-bottom:6px; letter-spacing:1px">TOURNAMENT FINISHED</div>
+                <div style="font-size:22px; font-weight:900; color:#fff">${t.name}</div>
+                <div style="font-size:13px; color:rgba(255,255,255,0.5); margin-top:4px">${t.teams.length} Teams · ${t.matches.length} Matches</div>
+                <div style="margin-top:20px"><button class="btn btn-amber btn-full btn-sm" style="color:#000; font-weight:800">VIEW FULL SCOREBOARD</button></div>
+            </div>
+        `).join('');
     }
-    grid.innerHTML = matches.slice().reverse().map(m => buildMatchCard(m, false)).join('');
+
+    if (singleMatches.length > 0) {
+        html += `<h3 style="grid-column:1/-1; margin-top:30px; margin-bottom:12px; font-weight:800; color:#fff; border-left:4px solid #fff; padding-left:12px; font-size:18px; letter-spacing:1px">SINGLE MATCHES</h3>`;
+        html += singleMatches.slice().reverse().map(m => buildMatchCard(m, false)).join('');
+    }
+
+    if (!completedTournaments.length && !singleMatches.length) {
+        grid.innerHTML = '<div class="empty-state">No completed matches or tournaments found</div>';
+    } else {
+        grid.innerHTML = html;
+    }
 }
 
 function formatOvers(balls, bpo = 6) { return `${Math.floor(balls / bpo)}.${balls % bpo}`; }
@@ -985,5 +1033,104 @@ async function generateFinalStatsCard() {
         showToast('❌ Failed to generate image', 'error');
     } finally {
         document.body.removeChild(card);
+    }
+}
+
+async function generateTournamentPDF(tournId) {
+    const t = DB.getTournament(tournId);
+    if (!t) return showToast('Tournament not found', 'error');
+
+    showToast('📊 Generating Comprehensive Report...', 'default');
+    
+    const container = document.createElement('div');
+    container.style = `position:absolute; left:-9999px; width:800px; background:#fff; color:#000; padding:40px; font-family:'Outfit', sans-serif;`;
+    
+    let html = `
+        <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:20px; margin-bottom:30px">
+            <h1 style="font-size:32px; margin:0; text-transform:uppercase">${t.name}</h1>
+            <p style="font-size:14px; margin:5px 0; color:#444">TOURNAMENT SUMMARY REPORT · ${new Date().toLocaleDateString()}</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:30px; background:#f9f9f9; padding:15px; border-radius:8px">
+            <div><b>Format:</b> ${capitalize(t.format)}</div>
+            <div><b>Overs:</b> ${t.overs}</div>
+            <div><b>Teams:</b> ${t.teams.length}</div>
+        </div>
+    `;
+
+    if (t.format === 'points-table') {
+        const standings = computeTournamentStandings(t);
+        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Points Table</h2>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
+                <thead style="background:#eee">
+                    <tr><th style="padding:8px; text-align:left">Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th><th>NRR</th></tr>
+                </thead>
+                <tbody>
+                    ${standings.map(s => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${s.name}</td><td align="center">${s.p}</td><td align="center">${s.w}</td><td align="center">${s.l}</td><td align="center"><b>${s.pts}</b></td><td align="center">${s.nrr}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    const batsmen = getBestBatsmen(t.id).slice(0, 5);
+    if (batsmen.length) {
+        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Top Performers - Batting</h2>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
+                <thead style="background:#eee">
+                    <tr><th style="padding:8px; text-align:left">Player</th><th>Team</th><th>Runs</th><th>SR</th></tr>
+                </thead>
+                <tbody>
+                    ${batsmen.map(b => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${b.name}</td><td align="center">${b.team}</td><td align="center"><b>${b.runs}</b></td><td align="center">${b.sr}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    const bowlers = getBestBowlers(t.id).slice(0, 5);
+    if (bowlers.length) {
+        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Top Performers - Bowling</h2>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
+                <thead style="background:#eee">
+                    <tr><th style="padding:8px; text-align:left">Player</th><th>Team</th><th>Wkts</th><th>Econ</th></tr>
+                </thead>
+                <tbody>
+                    ${bowlers.map(b => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${b.name}</td><td align="center">${b.team}</td><td align="center"><b>${b.wickets}</b></td><td align="center">${b.econ}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    const allMatches = t.matches.map(mId => DB.getMatch(mId)).filter(m => m);
+    html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px; page-break-before: always;">Fixtures & Results</h2>
+        <table style="width:100%; border-collapse:collapse">
+            <thead style="background:#eee">
+                <tr><th style="padding:8px; text-align:left">Match</th><th>Status</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+                ${allMatches.map(m => {
+                    const statusLbl = m.status === 'completed' ? 'Finished' : m.status === 'live' ? 'LIVE' : 'Scheduled';
+                    const resultLbl = m.status === 'completed' ? m.resultSummary || 'Match Ended' : '-';
+                    return `<tr><td style="padding:8px; border-bottom:1px solid #eee"><b>${m.team1}</b> vs <b>${m.team2}</b></td><td align="center">${statusLbl}</td><td style="font-size:12px; color:#444">${resultLbl}</td></tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+        <div style="margin-top:50px; text-align:center; font-size:12px; color:#888; border-top:1px solid #eee; padding-top:10px">Generated by SLCRICKPRO Performance Suite</div>
+    `;
+
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    
+    const opt = {
+        margin: [10, 10],
+        filename: `Report_${t.name.replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(container).save();
+        showToast('🔥 Report Generated Successfully!', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('❌ Failed to produce PDF', 'error');
+    } finally {
+        container.remove();
     }
 }

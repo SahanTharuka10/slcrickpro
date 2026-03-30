@@ -12,6 +12,14 @@ let currentPendingWicket = 0;
 let pendingBallEvent = null;
 let pendingExtraType = null;
 let _innings_ending = false; // guard to prevent double-modal
+let autoAnimationsEnabled = localStorage.getItem('cricpro_auto_anim') !== 'false';
+
+function updateAutoAnimation(enabled) {
+    autoAnimationsEnabled = enabled;
+    localStorage.setItem('cricpro_auto_anim', enabled);
+    showToast(enabled ? '🚀 Auto-Animations Enabled' : '⏸ Auto-Animations Disabled', 'default');
+}
+
 let currentTournament = null;
 let _pendingTournPayload = null;
 const SCORING_AUTH_KEY = 'cricpro_scoring_auth';
@@ -937,6 +945,11 @@ function setStriker(i) {
     if (!currentMatch) return;
     currentMatch.innings[currentMatch.currentInnings].strikerIdx = i;
     saveAndRender();
+    
+    // Auto-Broadcast New Batsman
+    if (autoAnimationsEnabled) {
+        setTimeout(() => broadcastStrikerProfile(), 1000);
+    }
 }
 
 // ========== RECORD BALL ==========
@@ -982,7 +995,10 @@ function recordBall(event) {
         };
 
         if (event.wicket) payload.type = 'WICKET';
-        sendBroadcast('SHOW_BIG_EVENT', payload);
+        
+        if (autoAnimationsEnabled) {
+            sendBroadcast('SHOW_BIG_EVENT', payload);
+        }
     }
 
     // Check order matters: over end first, then innings end
@@ -1288,7 +1304,9 @@ function confirmWicket() {
     saveAndRender();
     
     // TV Broadcast for Wicket
-    sendBroadcast('SHOW_BIG_EVENT', { type: 'WICKET' });
+    if (autoAnimationsEnabled) {
+        sendBroadcast('SHOW_BIG_EVENT', { type: 'WICKET' });
+    }
 
     // Check end of over first
     const overDone = checkEndOfOver(inn);
@@ -1396,6 +1414,11 @@ function confirmNewBatsman() {
         setTimeout(() => openNewBowlerModal(), 200);
     } else { saveAndRender(); }
     
+    // Auto-Broadcast New Batsman to TV
+    if (autoAnimationsEnabled) {
+        setTimeout(() => broadcastStrikerProfile(), 1200);
+    }
+    
     showToast(`🏏 ${name} is now at the crease!`, 'success');
     
     // Pro feature: Auto-show profile overlay for new batsman after a short delay
@@ -1459,6 +1482,11 @@ function confirmNewBowler() {
         else { setTimeout(() => recordExtra(et), 100); }
     } else { saveAndRender(); }
     showToast(`⚾ ${name} is now bowling`, 'success');
+
+    // Auto-Broadcast New Bowler to TV
+    if (autoAnimationsEnabled) {
+        setTimeout(() => broadcastBowlerProfile(), 1200);
+    }
 }
 
 // ========== END OF OVER ==========
@@ -2395,4 +2423,65 @@ function broadcastStrikerProfile() {
     const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
     
     sendBroadcast('SHOW_BATTER_PROFILES', { profiles: [{ name: strikerName, profile: p, stats }] });
+}
+
+function broadcastBowlerProfile() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+    const bowler = inn.bowlers[inn.currentBowlerIdx];
+    if (!bowler) return;
+    
+    // Resolve profile from DB if possible
+    let p = null;
+    if (bowler.playerId) p = DB.getPlayerById(bowler.playerId);
+    else if (m.type === 'tournament' && m.tournamentId) {
+        // Fallback: search tournament squads
+        const t = DB.getTournament(m.tournamentId);
+        if (t && t.rosters) {
+            for (const team in t.rosters) {
+                const pid = t.rosters[team].find(id => DB.getPlayerById(id)?.name === bowler.name);
+                if (pid) { p = DB.getPlayerById(pid); break; }
+            }
+        }
+    }
+    
+    sendBroadcast('SHOW_BOWLER_PROFILE', { 
+        name: bowler.name, 
+        profile: p, 
+        stats: {
+            overs: formatOvers(bowler.balls, m.ballsPerOver),
+            maidens: bowler.maidens || 0,
+            runs: bowler.runs || 0,
+            wickets: bowler.wickets || 0,
+            econ: formatEcon(bowler.runs, bowler.balls, m.ballsPerOver)
+        }
+    });
+}
+
+function triggerVisualBigEvent(type) {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+
+    const strikerName = getStrikerBatterName(inn);
+    const strikerProfile = resolvePlayerProfileForBatter(inn, strikerName);
+    const strikerStats = inn.batsmen.find(x => x.name === strikerName) || { runs: 0, balls: 0 };
+    const bowler = inn.bowlers[inn.currentBowlerIdx] || { name: 'Bowler' };
+    
+    const payload = {
+        type: type.toUpperCase(), // 'FOUR', 'SIX', 'WICKET'
+        playerName: strikerName,
+        playerPhoto: playerPhotoSrc(strikerProfile),
+        playerRuns: strikerStats.runs,
+        playerBalls: strikerStats.balls,
+        bowlerName: bowler.name,
+        teamName: inn.battingTeam,
+        matchScore: `${inn.runs}/${inn.wickets}`
+    };
+
+    sendBroadcast('SHOW_BIG_EVENT', payload);
+    showToast(`📺 Visual Trigger: ${type}`, 'success');
 }

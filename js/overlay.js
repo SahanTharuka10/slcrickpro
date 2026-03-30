@@ -232,6 +232,9 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_BIG_EVENT':
             showBigEventGraphic(data);
             break;
+        case 'SHOW_BOWLER_PROFILE':
+            showBowlerProfileGraphic(data);
+            break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
             break;
@@ -1119,7 +1122,44 @@ function renderBroadcastOverlay(html) {
 function hideBroadcastOverlay() {
     if (activeBroadcastOverlayId) clearTimeout(activeBroadcastOverlayId);
     const el = document.getElementById('active-broadcast-wrapper');
-    if (el) el.remove();
+    if (el) {
+        gsap.to(el, { opacity:0, duration:0.5, onComplete: () => el.remove() });
+    }
+}
+
+function showBowlerProfileGraphic(data) {
+    const { name, profile: p, stats } = data;
+    const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    
+    let html = `
+        <div class="overlay-container show" id="overlay-bowler">
+            <div class="overlay-card players-card" style="max-width:500px; border: 2px solid #00e676; background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(0,30,10,0.98))">
+                <div class="overlay-header" style="border-bottom: 2px solid rgba(0,230,118,0.3)">
+                    <div class="overlay-title" style="color:#00e676">BOWLER PROFILE</div>
+                </div>
+                <div class="overlay-body">
+                    <div class="player-stat-card" style="margin-bottom:0; animation: slideInLeft 0.5s ease forwards">
+                        <div class="player-main-info">
+                            <div class="player-large-photo" style="border-color:#00e676">
+                                <img src="${src}" alt="" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                            </div>
+                            <div>
+                                <div class="player-lg-name">${name}</div>
+                                <div class="player-lg-role" style="font-size:16px; color:#00e676">${p ? (p.role || 'Player').toUpperCase() : 'BOWLER'}</div>
+                            </div>
+                        </div>
+                        <div class="player-mini-stats">
+                            <div class="m-stat"><div class="m-val">${stats.overs || '0.0'}</div><div class="m-lbl">Overs</div></div>
+                            <div class="m-stat"><div class="m-val">${stats.maidens || 0}</div><div class="m-lbl">Mdns</div></div>
+                            <div class="m-stat"><div class="m-val">${stats.runs || 0}</div><div class="m-lbl">Runs</div></div>
+                            <div class="m-stat"><div class="m-val" style="color:#00e676">${stats.wickets || 0}</div><div class="m-lbl">Wkts</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    renderBroadcastOverlay(html);
 }
 function showBigEventGraphic(data) {
     const { type, playerName, playerPhoto, playerRuns, playerBalls, bowlerName, teamName, matchScore } = data;
@@ -1144,12 +1184,16 @@ function showBigEventGraphic(data) {
             align-items:center; justify-content:center; background:${bgGradient}; z-index:20000; overflow:hidden; font-family:'Outfit', sans-serif">
             
             <!-- Animated Background Particles/Glows -->
-            <div id="be-glow-main" style="position:absolute; width:1000px; height:1000px; background:radial-gradient(circle, ${themeColor}15 0%, transparent 70%); 
+            <div id="be-glow-main" style="position:absolute; width:1200px; height:1200px; background:radial-gradient(circle, ${themeColor}15 0%, transparent 70%); 
                 filter:blur(80px); border-radius:50%; opacity:0"></div>
             
-            <div id="be-light-streak-1" style="position:absolute; width:150%; height:200px; background:linear-gradient(90deg, transparent, ${themeColor}11, transparent); 
-                transform:rotate(-35deg) translateY(-300%); filter:blur(40px)"></div>
+            <div id="be-light-streak-1" style="position:absolute; width:150%; height:300px; background:linear-gradient(90deg, transparent, ${themeColor}11, transparent); 
+                transform:rotate(-35deg) translateY(-300%); filter:blur(60px)"></div>
 
+            <!-- Cinematic Decorative Borders (NEW Artwork) -->
+            <div class="be-border" style="position:absolute; top:20px; left:20px; right:20px; bottom:20px; border:1px solid rgba(255,255,255,0.05); pointer-events:none; border-radius:30px"></div>
+            <div class="be-border-accent" style="position:absolute; top:60px; left:60px; right:60px; bottom:60px; border:2px solid ${themeColor}22; pointer-events:none; border-radius:20px; opacity:0"></div>
+            
             <!-- Content Container -->
             <div id="big-event-container" style="position:relative; width:100%; display:flex; flex-direction:column; align-items:center; transform:perspective(1500px) rotateX(20deg); opacity:0">
                 
@@ -1167,17 +1211,18 @@ function showBigEventGraphic(data) {
 
                 <!-- PLAYER CARD (The "WOW" Component) -->
                 <div id="be-player-card" style="display:flex; align-items:center; gap:25px; padding:20px 40px; 
-                    background:rgba(255,255,255,0.03); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.1); 
-                    border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,0.5); opacity:0; transform:translateY(50px)">
+                    background:rgba(255,255,255,0.03); backdrop-filter:blur(30px); border:2px solid ${themeColor}44; 
+                    border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,0.5); opacity:0; transform:translateY(50px);
+                    box-shadow: 0 0 50px ${themeColor}22">
                     
-                    <div style="width:100px; height:100px; border-radius:18px; overflow:hidden; border:2px solid ${themeColor}">
+                    <div style="width:110px; height:110px; border-radius:50%; overflow:hidden; border:4px solid ${themeColor}; box-shadow: 0 0 20px ${themeColor}66">
                         <img src="${playerPhoto || '../assets/default-player.svg'}" style="width:100%; height:100%; object-fit:cover" />
                     </div>
                     
                     <div style="text-align:left">
-                        <div style="font-size:32px; font-weight:900; color:#fff; margin-bottom:4px; letter-spacing:1px">${playerName || 'Unknown Player'}</div>
-                        <div style="font-size:18px; font-weight:700; color:${themeColor}; letter-spacing:2px">
-                            ${playerRuns || 0} (${playerBalls || 0}) <span style="color:rgba(255,255,255,0.3); margin-left:10px">vs ${bowlerName || 'Bowler'}</span>
+                        <div style="font-size:36px; font-weight:950; color:#fff; margin-bottom:4px; letter-spacing:2px; text-transform:uppercase">${playerName || 'Unknown Player'}</div>
+                        <div style="font-size:20px; font-weight:800; color:${themeColor}; letter-spacing:3px; opacity:0.9">
+                            ${playerRuns || 0} (${playerBalls || 0}) <span style="color:rgba(255,255,255,0.4); margin-left:14px; letter-spacing:1px">VS ${bowlerName || 'Bowler'}</span>
                         </div>
                     </div>
                 </div>
@@ -1216,7 +1261,8 @@ function showBigEventGraphic(data) {
       .to('#be-match-context', { opacity: 1, y: 0, duration: 0.8 }, 0.3)
       .to('.be-char', { opacity: 1, y: 0, scale: 1, rotateX: 0, duration: 0.8, stagger: 0.05, ease: 'back.out(1.7)' }, 0.2)
       .to('#be-player-card', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, 0.5)
-      .to('.be-line', { width: '60%', duration: 1, ease: 'expo.out' }, 0.6)
+      .to('.be-border-accent', { opacity: 1, scale: 1.05, duration: 2, ease: 'sine.inOut' }, 0.1)
+      .to('.be-line', { width: '80%', duration: 1.5, ease: 'expo.out' }, 0.6)
       .to('#be-footer', { opacity: 1, duration: 1 }, 0.8)
       .to('#be-light-streak-1', { y: '800%', duration: 2.5, ease: 'power1.inOut' }, 0.2);
 
