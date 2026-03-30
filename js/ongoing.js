@@ -531,30 +531,34 @@ function renderRecent() {
     const grid = document.getElementById('recent-matches-grid');
     if (!grid) return;
     
+    // All completed matches
     const allRecentMatches = DB.getMatches().filter(m => m.status === 'completed' && m.publishLive);
     
-    // Identify all tournaments that have at least one completed match or are fully finished
+    // Identify all tournaments that have at least one completed match
     const allTournaments = DB.getTournaments();
-    const completedTournaments = allTournaments.filter(t => {
-        const tMatches = t.matches.map(id => DB.getMatch(id)).filter(m => m);
-        // If tournament has matches and all are completed
-        return tMatches.length > 0 && tMatches.every(m => m.status === 'completed');
+    const activeTournamentsWithCompletedMatches = allTournaments.filter(t => {
+        return allRecentMatches.some(m => m.tournamentId === t.id);
     });
 
     const singleMatches = allRecentMatches.filter(m => !m.tournamentId);
     
     let html = '';
     
-    if (completedTournaments.length > 0) {
-        html += `<h3 style="grid-column:1/-1; margin-bottom:12px; font-weight:800; color:#ffc107; border-left:4px solid #ffc107; padding-left:12px; font-size:18px; letter-spacing:1px">COMPLETED TOURNAMENTS</h3>`;
-        html += completedTournaments.map(t => `
-            <div class="match-card tournament-card" style="border-color:rgba(255, 193, 7, 0.3); background:rgba(255,193,7,0.05); position:relative" onclick="goToTournament('${t.id}')">
-                <div style="font-size:10px; font-weight:800; color:#ffc107; margin-bottom:6px; letter-spacing:1px">TOURNAMENT FINISHED</div>
-                <div style="font-size:22px; font-weight:900; color:#fff">${t.name}</div>
-                <div style="font-size:13px; color:rgba(255,255,255,0.5); margin-top:4px">${t.teams.length} Teams · ${t.matches.length} Matches</div>
-                <div style="margin-top:20px"><button class="btn btn-amber btn-full btn-sm" style="color:#000; font-weight:800">VIEW FULL SCOREBOARD</button></div>
-            </div>
-        `).join('');
+    if (activeTournamentsWithCompletedMatches.length > 0) {
+        html += `<h3 style="grid-column:1/-1; margin-bottom:12px; font-weight:800; color:#ffc107; border-left:4px solid #ffc107; padding-left:12px; font-size:18px; letter-spacing:1px">TOURNAMENTS</h3>`;
+        html += activeTournamentsWithCompletedMatches.map(t => {
+            const tMatches = DB.getMatches().filter(m => m.tournamentId === t.id && m.status === 'completed');
+            const finished = t.status === 'completed' || (t.matches.length > 0 && t.matches.every(mId => DB.getMatch(mId)?.status === 'completed'));
+            
+            return `
+                <div class="match-card tournament-card" style="border-color:${finished ? '#ffc107' : 'rgba(255,255,255,0.1)'}; background:rgba(255,193,7,0.05); position:relative" onclick="goToTournament('${t.id}')">
+                    <div style="font-size:10px; font-weight:800; color:#ffc107; margin-bottom:6px; letter-spacing:1px">${finished ? 'TOURNAMENT FINISHED' : 'TOURNAMENT ONGOING'}</div>
+                    <div style="font-size:22px; font-weight:900; color:#fff">${t.name}</div>
+                    <div style="font-size:13px; color:rgba(255,255,255,0.5); margin-top:4px">${t.teams.length} Teams · ${tMatches.length} Finished Matches</div>
+                    <div style="margin-top:20px"><button class="btn btn-amber btn-full btn-sm" style="color:#000; font-weight:800">${finished ? 'VIEW FINAL RESULTS' : 'VIEW TOURNAMENT HUB'}</button></div>
+                </div>
+            `;
+        }).join('');
     }
 
     if (singleMatches.length > 0) {
@@ -562,12 +566,13 @@ function renderRecent() {
         html += singleMatches.slice().reverse().map(m => buildMatchCard(m, false)).join('');
     }
 
-    if (!completedTournaments.length && !singleMatches.length) {
+    if (!activeTournamentsWithCompletedMatches.length && !singleMatches.length) {
         grid.innerHTML = '<div class="empty-state">No completed matches or tournaments found</div>';
     } else {
         grid.innerHTML = html;
     }
 }
+
 
 function formatOvers(balls, bpo = 6) { return `${Math.floor(balls / bpo)}.${balls % bpo}`; }
 function formatCRR(runs, balls, bpo = 6) { return balls ? (runs / (balls / bpo)).toFixed(2) : '0.00'; }
