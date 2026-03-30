@@ -551,6 +551,7 @@ function renderMatchDetailContent(m) {
     const renderInningsTable = (inn, teamName, isCurrent) => {
         if (!inn) return `<div class="sc-extras">No data for ${teamName} innings</div>`;
         
+        const totalScore = `${inn.runs}/${inn.wickets}`;
         const totalOvers = formatOvers(inn.balls, m.ballsPerOver);
         let batsmenHtml = inn.batsmen.map(b => `
             <tr style="${b.status === 'Batting' ? 'background:rgba(0,230,118,0.05)' : ''}">
