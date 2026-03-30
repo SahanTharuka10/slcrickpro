@@ -456,8 +456,8 @@
                                 <input type="text" id="next-match-teamb" placeholder="Team B" 
                                     style="width: 100%; box-sizing: border-box; background:#fff; color:#000; border:none; border-radius:20px; padding:10px; font-weight:700; font-size:13px; text-align:center" />
                             </div>
-                            <button class="btn btn-primary btn-full btn-sm" onclick="event.stopPropagation(); broadcastNextMatch();" 
-                                style="background: linear-gradient(90deg, #FF8F00, #FF6F00); color:#fff; font-weight:900; border:none; height:42px; border-radius:30px; box-shadow:0 10px 20px rgba(255,143,0,0.15); font-size:14px; pointer-events:auto !important; letter-spacing:0.5px">
+                            <button class="btn btn-primary btn-full btn-sm broadcast-btn-standard" onclick="broadcastNextMatch();" 
+                                style="background: linear-gradient(90deg, #FF8F00, #FF6F00); color:#fff; font-weight:900; border:none; height:42px; border-radius:30px; box-shadow:0 10px 20px rgba(255,143,0,0.15); font-size:14px; letter-spacing:0.5px">
                                 🎨 Publish Next Match Animation
                             </button>
                         </div>
@@ -465,23 +465,22 @@
                         <!-- Force Update -->
                         <button class="btn btn-primary btn-full btn-sm" onclick="forceUpdateTV()" style="background:var(--c-amber); color:#000; font-weight:800; border:none; height:38px; border-radius:10px; box-shadow:0 4px 12px rgba(255,193,7,0.2)">🔄 Force Sync TV Scoreboard</button>
 
-                        <!-- ─── INSTANT HOTKEYS (The "Clickable" Scoring Grid) ─── -->
+                        <!-- ─── INSTANT TRIGGERS (Click to Send Boundary/Wicket Animation) ─── -->
                         <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:12px; border:1px solid rgba(255,193,7,0.2)">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-                                <div style="font-size:11px; font-weight:900; color:var(--c-amber); letter-spacing:1px; text-transform:uppercase">⚡ INSTANT SCORING HOTKEYS</div>
-                                <div style="font-size:10px; color:rgba(255,255,255,0.4)" id="hk-sync-status">RADIO ACTIVE</div>
+                                <div style="font-size:11px; font-weight:900; color:var(--c-amber); letter-spacing:1px; text-transform:uppercase">⚡ INSTANT VISUAL TRIGGERS</div>
                             </div>
                             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px">
-                                <button onclick="triggerVisualBigEvent('FOUR')" 
-                                    style="background:rgba(255,193,7,0.15); color:#ffc107; border:1px solid #ffc107; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s; pointer-events:auto !important"
+                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('FOUR')" 
+                                    style="background:rgba(255,193,7,0.15); color:#ffc107; border:1px solid #ffc107; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
                                     onmouseover="this.style.background='#ffc107'; this.style.color='#000'"
                                     onmouseout="this.style.background='rgba(255,193,7,0.15)'; this.style.color='#ffc107'">4</button>
-                                <button onclick="triggerVisualBigEvent('SIX')" 
-                                    style="background:rgba(124,77,255,0.15); color:#7c4dff; border:1px solid #7c4dff; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s; pointer-events:auto !important"
+                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('SIX')" 
+                                    style="background:rgba(124,77,255,0.15); color:#7c4dff; border:1px solid #7c4dff; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
                                     onmouseover="this.style.background='#7c4dff'; this.style.color='#fff'"
                                     onmouseout="this.style.background='rgba(124,77,255,0.15)'; this.style.color='#7c4dff'">6</button>
-                                <button onclick="triggerVisualBigEvent('WICKET')" 
-                                    style="background:rgba(255,23,68,0.15); color:#ff1744; border:1px solid #ff1744; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s; pointer-events:auto !important"
+                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('WICKET')" 
+                                    style="background:rgba(255,23,68,0.15); color:#ff1744; border:1px solid #ff1744; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
                                     onmouseover="this.style.background='#ff1744'; this.style.color='#fff'"
                                     onmouseout="this.style.background='rgba(255,23,68,0.15)'; this.style.color='#ff1744'">W</button>
                             </div>
@@ -495,43 +494,46 @@
                         <div style="background:linear-gradient(135deg, rgba(124,77,255,0.05), rgba(0,230,118,0.05)); border-radius:12px; padding:12px; border:1px solid rgba(124,77,255,0.2)">
                             <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:#7c4dff; margin-bottom:10px; text-transform:uppercase">📺 Visual Graphics Controls</div>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
-                                <button onclick="event.stopPropagation(); broadcastTeamCard(0)"
-                                    style="background:rgba(21,101,192,0.1); border:1px solid rgba(21,101,192,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#7ecbff; text-align:left; transition:0.2s; pointer-events:auto !important; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                                <button class="broadcast-btn-standard" onclick="broadcastTeamCard(0)"
+                                    style="background:rgba(21,101,192,0.1); border:1px solid rgba(21,101,192,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#7ecbff; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
                                     <div style="font-size:11px; font-weight:900">🛡️ TEAM 1 CARD</div>
                                     <div style="font-size:9px; opacity:0.6">Quick stats</div>
                                 </button>
-                                <button onclick="event.stopPropagation(); broadcastTeamCard(1)"
-                                    style="background:rgba(69,39,160,0.1); border:1px solid rgba(69,39,160,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#b39ddb; text-align:left; transition:0.2s; pointer-events:auto !important; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                                <button class="broadcast-btn-standard" onclick="broadcastTeamCard(1)"
+                                    style="background:rgba(69,39,160,0.1); border:1px solid rgba(69,39,160,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#b39ddb; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
                                     <div style="font-size:11px; font-weight:900">🛡️ TEAM 2 CARD</div>
                                     <div style="font-size:9px; opacity:0.6">Quick stats</div>
                                 </button>
-                                <button onclick="event.stopPropagation(); broadcastCurrentBatters();"
-                                    style="background:rgba(46,125,50,0.1); border:1px solid rgba(46,125,50,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#69f0ae; text-align:left; transition:0.2s; pointer-events:auto !important; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                                <button class="broadcast-btn-standard" onclick="broadcastCurrentBatters();"
+                                    style="background:rgba(46,125,50,0.1); border:1px solid rgba(46,125,50,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#69f0ae; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
                                     <div style="font-size:11px; font-weight:900">🏏 BOTH BATTERS</div>
                                     <div style="font-size:9px; opacity:0.6">Crease info</div>
                                 </button>
-                                <button onclick="event.stopPropagation(); broadcastStrikerProfile();"
-                                    style="background:rgba(198,40,40,0.1); border:1px solid rgba(198,40,40,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#ff8a80; text-align:left; transition:0.2s; pointer-events:auto !important; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                                <button class="broadcast-btn-standard" onclick="broadcastStrikerProfile();"
+                                    style="background:rgba(198,40,40,0.1); border:1px solid rgba(198,40,40,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#ff8a80; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
                                     <div style="font-size:11px; font-weight:900">⚡ STRIKER PROFILE</div>
                                     <div style="font-size:9px; opacity:0.6">Detailed card</div>
+                                </button>
+                                <button class="broadcast-btn-standard" onclick="broadcastPartnership();"
+                                    style="grid-column: span 2; background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:12px; cursor:pointer; color:#FFD700; text-align:center; transition:0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.3)">
+                                    <div style="font-size:13px; font-weight:950; letter-spacing:1px">🤝 BOTH BATTERS PARTNERSHIP</div>
+                                    <div style="font-size:10px; opacity:0.7">Trigger cinematic pair graphic</div>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Standard Quick Metrics -->
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.2); border-radius:10px; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.showRunsNeeded()">
+                            <button class="btn btn-primary broadcast-btn-standard" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.2); border-radius:10px" onclick="Broadcast.showRunsNeeded()">
                                 🚀 RUNS<br>NEEDED
                             </button>
-                            <button class="btn btn-primary" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.2); border-radius:10px; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.showCRR()">
+                            <button class="btn btn-primary broadcast-btn-standard" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.2); border-radius:10px" onclick="Broadcast.showCRR()">
                                 📈 CURRENT<br>RUN RATE
                             </button>
                         </div>
 
-                        <!-- Master Controls -->
                         <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px">
-                            <button class="btn btn-red btn-full btn-sm" style="font-weight:900; letter-spacing:1px; height:42px; border-radius:10px; text-transform:uppercase; pointer-events:auto !important" onclick="event.stopPropagation(); Broadcast.stopAll()">⏹ STOP ALL OVERLAYS</button>
-                            <button class="btn btn-ghost btn-full btn-sm" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber); border-radius:10px; height:42px; pointer-events:auto !important" onclick="event.stopPropagation(); location.reload()">🔄 RESET</button>
+                            <button class="btn btn-red btn-full btn-sm broadcast-btn-standard" style="font-weight:900; letter-spacing:1px; height:42px; border-radius:10px; text-transform:uppercase" onclick="Broadcast.stopAll()">⏹ STOP ALL OVERLAYS</button>
+                            <button class="btn btn-ghost btn-full btn-sm broadcast-btn-standard" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber); border-radius:10px; height:42px" onclick="location.reload()">🔄 RESET</button>
                         </div>
                     </div>
                 </div> <!-- End Broadcast card -->

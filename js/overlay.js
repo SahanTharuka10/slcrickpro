@@ -235,6 +235,9 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_BOWLER_PROFILE':
             showBowlerProfileGraphic(data);
             break;
+        case 'SHOW_PARTNERSHIP':
+            showPartnershipGraphic(data);
+            break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
             break;
@@ -1295,4 +1298,54 @@ function showBigEventGraphic(data) {
         tl.timeScale(2).reverse();
         setTimeout(() => wrapper.remove(), 1000);
     }, 5500);
+}
+
+function showPartnershipGraphic(data) {
+    const { player1, player2, runs, balls, teamName } = data;
+    const html = `
+        <div class="overlay-container show" id="overlay-partnership" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 80%);">
+            <div class="partnership-card" style="width: 800px; background: rgba(10, 10, 30, 0.95); backdrop-filter: blur(20px); border-left: 6px solid #FFD700; border-right: 6px solid #FFD700; border-radius: 40px; padding: 30px 60px; box-shadow: 0 40px 100px rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; opacity: 0; transform: perspective(1000px) rotateX(-20deg) translateY(50px);">
+                
+                <div style="font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.4); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px;">
+                    ${teamName} • CURRENT PARTNERSHIP
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 40px;">
+                    <div style="flex: 1; text-align: right;">
+                        <div style="font-size: 32px; font-weight: 950; color: #fff; text-transform: uppercase; letter-spacing: 1px;">${player1}</div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; align-items: center; min-width: 180px;">
+                        <div style="font-size: 82px; font-weight: 950; color: #FFD700; line-height: 1; text-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);">${runs}</div>
+                        <div style="font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.6); letter-spacing: 2px;">RUNS OFF ${balls} BALLS</div>
+                    </div>
+
+                    <div style="flex: 1; text-align: left;">
+                        <div style="font-size: 32px; font-weight: 950; color: #fff; text-transform: uppercase; letter-spacing: 1px;">${player2}</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; width: 60%; height: 2px; background: linear-gradient(90deg, transparent, #FFD700, transparent); opacity: 0.3;"></div>
+            </div>
+        </div>
+    `;
+
+    renderBroadcastOverlay(html);
+
+    // GSAP Animation Sequence
+    setTimeout(() => {
+        const card = document.querySelector('.partnership-card');
+        if (card && typeof gsap !== 'undefined') {
+            gsap.to(card, {
+                opacity: 1,
+                rotateX: 0,
+                y: 0,
+                duration: 1,
+                ease: "expo.out"
+            });
+        } else if (card) {
+            card.style.opacity = '1';
+            card.style.transform = 'none';
+        }
+    }, 100);
 }

@@ -2334,9 +2334,15 @@ function renderOverlay(html) {
 }
 
 function hideOverlay() {
-    if (activeOverlayId) clearTimeout(activeOverlayId);
+    if (activeOverlayId) {
+        clearTimeout(activeOverlayId);
+        activeOverlayId = null;
+    }
     const el = document.getElementById('active-overlay-wrapper');
-    if (el) el.remove();
+    if (el) {
+        el.style.pointerEvents = 'none'; // Kill interaction immediately
+        el.remove(); // Remove from DOM
+    }
 }
 
 function escapeHTML(str) {
@@ -2491,4 +2497,23 @@ function triggerVisualBigEvent(type) {
 
     sendBroadcast('SHOW_BIG_EVENT', payload);
     showToast(`📺 Visual Trigger: ${type}`, 'success');
+}
+
+function broadcastPartnership() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+
+    const names = getOnCreaseBatterNames(inn);
+    const p = inn.currentPartnership || { runs: 0, balls: 0 };
+
+    sendBroadcast('SHOW_PARTNERSHIP', {
+        player1: names[0] || 'Batsman 1',
+        player2: names[1] || 'Batsman 2',
+        runs: p.runs || 0,
+        balls: p.balls || 0,
+        teamName: inn.battingTeam
+    });
+    showToast('📺 Partnership Graphic Broadcasted!', 'success');
 }

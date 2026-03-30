@@ -563,6 +563,25 @@
     justify-content: center;
 }
 
+/* Guaranteed Clickable Broadcast Buttons */
+.broadcast-btn-standard {
+    position: relative !important;
+    z-index: 20000 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    transition: transform 0.1s ease, filter 0.2s ease !important;
+}
+
+.broadcast-btn-standard:hover {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+}
+
+.broadcast-btn-standard:active {
+    transform: translateY(1px) scale(0.98);
+    filter: brightness(0.9);
+}
+
 .overlay-container {
     opacity: 0;
     transform: translateY(30px) scale(0.95);
