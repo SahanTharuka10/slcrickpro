@@ -76,7 +76,6 @@
         </div>
     </div>
 
-    <!-- Live Match Detail Modal -->
     <div class="modal-overlay" id="match-detail-modal" style="display:none" onclick="closeMatchDetail(event)">
         <div class="modal-box" style="max-width:700px;width:100%" onclick="event.stopPropagation()">
             <div class="scorecard-close-btn" onclick="closeMatchDetail()">✕</div>
@@ -84,9 +83,27 @@
         </div>
     </div>
 
+    <!-- Stats Card Modal -->
+    <div class="modal-overlay" id="stats-card-modal" style="display:none" onclick="document.getElementById('stats-card-modal').style.display='none'">
+        <div class="modal-box" style="max-width:400px;width:90%;text-align:center;padding:30px" onclick="event.stopPropagation()">
+            <div style="font-size:24px;margin-bottom:15px">✨ Player Stats Card</div>
+            <div style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:25px">Upload a professional photo for <b id="stats-player-name" style="color:#fff"></b> to generate a premium summary.</div>
+            
+            <input type="file" id="player-photo-input" accept="image/*" style="display:none" onchange="handlePlayerPhotoSelect(event)">
+            <button class="btn btn-primary btn-full" onclick="document.getElementById('player-photo-input').click()">📁 Select Photo</button>
+            <div id="photo-preview-container" style="margin-top:20px;display:none">
+                <img id="photo-preview" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid #ffc107">
+                <button class="btn btn-amber btn-full" style="margin-top:15px" onclick="generateFinalStatsCard()">🚀 Generate Card</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="../js/db.js?v=2"></script>
     <script src="../js/ongoing.js?v=2"></script>
 </body>

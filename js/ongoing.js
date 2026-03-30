@@ -58,18 +58,18 @@ function switchTab(tab) {
 function renderLive() {
   const grid = document.getElementById('live-matches-grid');
   if (!grid) return;
-  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') && m.publishLive);
+  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused') && m.publishLive);
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-state-icon">🏏</div>
-      <div class="empty-state-title">No Live or Scheduled Matches</div>
-      <div class="empty-state-sub">Start a match and publish it live to see it here</div>
+      <div class="empty-state-title">No Live Matches Currently</div>
+      <div class="empty-state-sub">Currently playing or paused matches will appear here</div>
     </div>`;
     return;
   }
 
-  grid.innerHTML = matches.map(m => buildMatchCard(m, (m.status === 'live' || m.status === 'paused'))).join('');
+  grid.innerHTML = matches.map(m => buildMatchCard(m, true)).join('');
 }
 
 function buildMatchCard(m, isLive) {
@@ -134,7 +134,15 @@ function buildMatchCard(m, isLive) {
             <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
                 ${m.status === 'scheduled' ? '🏏 Start Scoring' : '🔑 Resume Scoring'}
             </button>
-        </div>` : ''}
+        </div>` : (m.status === 'completed' ? `
+        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end; gap:8px">
+            <button class="btn btn-sm" style="font-weight:800; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1)" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
+                📄 PDF Summary
+            </button>
+            <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
+                📊 Scorecard
+            </button>
+        </div>` : '')}
     </div>`;
 }
 
@@ -543,13 +551,11 @@ function renderMatchDetailContent(m) {
     const renderInningsTable = (inn, teamName, isCurrent) => {
         if (!inn) return `<div class="sc-extras">No data for ${teamName} innings</div>`;
         
-        const totalScore = `${inn.runs}/${inn.wickets}`;
         const totalOvers = formatOvers(inn.balls, m.ballsPerOver);
-        
         let batsmenHtml = inn.batsmen.map(b => `
             <tr style="${b.status === 'Batting' ? 'background:rgba(0,230,118,0.05)' : ''}">
                 <td>
-                    <div style="font-weight:700; color:#fff">${b.name} ${b.status === 'Batting' ? '<span style="color:#00e676; font-size:10px">★</span>' : ''}</div>
+                    <div style="font-weight:700; color:#fff; ${m.tournamentId ? 'cursor:pointer; text-decoration:underline' : ''}" ${m.tournamentId ? `onclick="handlePlayerStatsClick('${b.name}', '${m.tournamentId}', '${m.tournamentName || ''}')"` : ''}>${b.name} ${b.status === 'Batting' ? '<span style="color:#00e676; font-size:10px">★</span>' : ''}</div>
                     <div style="font-size:10px; opacity:0.6">${b.status || 'Yet to Bat'}</div>
                 </td>
                 <td style="font-weight:800; color:var(--c-primary)">${b.runs}</td>
@@ -559,10 +565,10 @@ function renderMatchDetailContent(m) {
                 <td style="font-weight:700; color:rgba(255,255,255,0.4)">${formatSR(b.runs, b.balls)}</td>
             </tr>
         `).join('');
-
+ 
         let bowlersHtml = inn.bowlers.map(b => `
             <tr>
-                <td style="font-weight:700; color:#fff">${b.name}</td>
+                <td style="font-weight:700; color:#fff; ${m.tournamentId ? 'cursor:pointer; text-decoration:underline' : ''}" ${m.tournamentId ? `onclick="handlePlayerStatsClick('${b.name}', '${m.tournamentId}', '${m.tournamentName || ''}')"` : ''}>${b.name}</td>
                 <td style="opacity:0.7">${formatOvers(b.balls, m.ballsPerOver)}</td>
                 <td style="opacity:0.7">${b.maidens || 0}</td>
                 <td style="opacity:0.7">${b.runs}</td>
@@ -639,4 +645,343 @@ function renderMatchDetailContent(m) {
 function closeMatchDetail() {
     const modal = document.getElementById('match-detail-modal');
     if (modal) modal.style.display = 'none';
+}
+
+async function generateMatchPDF(matchId) {
+    const m = DB.getMatch(matchId);
+    if (!m) return showToast('Match not found', 'error');
+    
+    showToast('⏳ Generating PDF...', 'default');
+    
+    // Create a virtual container for PDF rendering (hidden)
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.style.background = '#fff';
+    container.style.color = '#000';
+    container.style.padding = '40px';
+    container.style.fontFamily = "'Outfit', sans-serif";
+    
+    const inn0 = m.innings ? m.innings[0] : null;
+    const inn1 = m.innings ? m.innings[1] : null;
+
+    const renderInningsTablePDF = (inn, teamName) => {
+        if (!inn) return '';
+        const extras = inn.extras || { total: 0, wd: 0, nb: 0, b: 0, lb: 0 };
+        return `
+            <div style="margin-bottom:30px">
+                <div style="background:#f5f5f5; padding:10px 15px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center">
+                    <span style="font-size:18px; font-weight:800">${teamName}</span>
+                    <span style="font-size:20px; font-weight:900">${inn.runs}/${inn.wickets} <span style="font-size:14px; font-weight:400">(${formatOvers(inn.balls, m.ballsPerOver)} ov)</span></span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:15px; font-size:13px">
+                    <thead>
+                        <tr style="border-bottom:2px solid #eee; text-align:left">
+                            <th style="padding:8px">Batsman</th>
+                            <th style="padding:8px">R</th>
+                            <th style="padding:8px">B</th>
+                            <th style="padding:8px">4s</th>
+                            <th style="padding:8px">6s</th>
+                            <th style="padding:8px">SR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${inn.batsmen.map(b => `
+                            <tr style="border-bottom:1px solid #f9f9f9">
+                                <td style="padding:8px; font-weight:600">${b.name} <span style="font-size:10px; color:#666; font-weight:400">(${b.status || 'DNB'})</span></td>
+                                <td style="padding:8px; font-weight:700">${b.runs}</td>
+                                <td style="padding:8px">${b.balls}</td>
+                                <td style="padding:8px">${b.fours}</td>
+                                <td style="padding:8px">${b.sixes}</td>
+                                <td style="padding:8px; color:#888">${formatSR(b.runs, b.balls)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="font-size:12px; color:#555; padding:10px; background:#fafafa; border-radius:6px; margin-bottom:15px">
+                    Extras: <b>${extras.total || 0}</b> (Wd:${extras.wd || 0}, Nb:${extras.nb || 0}, By:${extras.b || 0}, Lb:${extras.lb || 0})
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px">
+                    <thead>
+                        <tr style="border-bottom:2px solid #eee; text-align:left">
+                            <th style="padding:8px">Bowler</th>
+                            <th style="padding:8px">O</th>
+                            <th style="padding:8px">M</th>
+                            <th style="padding:8px">R</th>
+                            <th style="padding:8px">W</th>
+                            <th style="padding:8px">Econ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${inn.bowlers.map(b => `
+                            <tr style="border-bottom:1px solid #f9f9f9">
+                                <td style="padding:8px; font-weight:600">${b.name}</td>
+                                <td style="padding:8px">${formatOvers(b.balls, m.ballsPerOver)}</td>
+                                <td style="padding:8px">${b.maidens || 0}</td>
+                                <td style="padding:8px">${b.runs}</td>
+                                <td style="padding:8px; font-weight:700">${b.wickets}</td>
+                                <td style="padding:8px; color:#888">${formatEcon(b.runs, b.balls, m.ballsPerOver)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    };
+
+    container.innerHTML = `
+        <div style="text-align:center; margin-bottom:30px; border-bottom:3px solid #000; padding-bottom:20px">
+            <div style="font-size:32px; font-weight:900; letter-spacing:-1px">SLCRICKPRO <span style="color:#ffc107">MATCH SUMMARY</span></div>
+            <div style="font-size:14px; opacity:0.6; margin-top:5px; font-weight:600">OFFICIAL SCORECARD REPORT</div>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px">
+            <div>
+                <div style="font-size:24px; font-weight:900">${m.team1} <span style="font-weight:400; font-size:16px; opacity:0.3">VS</span> ${m.team2}</div>
+                <div style="font-size:13px; color:#666; margin-top:4px; font-weight:600">${m.overs} overs · ${m.venue || 'Home'} · ${m.type === 'tournament' ? 'Tournament Match' : 'Single Match'}</div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:11px; font-weight:800; color:#888">MATCH DATE</div>
+                <div style="font-size:14px; font-weight:700">${new Date(m.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</div>
+            </div>
+        </div>
+
+        <div style="background:#fff9e6; border:2px solid #ffc107; padding:15px; border-radius:12px; text-align:center; font-weight:900; color:#b38f00; font-size:18px; margin-bottom:40px; text-transform:uppercase">
+            ${m.result || 'MATCH COMPLETED'}
+        </div>
+
+        ${renderInningsTablePDF(inn0, m.battingFirst || m.team1)}
+        <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px"></div>
+        ${inn1 ? renderInningsTablePDF(inn1, m.fieldingFirst || m.team2) : ''}
+
+        <div style="margin-top:50px; padding-top:20px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center">
+            <div style="font-size:11px; color:#999">Generated by SLCRICKPRO – Cricket Scoring & Management System</div>
+            <div style="font-size:11px; color:#999">ID: ${m.id}</div>
+        </div>
+    `;
+
+    document.body.appendChild(container);
+
+    const opt = {
+        margin: 10,
+        filename: `MatchSummary_${m.team1}_vs_${m.team2}_${m.id.split('-')[1]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(container).save();
+        showToast('✅ PDF Downloaded!', 'success');
+    } catch (err) {
+        console.error("PDF Export Fail", err);
+        showToast('❌ PDF Generation Failed', 'error');
+    } finally {
+        container.remove();
+    }
+}
+
+// ========== PLAYER STATS CARD GENERATOR ==========
+let activeStatsPlayer = null;
+let activeStatsTournId = null;
+let activeStatsTournName = null;
+let activeStatsPhotoBase64 = null;
+
+function handlePlayerStatsClick(name, tournId, tournName) {
+    activeStatsPlayer = name;
+    activeStatsTournId = tournId;
+    activeStatsTournName = tournName;
+    activeStatsPhotoBase64 = null;
+
+    const modal = document.getElementById('stats-card-modal');
+    const nameEl = document.getElementById('stats-player-name');
+    const preview = document.getElementById('photo-preview-container');
+    if (modal) modal.style.display = 'flex';
+    if (nameEl) nameEl.textContent = name;
+    if (preview) preview.style.display = 'none';
+}
+
+function handlePlayerPhotoSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        activeStatsPhotoBase64 = e.target.result;
+        const previewImg = document.getElementById('photo-preview');
+        const previewContainer = document.getElementById('photo-preview-container');
+        if (previewImg) previewImg.src = activeStatsPhotoBase64;
+        if (previewContainer) previewContainer.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function getTournamentPlayerStats(playerName, tournId) {
+    const matches = DB.getMatches().filter(m => m.tournamentId === tournId && m.status === 'completed');
+    const stats = {
+        matches: 0,
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        wickets: 0,
+        bowlingRuns: 0,
+        bowlingBalls: 0,
+        bestBowling: "0/0",
+        teams: new Set()
+    };
+
+    let bestWickets = -1;
+    let correspondingRuns = 0;
+
+    matches.forEach(m => {
+        let playedInMatch = false;
+        m.innings.forEach(inn => {
+            if (!inn) return;
+            
+            // Batting
+            const bat = inn.batsmen.find(b => b.name === playerName);
+            if (bat) {
+                playedInMatch = true;
+                stats.runs += (bat.runs || 0);
+                stats.balls += (bat.balls || 0);
+                stats.fours += (bat.fours || 0);
+                stats.sixes += (bat.sixes || 0);
+            }
+
+            // Bowling
+            const bowl = inn.bowlers.find(b => b.name === playerName);
+            if (bowl) {
+                playedInMatch = true;
+                stats.wickets += (bowl.wickets || 0);
+                stats.bowlingRuns += (bowl.runs || 0);
+                stats.bowlingBalls += (bowl.balls || 0);
+                
+                if (bowl.wickets > bestWickets) {
+                    bestWickets = bowl.wickets;
+                    correspondingRuns = bowl.runs;
+                } else if (bowl.wickets === bestWickets && bowl.runs < correspondingRuns) {
+                    correspondingRuns = bowl.runs;
+                }
+            }
+        });
+        if (playedInMatch) {
+            stats.matches++;
+            stats.teams.add(m.team1);
+            stats.teams.add(m.team2);
+        }
+    });
+
+    stats.bestBowling = bestWickets === -1 ? "0/0" : `${bestWickets}/${correspondingRuns}`;
+    stats.teams = Array.from(stats.teams).join(', ');
+    return stats;
+}
+
+async function generateFinalStatsCard() {
+    if (!activeStatsPlayer || !activeStatsTournId) return;
+    const stats = getTournamentPlayerStats(activeStatsPlayer, activeStatsTournId);
+    
+    showToast('🎨 Creating your Masterpiece...', 'default');
+    
+    const card = document.createElement('div');
+    card.style = `
+        position: fixed; top: -5000px; left: 0;
+        width: 1080px; height: 1350px;
+        background: #000; color: #fff;
+        font-family: 'Outfit', sans-serif;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+    `;
+
+    const sr = stats.balls ? ((stats.runs / stats.balls) * 100).toFixed(1) : '0.0';
+    const econ = stats.bowlingBalls ? ((stats.bowlingRuns / (stats.bowlingBalls / 6))).toFixed(2) : '0.00';
+
+    card.innerHTML = `
+        <!-- Background Overlay -->
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 70%, #000 100%); z-index:1"></div>
+        
+        <!-- Top Branding -->
+        <div style="position:absolute; top:60px; left:0; width:100%; display:flex; justify-content:center; align-items:center; z-index:2; gap:15px">
+            <div style="background:#ffc107; color:#000; padding:8px 20px; border-radius:4px; font-weight:900; font-size:24px; letter-spacing:2px">PLAYER STATS</div>
+            <div style="font-size:20px; font-weight:400; opacity:0.6; letter-spacing:1px">${activeStatsTournName.toUpperCase()}</div>
+        </div>
+
+        <!-- Main Player Image (Background style) -->
+        <div style="position:absolute; top:0; left:0; width:100%; height:80%; z-index:0; display:flex; justify-content:center; align-items:center; overflow:hidden">
+            <img src="${activeStatsPhotoBase64}" style="width:110%; height:110%; object-fit:cover; filter: grayscale(0.5) contrast(1.1) brightness(0.6) blur(2px); transform: scale(1.1)">
+        </div>
+
+        <!-- Foreground Player Image -->
+        <div style="position:absolute; top:15%; left:0; width:100%; height:65%; z-index:2; display:flex; justify-content:center; align-items:flex-end">
+            <img src="${activeStatsPhotoBase64}" style="height:90%; object-fit:contain; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.8))">
+        </div>
+
+        <!-- Player Name -->
+        <div style="position:absolute; bottom:320px; left:0; width:100%; text-align:center; z-index:3">
+            <div style="font-size:120px; font-weight:900; line-height:0.9; text-transform:uppercase; letter-spacing:-4px; color:#ffc107">${activeStatsPlayer}</div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div style="position:absolute; bottom:80px; left:0; width:100%; z-index:3; display:flex; justify-content:center; gap:60px; padding:0 60px">
+            <div style="text-align:center">
+                <div style="font-size:18px; color:rgba(255,255,255,0.5); font-weight:800; margin-bottom:10px; letter-spacing:1px">MATCHES</div>
+                <div style="font-size:48px; font-weight:900; color:#fff">${stats.matches}</div>
+            </div>
+            <div style="width:2px; height:80px; background:rgba(255,255,255,0.1); align-self:center"></div>
+            <div style="text-align:center">
+                <div style="font-size:18px; color:rgba(255,255,255,0.5); font-weight:800; margin-bottom:10px; letter-spacing:1px">TOTAL RUNS</div>
+                <div style="font-size:48px; font-weight:900; color:#fff">${stats.runs}<span style="font-size:20px; color:#ffc107; margin-left:5px">(${sr})</span></div>
+            </div>
+            <div style="width:2px; height:80px; background:rgba(255,255,255,0.1); align-self:center"></div>
+            <div style="text-align:center">
+                <div style="font-size:18px; color:rgba(255,255,255,0.5); font-weight:800; margin-bottom:10px; letter-spacing:1px">WICKETS</div>
+                <div style="font-size:48px; font-weight:900; color:#fff">${stats.wickets}</div>
+            </div>
+            <div style="width:2px; height:80px; background:rgba(255,255,255,0.1); align-self:center"></div>
+            <div style="text-align:center">
+                <div style="font-size:18px; color:rgba(255,255,255,0.5); font-weight:800; margin-bottom:10px; letter-spacing:1px">BBI</div>
+                <div style="font-size:48px; font-weight:900; color:#fff">${stats.bestBowling}</div>
+            </div>
+        </div>
+
+        <!-- Footer Logo -->
+        <div style="position:absolute; bottom:30px; left:0; width:100%; display:flex; justify-content:center; z-index:3; opacity:0.6">
+             <div style="font-size:16px; font-weight:800; letter-spacing:4px">SLCRICKPRO CRICKET SYSTEM</div>
+        </div>
+    `;
+
+    document.body.appendChild(card);
+    
+    try {
+        const canvas = await html2canvas(card, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: '#000'
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Open in new tab or download
+        const link = document.createElement('a');
+        link.href = imgData;
+        link.download = `Stats_${activeStatsPlayer.replace(/\s+/g, '_')}_${activeStatsTournName.replace(/\s+/g, '_')}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Also open image in new tab for viewing
+        const win = window.open();
+        win.document.write(`<body style="margin:0; background:#111; display:flex; justify-content:center; align-items:center; height:100vh;"><img src="${imgData}" style="max-height:95%; box-shadow:0 0 50px rgba(0,0,0,0.5); border-radius:10px;"></body>`);
+        
+        showToast('🔥 Stats Card Generated!', 'success');
+        document.getElementById('stats-card-modal').style.display = 'none';
+        
+    } catch (err) {
+        console.error(err);
+        showToast('❌ Failed to generate image', 'error');
+    } finally {
+        document.body.removeChild(card);
+    }
 }
