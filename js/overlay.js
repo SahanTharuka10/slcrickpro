@@ -293,13 +293,21 @@ function showRunsBallsGraphic(data) {
 
 function showNextMatchGraphic(data) {
     const el = document.getElementById('broadcast-next-match');
-    document.getElementById('nm-team-a').textContent = data.teamA;
-    document.getElementById('nm-team-b').textContent = data.teamB;
+    if (!el) return;
+    
+    document.getElementById('nm-team-a').textContent = data.teamA || 'TBD';
+    document.getElementById('nm-team-b').textContent = data.teamB || 'TBD';
     
     el.style.display = 'flex';
     // Cinematic entrance
-    gsap.fromTo(el, { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 1, ease: 'power4.out' });
-    gsap.from('.nm-artwork', { y: 100, opacity: 0, duration: 1.2, delay: 0.3, ease: 'back.out(1.2)' });
+    gsap.fromTo(el, { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.8, ease: 'power3.out' });
+    gsap.from('.nm-artwork', { y: 60, opacity: 0, duration: 1, delay: 0.2, ease: 'expo.out' });
+    
+    // Auto-hide after 8 seconds
+    if (window._nmTimeout) clearTimeout(window._nmTimeout);
+    window._nmTimeout = setTimeout(() => {
+        gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.8, ease: 'power3.in', onComplete: () => el.style.display = 'none' });
+    }, 8000);
 }
 
 // Milestone Graphic Removed as per User Request
@@ -972,15 +980,23 @@ function showTeamCardGraphic(data) {
                 }
                 .squad-grid {
                     display: grid;
-                    grid-template-columns: repeat(4, 1fr);
+                    grid-template-columns: repeat(12, 1fr);
                     gap: 30px;
                     width: 100%;
                     justify-items: center;
                 }
                 .squad-player-item {
+                    grid-column: span 3;
                     width: 180px;
                     text-align: center;
                     transition: 0.3s;
+                }
+                /* Custom grid positioning for rows (4 per row, total 11) */
+                /* Players 1-4: span 3 each = 12 */
+                /* Players 5-8: span 3 each = 12 */
+                /* Players 9-11 (last row): span 4 each = 12 */
+                .squad-player-item:nth-child(n+9) {
+                    grid-column: span 4;
                 }
                 .squad-photo-wrapper {
                     position: relative;

@@ -2396,6 +2396,13 @@ function broadcastTeamCard(teamIdx) {
     sendBroadcast('SHOW_TEAM_CARD', { teamName, players });
 }
 
+function broadcastNextMatch() {
+    const teamA = document.getElementById('next-match-teama').value.trim() || 'TBD';
+    const teamB = document.getElementById('next-match-teamb').value.trim() || 'TBD';
+    sendBroadcast('SHOW_NEXT_MATCH', { teamA, teamB });
+    showToast('📺 Next Match Artwork Published!', 'success');
+}
+
 function broadcastCurrentBatters() {
     const m = currentMatch;
     if (!m) return;

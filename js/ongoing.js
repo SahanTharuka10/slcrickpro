@@ -787,24 +787,24 @@ async function generateMatchPDF(matchId) {
     };
 
     container.innerHTML = `
-        <div style="text-align:center; margin-bottom:30px; border-bottom:3px solid #000; padding-bottom:20px">
-            <div style="font-size:32px; font-weight:900; letter-spacing:-1px">SLCRICKPRO <span style="color:#ffc107">MATCH SUMMARY</span></div>
-            <div style="font-size:14px; opacity:0.6; margin-top:5px; font-weight:600">OFFICIAL SCORECARD REPORT</div>
+        <div style="text-align:center; margin-bottom:30px; border-bottom:4px solid #1a237e; padding-bottom:20px; background:linear-gradient(90deg, #1a237e, #7b1fa2); border-radius:12px 12px 0 0; padding-top:20px">
+            <div style="font-size:36px; font-weight:950; letter-spacing:-1.5px; color:#fff">SLCRICK<span style="color:#ffc107">PRO</span></div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.7); margin-top:4px; letter-spacing:4px; font-weight:800">OFFICIAL MATCH SUMMARY</div>
         </div>
         
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; padding:0 10px">
             <div>
-                <div style="font-size:24px; font-weight:900">${m.team1} <span style="font-weight:400; font-size:16px; opacity:0.3">VS</span> ${m.team2}</div>
-                <div style="font-size:13px; color:#666; margin-top:4px; font-weight:600">${m.overs} overs · ${m.venue || 'Home'} · ${m.type === 'tournament' ? 'Tournament Match' : 'Single Match'}</div>
+                <div style="font-size:26px; font-weight:900; color:#1a237e">${m.team1} <span style="font-weight:400; font-size:16px; opacity:0.3">VS</span> ${m.team2}</div>
+                <div style="font-size:13px; color:#666; margin-top:4px; font-weight:700; letter-spacing:0.5px">${m.overs} overs · ${m.venue || 'International Ground'} · ${m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match'}</div>
             </div>
             <div style="text-align:right">
-                <div style="font-size:11px; font-weight:800; color:#888">MATCH DATE</div>
-                <div style="font-size:14px; font-weight:700">${new Date(m.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</div>
+                <div style="font-size:10px; font-weight:900; color:#999; letter-spacing:1px">MATCH DATE</div>
+                <div style="font-size:14px; font-weight:800; color:#333">${new Date(m.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</div>
             </div>
         </div>
 
-        <div style="background:#fff9e6; border:2px solid #ffc107; padding:15px; border-radius:12px; text-align:center; font-weight:900; color:#b38f00; font-size:18px; margin-bottom:40px; text-transform:uppercase">
-            ${m.result || 'MATCH COMPLETED'}
+        <div style="background:#e8f5e9; border:2px solid #2e7d32; padding:18px; border-radius:12px; text-align:center; font-weight:900; color:#1b5e20; font-size:20px; margin-bottom:40px; text-shadow:0 1px 2px rgba(255,255,255,0.5)">
+            🏁 ${m.result || 'MATCH COMPLETED'}
         </div>
 
         ${renderInningsTablePDF(inn0, m.battingFirst || m.team1)}
