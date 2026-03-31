@@ -500,80 +500,21 @@ const DB = {
 // ============================================================
 
 // Default: local server for dev, current domain for production (Vercel)
-var BACKEND_BASE_URL = (() => {
-    const saved = localStorage.getItem('cricpro_backend_url');
-    if (saved) return saved;
-    const { hostname, protocol, port } = window.location;
-    
-    // If localhost, always default to 3000
-    if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:3000';
-    
-    // Smart Detection: If on local network or using common dev ports (5500, 5173, etc.), 
-    // we assume the backend is on port 3000 of the same host.
-    const isLocalNetwork = /^(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(hostname);
-    if (isLocalNetwork || (port && port !== '3000')) {
-        return `${protocol}//${hostname}:3000`;
-    }
-    
-    // Fallback to origin (for Vercel or production deployments)
-    return window.location.origin;
-})();
+var BACKEND_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000' 
+    : 'https://slcrickpro.live';
 
-function updateBackendStatusUI() {
-    const statusDot = document.getElementById('backend-status-dot');
-    if (!statusDot) return;
-    
-    fetch(BACKEND_BASE_URL + '/health')
-        .then(r => r.json())
-        .then(d => {
-            if (d.ok) {
-                statusDot.style.background = '#00e676';
-                statusDot.title = 'Connected to Backend: ' + BACKEND_BASE_URL;
-            }
-        }).catch(() => {
-            statusDot.style.background = '#ff1744';
-            statusDot.title = 'Disconnected! Click to Fix Connectivity';
-        });
-}
 
-function promptForBackendIP() {
-    const current = BACKEND_BASE_URL;
-    const val = prompt("📡 MOBILE CONNECTION SETUP\n\nIf your mobile device can't see matches from your PC, please enter your PC's IP address below.\n\nExample: 192.168.1.5:3000\n\nCurrent URL:", current.replace('http://', '').replace('https://', ''));
-    if (val !== null && val.trim() !== '') {
-        const url = val.startsWith('http') ? val : 'http://' + val;
-        localStorage.setItem('cricpro_backend_url', url);
-        location.reload();
-    }
-}
+// Manual connection setup removed for seamless experience.
+
 
 // Secret shortcut: Triple-tap the header logo to open Settings
 document.addEventListener('DOMContentLoaded', () => {
-    const logo = document.querySelector('.logo');
-    if (logo) {
-        let t = 0;
-        logo.addEventListener('click', () => {
-            t++;
-            if (t >= 5) {
-                promptForBackendIP();
-                t = 0;
-            }
-            setTimeout(() => t = 0, 2000);
-        });
-    }
+    // Backend connection logic is now automatic.
+
     
-    // Add visual status indicator to every sub-header
-    const headerInner = document.querySelector('.header-inner') || document.querySelector('.sub-header');
-    if (headerInner) {
-        const container = document.createElement('div');
-        container.style = 'display:flex; align-items:center; cursor:pointer; margin-left: 10px; z-index: 1000';
-        container.onclick = promptForBackendIP;
-        container.innerHTML = `
-            <div id="backend-status-dot" style="width:8px; height:8px; border-radius:50%; background:#999; margin-right:6px; transition: 0.3s"></div>
-            <span style="font-size:9px; color:rgba(255,255,255,0.4); font-weight:800; letter-spacing:0.5px">SYNC</span>
-        `;
-        headerInner.appendChild(container);
-        updateBackendStatusUI();
-    }
+    // Visual status indicator removed as sync is now automatic and transparent.
+
 });
 
 /**
@@ -739,10 +680,8 @@ function pushAllStatsAfterTournament(tournamentId) {
     });
 }
 
-function setSheetsUrl(url) {
-    localStorage.setItem('cricpro_backend_url', url);
-    location.reload();
-}
+// Sheets sync logic handled in background.
+
 
 
 // ================================================
