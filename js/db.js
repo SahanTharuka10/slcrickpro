@@ -600,6 +600,82 @@ function syncToDB(type, data) {
 }
 
 /**
+ * Handle password verification before scoring a remote match.
+ */
+DB.handshake = async function(id, password) {
+    const type = id.startsWith('MATCH') ? 'match' : 'tournament';
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/api/handshake', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, type, password })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            // Save local grant so user doesn't have to enter it again on this device
+            const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+            grants[id] = true;
+            localStorage.setItem('cricpro_grants', JSON.stringify(grants));
+            return { ok: true };
+        }
+        return { ok: false, error: d.error || 'Access Denied' };
+    } catch (e) {
+        return { ok: false, error: 'Connection failed' };
+    }
+};
+
+/**
+ * Fetch ALL matches/tournaments from the cloud and merge them.
+ */
+async function pullGlobalData() {
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/matches');
+        const d = await r.json(); // { matches: [], tournaments: [] }
+        
+        if (d.matches) {
+            const local = DB.getMatches();
+            // Merge: Cloud data wins unless the local version is newer (client-side edits)
+            const merged = d.matches.map(cm => {
+                const lm = local.find(x => x.id === cm.id);
+                return (lm && lm.lastUpdated > cm.lastUpdated) ? lm : cm;
+            });
+            // Add any local-only matches (offline mode)
+            local.forEach(lm => {
+                if (!merged.find(x => x.id === lm.id)) merged.push(lm);
+            });
+            localStorage.setItem('cricpro_matches', JSON.stringify(merged));
+        }
+
+        if (d.tournaments) {
+            const localTournaments = DB.getTournaments();
+            localStorage.setItem('cricpro_tournaments', JSON.stringify(d.tournaments));
+        }
+        
+        // Trigger UI refresh if we are on relevant pages
+        if (typeof renderMatches === 'function') renderMatches();
+        if (typeof renderOngoing === 'function') renderOngoing();
+        
+    } catch (e) {
+        console.warn('Discovery failed:', e.message);
+    }
+}
+
+// Start background discovery
+setInterval(pullGlobalData, 10000);
+setTimeout(pullGlobalData, 1000);
+
+// socket.io-client integration if script is loaded
+let socket = null;
+if (typeof io !== 'undefined') {
+    socket = io(BACKEND_BASE_URL);
+    socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
+    socket.on('scoreUpdate', (data) => {
+        console.log('⚡ Score Update received:', data);
+        pullGlobalData(); // Immediate refresh on update
+    });
+}
+
+/**
  * Sync a single product to MongoDB.
  */
 function syncProductToDB(product) {

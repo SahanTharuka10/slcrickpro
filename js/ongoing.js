@@ -156,8 +156,31 @@ function goToTournament(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function scoreMatchRedirect(id) {
-    window.location.href = `score-match.html?matchId=${id}`;
+async function scoreMatchRedirect(id) {
+    const matches = DB.getMatches();
+    const tournament = DB.getTournaments();
+    const target = matches.find(m => m.id === id) || tournament.find(t => t.id === id);
+    
+    if (!target) {
+        window.location.href = `score-match.html?matchId=${id}`;
+        return;
+    }
+
+    // If it's locked and we don't have a local grant, prompt
+    const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+    if (target.isLocked && !grants[id]) {
+        const password = prompt("🔐 This match is protected. Enter the Scoring Password to continue:");
+        if (password === null) return; // User cancelled
+        
+        const res = await DB.handshake(id, password);
+        if (res.ok) {
+            window.location.href = `score-match.html?matchId=${id}`;
+        } else {
+            alert("❌ Incorrect password. Access denied.");
+        }
+    } else {
+        window.location.href = `score-match.html?matchId=${id}`;
+    }
 }
 
 // ========== TOURNAMENT ==========

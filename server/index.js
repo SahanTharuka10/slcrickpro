@@ -116,6 +116,32 @@ const tournamentSchema = new mongoose.Schema({
 const Match      = mongoose.model('Match', matchSchema);
 const Tournament = mongoose.model('Tournament', tournamentSchema);
 
+// Security Handshake
+app.post('/api/handshake', async (req, res) => {
+    const { id, type, password } = req.body;
+    if (!id || !type || !password) return res.status(400).json({ error: 'Missing credentials' });
+    
+    try {
+        await ensureDB();
+        const Model = type === 'match' ? Match : Tournament;
+        const doc = await Model.findById(id).lean();
+        
+        if (!doc) return res.status(404).json({ error: 'Not found' });
+        if (!doc.scoring_password) return res.json({ ok: true }); // No password set
+        
+        const valid = await bcrypt.compare(password, doc.scoring_password);
+        if (valid) {
+            // In a full system, you would issue a JWT here. 
+            // For now, we'll return ok: true to proceed.
+            res.json({ ok: true });
+        } else {
+            res.status(401).json({ error: 'Incorrect password' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 const productSchema = new mongoose.Schema({
     _id:         { type: String }, // PROD-<id>
     name:        { type: String },
@@ -573,7 +599,22 @@ app.get('/sync/matches', async (req, res) => {
     try {
         await ensureDB();
         const matches = await Match.find().lean();
-        res.json(matches.map(m => m.data));
+        const tournaments = await Tournament.find().lean();
+        
+        // Map matches and protect passwords
+        const publicMatches = matches.map(m => {
+            const d = m.data || {};
+            d.isLocked = !!m.scoring_password;
+            return d;
+        });
+        
+        const publicTournaments = tournaments.map(t => {
+            const d = t.data || {};
+            d.isLocked = !!t.scoring_password;
+            return d;
+        });
+
+        res.json({ matches: publicMatches, tournaments: publicTournaments });
     } catch (e) {
         res.status(500).json({ error: e.message || 'Failed to fetch matches' });
     }
