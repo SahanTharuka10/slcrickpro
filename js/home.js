@@ -66,3 +66,13 @@ function formatOvers(balls, bpo = 6) {
 function formatCRR(runs, balls, bpo = 6) {
     return balls ? (runs / (balls / bpo)).toFixed(2) : '0.00';
 }
+
+// ========== GLOBAL SYNC HANDLER ==========
+window.renderOngoing = updateTicker;
+
+// Handle cross-tab updates (e.g. from score-match.html)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'cricpro_force_update') {
+        updateTicker();
+    }
+});

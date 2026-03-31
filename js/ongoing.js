@@ -7,32 +7,11 @@ let refreshInterval;
 
 document.addEventListener('DOMContentLoaded', () => {
   renderLive();
-  startAutoRefresh();
-  
-  // Visibility API to stop polling when tab is hidden
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      clearInterval(refreshInterval);
-    } else {
-      startAutoRefresh();
-    }
-  });
+  // Global sync handle will trigger re-renders now
 });
 
 function startAutoRefresh() {
-  clearInterval(refreshInterval);
-  
-  // Dynamic interval: 10s on mobile, 5s on desktop
-  const isMobile = window.innerWidth < 768;
-  const interval = isMobile ? 10000 : 5000;
-
-  refreshInterval = setInterval(() => {
-    if (currentTab === 'live') renderLive();
-    if (currentTab === 'tournament' && selectedTournId) {
-      renderTournDetails(selectedTournId);
-      if (tournamentPageView === 'squads') renderTournamentSquadsPanel(selectedTournId);
-    }
-  }, interval);
+  // Manual polling removed. syncCloudData now handles live refreshes.
 }
 
 function refreshAll() {
@@ -1161,3 +1140,29 @@ async function generateTournamentPDF(tournId) {
         container.remove();
     }
 }
+
+// ========== GLOBAL SYNC HANDLERS ==========
+
+function renderOngoing() {
+    if (currentTab === 'live') renderLive();
+    if (currentTab === 'tournament') {
+        if (selectedTournId) {
+            renderTournDetails(selectedTournId);
+        } else {
+            renderTournamentSelector();
+        }
+    }
+    if (currentTab === 'recent') renderRecent();
+}
+
+window.switchTab = switchTab;
+window.renderTournDetails = renderTournDetails;
+window.refreshAll = refreshAll;
+window.renderOngoing = renderOngoing;
+
+// Handle cross-tab updates (e.g. from score-match.html)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'cricpro_force_update') {
+        renderOngoing();
+    }
+});

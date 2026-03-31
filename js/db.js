@@ -821,102 +821,142 @@ if ('serviceWorker' in navigator) {
 }
 
 // ============================================================
-// FULL DATA POLLING SYNC (Players, Teams, Matches, Tournaments)
+//  UNIFIED CLOUD SYNC & REAL-TIME LOGIC
 // ============================================================
-function pullLiveUpdates() {
+
+/**
+ * Consolidated function to pull all matches and tournaments from the cloud.
+ * @param {Object} options - { forceRefresh: boolean, silent: boolean }
+ */
+async function syncCloudData(options = {}) {
     if (!BACKEND_BASE_URL) return;
-    if (document.hidden) return;
+    if (document.hidden && !options.forceRefresh) return; // Save resources if tab inactive
+    
+    // Scorer status detection
     const isScorer = window.location.pathname.includes('score-match.html') || window.location.pathname.includes('admin.html');
+    const isPublicPage = window.location.pathname.includes('ongoing-matches.html');
+    const isOverlay = window.location.pathname.includes('overlay.html');
 
-    // ── Players ──────────────────────────────────────────────
-    fetch(BACKEND_BASE_URL + '/players')
-        .then(r => r.json())
-        .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) {
-                const mapped = data.map(p => ({ ...p, playerId: p.playerId || p._id }));
-                DB.savePlayers(mapped);
-            }
-        }).catch(() => {});
+    try {
+        // Fetch Matches, Tournaments, Players, and Teams
+        const [mReq, tReq, pReq, tmReq] = await Promise.all([
+            fetch(`${BACKEND_BASE_URL}/sync/matches`).catch(e => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/sync/tournaments`).catch(e => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/players`).catch(e => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/teams`).catch(e => ({ json: () => [] }))
+        ]);
 
-    // ── Teams ────────────────────────────────────────────────
-    fetch(BACKEND_BASE_URL + '/teams')
-        .then(r => r.json())
-        .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) {
-                DB.saveTeams(data);
-            }
-        }).catch(() => {});
+        const matchData = await mReq.json();
+        const tournData = await tReq.json();
+        const playerData = await pReq.json();
+        const teamData = await tmReq.json();
 
-    // ── Matches ──────────────────────────────────────────────
-    fetch(BACKEND_BASE_URL + '/sync/matches')
-        .then(r => r.json())
-        .then(data => {
-            if (data && Array.isArray(data)) {
-                if (!isScorer) {
-                    // Smart merge: only overwrite local match if cloud match is strictly newer
-                    const localMatches = DB.getMatches();
-                    const merged = [...localMatches];
-                    let anyUpdated = false;
+        // Sync Players
+        if (playerData && Array.isArray(playerData)) {
+            DB.savePlayers(playerData.map(p => ({ ...p, playerId: p.playerId || p._id })));
+        }
+        // Sync Teams
+        if (teamData && Array.isArray(teamData)) {
+            DB.saveTeams(teamData);
+        }
 
-                    data.forEach(cloudMatch => {
-                        const localIdx = merged.findIndex(m => m.id === cloudMatch.id);
-                        if (localIdx === -1) {
-                            merged.push(cloudMatch);
-                            anyUpdated = true;
-                        } else {
-                            const localMatch = merged[localIdx];
-                            // Only update if cloud version is newer
-                            if ((cloudMatch.lastUpdated || 0) > (localMatch.lastUpdated || 0)) {
-                                merged[localIdx] = cloudMatch;
-                                anyUpdated = true;
-                            }
-                        }
-                    });
-                    DB.saveMatches(merged);
-                    // Signal overlay tabs to re-render if any score changed
-                    if (anyUpdated) localStorage.setItem('cricpro_force_update', Date.now().toString());
-                }
-                if (isScorer && !window.hasFetchedCloudOnce) {
-                    DB.saveMatches(data);
+        // Sync Matches
+        if (matchData) {
+            const remoteMatches = Array.isArray(matchData) ? matchData : (matchData.matches || []);
+            const localMatches = DB.getMatches();
+            let anyUpdated = false;
+
+            if (isScorer) {
+                if (!window.hasFetchedCloudOnce) {
+                    DB.saveMatches(remoteMatches);
                     window.hasFetchedCloudOnce = true;
+                    anyUpdated = true;
+                }
+            } else {
+                // For viewers, cloud is the source of truth
+                const merged = remoteMatches.map(cm => {
+                    const lm = localMatches.find(x => x.id === cm.id);
+                    if (!options.forceRefresh && lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) {
+                        return lm;
+                    }
+                    if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
+                    return cm;
+                });
+                
+                if (anyUpdated || options.forceRefresh || remoteMatches.length !== localMatches.length) {
+                    DB.saveMatches(remoteMatches);
+                    anyUpdated = true;
                 }
             }
-        }).catch(err => console.error("Cloud Match Pull failed", err));
 
-    // ── Tournaments ──────────────────────────────────────────
-    fetch(BACKEND_BASE_URL + '/sync/tournaments')
-        .then(r => r.json())
-        .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) {
-                if (!isScorer) DB.saveTournaments(data);
-                if (isScorer && !window.hasFetchedCloudOnce) DB.saveTournaments(data);
+            if (anyUpdated) {
+                if (typeof renderMatches === 'function') renderMatches();
+                if (typeof renderOngoing === 'function') renderOngoing();
+                if (typeof updateTicker === 'function') updateTicker();
+                if (typeof renderLive === 'function') renderLive();
+                localStorage.setItem('cricpro_force_update', Date.now().toString());
             }
-        }).catch(() => {});
+        }
 
-    // ── Products ────────────────────────────────────────────────────────
-    fetch(BACKEND_BASE_URL + '/sync/products')
-        .then(r => r.json())
-        .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) {
-                const mapped = data.map(p => ({ ...p, id: p.id || p._id }));
-                DB.saveProducts(mapped, { skipSync: true });
-                // If the store page is open, re-render
-                if (typeof renderProducts === 'function') renderProducts();
+        // Sync Tournaments
+        if (tournData) {
+            const remoteTournaments = Array.isArray(tournData) ? tournData : (tournData.tournaments || []);
+            const localTournaments = DB.getTournaments();
+            
+            if (isScorer) {
+                if (!window.hasFetchedCloudOnce) DB.saveTournaments(remoteTournaments);
+            } else {
+                if (JSON.stringify(localTournaments) !== JSON.stringify(remoteTournaments)) {
+                    DB.saveTournaments(remoteTournaments);
+                    if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
+                }
             }
-        }).catch(() => {});
+        }
 
-    if (isScorer) window.hasFetchedCloudOnce = true;
+        if (isScorer) window.hasFetchedCloudOnce = true;
+
+    } catch (err) {
+        if (!options.silent) console.warn('📡 Sync Fallback Active:', err.message);
+    }
 }
 
-// ============================================================
-// CONTEXT-AWARE POLLING (Dynamic refresh based on page type)
-// ============================================================
-const _isPublicPage = window.location.pathname.includes('ongoing-matches.html');
-const _isOverlay = window.location.pathname.includes('overlay.html');
-const _pollInterval = _isOverlay ? 3000 : (_isPublicPage ? 5000 : 15000);
+// Map the old function names for compatibility
+const pullGlobalData = () => syncCloudData({ silent: true });
+const pullLiveUpdates = () => syncCloudData({ silent: true });
 
-console.log(`📡 Cloud Sync Active: ${_pollInterval/1000}s interval (${_isOverlay ? 'TV' : (_isPublicPage ? 'Public' : 'Main')})`);
-
-setInterval(pullLiveUpdates, _pollInterval);
 // Initial grab on page boot
-setTimeout(pullLiveUpdates, 500);
+setTimeout(() => syncCloudData({ forceRefresh: true }), 500);
+
+// Dynamic Polling Interval (Fallback for Socket)
+const _isOverlayTab = window.location.pathname.includes('overlay.html');
+const _isPublicTab = window.location.pathname.includes('ongoing-matches.html');
+const _pollIntervalMs = _isOverlayTab ? 5000 : (_isPublicTab ? 8000 : 20000);
+
+setInterval(() => syncCloudData({ silent: true }), _pollIntervalMs);
+
+// WebSocket Integration
+if (typeof io !== 'undefined') {
+    const socket = io(BACKEND_BASE_URL);
+    socket.on('connect', () => console.log('📡 Real-time WebSocket: ACTIVE'));
+    
+    socket.on('scoreUpdate', (data) => {
+        console.log('⚡ Instant Match Update');
+        syncCloudData({ forceRefresh: true }); 
+    });
+    
+    socket.on('tournamentUpdate', () => {
+        console.log('🏆 Instant Tournament Update');
+        syncCloudData({ forceRefresh: true });
+    });
+    
+    socket.on('globalUpdate', () => {
+        console.log('🌍 Global Discover Update');
+        syncCloudData({ forceRefresh: true });
+    });
+    
+    socket.on('broadcastCmd', (data) => {
+        console.log('📺 Broadcast Command received');
+        if (typeof handleBroadcastCmd === 'function') handleBroadcastCmd(data);
+    });
+}
+
