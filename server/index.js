@@ -767,7 +767,23 @@ app.get('/health', async (req, res) => {
 // ─── Start ──────────────// ── Start ────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n\n🚀 SLCRICKPRO Backend Running!`);
+        console.log(`🔗 Local Address: http://localhost:${PORT}`);
+        
+        // Log Network IPs for mobile connection
+        const { networkInterfaces } = require('os');
+        const nets = networkInterfaces();
+        console.log(`📱 Mobile Access (Local Network):`);
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                if (net.family === 'IPv4' && !net.internal) {
+                    console.log(`   👉 http://${net.address}:${PORT}`);
+                }
+            }
+        }
+        console.log(`\n`);
+    });
 }
 
 module.exports = app;

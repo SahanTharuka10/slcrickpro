@@ -16,14 +16,21 @@
 </head>
 
 <body class="page-wrapper">
+    <!-- SVG ICON SPRITE -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <symbol id="icon-leather-bowler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M11 2.1a10 10 0 0 0 0 19.8"/><path d="M12 2v20"/><path d="M13 2.1a10 10 0 0 1 0 19.8"/></symbol>
+    </svg>
     <div class="bg-canvas">
         <div class="bg-orb orb1"></div>
         <div class="bg-orb orb2"></div>
     </div>
 
     <!-- Header -->
-    <div class="sub-header" id="app-header">
-        <button class="back-btn" onclick="handleBack()">← Home</button>
+    <div class="sub-header" id="app-header" style="justify-content: flex-start; gap: 20px;">
+        <a href="../index.html" class="back-btn">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+        </a>
         <div class="logo">
           <div class="logo-icon">🏏</div>
           <div class="logo-text-animated">
@@ -284,7 +291,10 @@
 
                 <!-- Bowling -->
                 <div class="card" style="margin-bottom:16px">
-                    <div class="card-head">⚾ Bowling</div>
+                    <div class="card-head">
+                        <svg class="svg-icon" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff1744"><use href="#icon-leather-bowler"></use></svg>
+                        Bowling
+                    </div>
                     <table class="data-table">
                         <thead>
                             <tr>
