@@ -491,8 +491,11 @@ const DB = {
 // ============================================================
 
 // Auto-detected Backend & Socket
+// Auto-detected Backend & Socket
 const isProd = window.location.hostname === 'slcrickpro.live' || 
+               window.location.hostname === 'www.slcrickpro.live' ||
                (window.location.hostname !== 'localhost' && 
+                window.location.hostname !== '127.0.0.1' &&
                 !window.location.hostname.includes('192.168.') && 
                 !window.location.hostname.includes('10.0.0.'));
 
