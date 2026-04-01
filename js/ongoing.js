@@ -44,7 +44,7 @@ function switchTab(tab) {
 function renderLive() {
   const grid = document.getElementById('live-matches-grid');
   if (!grid) return;
-  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused') && m.publishLive);
+  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') && m.publishLive);
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
@@ -63,7 +63,7 @@ function buildMatchCard(m, isLive) {
   const inn1 = m.innings ? m.innings[1] : null;
   const curInn = m.innings ? m.innings[m.currentInnings] : null;
   const statusColor = m.status === 'live' ? '#00e676' : (m.status === 'scheduled' ? '#00bcd4' : '#ffc107');
-  const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'scheduled' ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ Done'));
+  const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'scheduled' ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ COMPLETE'));
   const hasPw = (m.scoringPassword || m.password || m.isLocked);
 
   const score0 = m.status === 'scheduled' ? '-' : (inn0 ? `${inn0.runs}/${inn0.wickets}` : '-');
@@ -134,7 +134,7 @@ function buildMatchCard(m, isLive) {
 }
 
 function goToTournament(id) {
-    const tabBtn = document.getElementById('tab-tournaments');
+    const tabBtn = document.getElementById('tab-tournament');
     if (tabBtn) tabBtn.click();
     
     selectedTournId = id;
@@ -154,7 +154,9 @@ async function scoreMatchRedirect(id) {
 
     // If it's locked and we don't have a local grant, prompt
     const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
-    if (target.isLocked && !grants[id]) {
+    const needsPassword = (target.isLocked || target.scoringPassword || target.password);
+    
+    if (needsPassword && !grants[id]) {
         const password = prompt("🔐 This match is protected. Enter the Scoring Password to continue:");
         if (password === null) return; // User cancelled
         
@@ -732,6 +734,7 @@ async function generateMatchPDF(matchId) {
     showToast('⏳ Generating PDF...', 'default');
     
     // Improved container for better PDF capture
+    const container = document.createElement('div');
     container.style = `position:fixed; top:20px; left:20px; width:900px; padding:40px; background:#fff; color:#000; font-family:'Outfit',sans-serif; z-index:-100; opacity:0.01; pointer-events:none; border-radius:8px; line-height:1.5;`;
     
     const inn0 = m.innings ? m.innings[0] : null;
@@ -1084,15 +1087,18 @@ async function generateTournamentPDF(tournId) {
         </div>
     `;
 
-    if (t.format === 'points-table') {
-        const standings = computeTournamentStandings(t);
+    if (t.format === 'points-table' || t.format === 'league') {
+        computeTournamentStandings(t);
+        const standings = Object.keys(t.standings || {}).map(name => ({ name, ...t.standings[name] }))
+            .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
+
         html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Points Table</h2>
             <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
                 <thead style="background:#eee">
                     <tr><th style="padding:8px; text-align:left">Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th><th>NRR</th></tr>
                 </thead>
                 <tbody>
-                    ${standings.map(s => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${s.name}</td><td align="center">${s.p}</td><td align="center">${s.w}</td><td align="center">${s.l}</td><td align="center"><b>${s.pts}</b></td><td align="center">${s.nrr}</td></tr>`).join('')}
+                    ${standings.map(s => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${s.name}</td><td align="center">${s.played || 0}</td><td align="center">${s.won || 0}</td><td align="center">${s.lost || 0}</td><td align="center"><b>${s.points || 0}</b></td><td align="center">${(s.nrr || 0).toFixed(3)}</td></tr>`).join('')}
                 </tbody>
             </table>`;
     }

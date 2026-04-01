@@ -46,10 +46,10 @@ function updateClock() {
 function updateTicker() {
     const el = document.getElementById('ticker-content');
     if (!el) return;
-    const matches = DB.getMatches().filter(m => m.status === 'live' && m.publishLive);
+    const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'ongoing') && m.publishLive);
     if (!matches.length) {
-        el.textContent = '🏏 Welcome to SLCRICKPRO — No live matches right now. Start a match to see live scores here! &nbsp;&nbsp;&nbsp;&nbsp; 🏆 Use Score New Match to begin ball-by-ball scoring &nbsp;&nbsp;&nbsp;&nbsp; 📊 Check rankings and stats in Player & Team Rankings &nbsp;&nbsp;&nbsp;&nbsp; 🛒 Visit Crick Store for equipment needs';
-        el.innerHTML = el.textContent + '&nbsp;&nbsp;&nbsp;&nbsp;' + el.textContent;
+        const welcome = '🏏 Welcome to SLCRICKPRO — No live matches right now. Start a match to see live scores here! &nbsp;&nbsp;&nbsp;&nbsp; 🏆 Use Score New Match to begin ball-by-ball scoring &nbsp;&nbsp;&nbsp;&nbsp; 📊 Check rankings and stats in Player & Team Rankings &nbsp;&nbsp;&nbsp;&nbsp; 🛒 Visit Crick Store for equipment needs';
+        el.innerHTML = welcome + '&nbsp;&nbsp;&nbsp;&nbsp;' + welcome;
         return;
     }
     const parts = matches.map(m => {

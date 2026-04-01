@@ -73,6 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleMatchConfig(true);
 
     renderResumeMatches();
+
+    // Auto-refresh Open Match list every 15 seconds so newly scheduled
+    // matches from other devices appear without a full page reload
+    setInterval(() => {
+        if (document.getElementById('screen-setup') &&
+            document.getElementById('screen-setup').style.display !== 'none') {
+            renderResumeMatches();
+        }
+    }, 15000);
     
     // Check for matchId parameter for direct scoring access
     const urlParams = new URLSearchParams(window.location.search);
@@ -103,6 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('setup');
     }
 });
+
+// ── GLOBAL HOOK: expose renderResumeMatches so db.js can call it after cloud sync ──
+window.renderResumeMatches = function() {
+    if (typeof renderResumeMatches === 'function') renderResumeMatches();
+};
 
 function getScoringAuthMap() {
     try {
@@ -436,7 +450,12 @@ function renderTournamentMatches() {
     const btnAdd = document.getElementById('btn-add-tourn-match');
     if (btnAdd) {
         btnAdd.onclick = () => {
+            const maxOriginal = parseInt(t.matchCount) || 0;
             const count = t.matches.length + 1;
+            const matchName = (maxOriginal > 0 && count > maxOriginal) 
+                ? `Extra Match ${count - maxOriginal}` 
+                : `Match ${count}`;
+
             const newM = DB.createMatch({
                 type: 'tournament',
                 tournamentId: t.id,
@@ -448,7 +467,7 @@ function renderTournamentMatches() {
                 ballsPerOver: t.ballsPerOver,
                 playersPerSide: 11
             });
-            newM.scheduledName = `Match ${count}`;
+            newM.scheduledName = matchName;
             newM.status = 'scheduled';
             DB.saveMatch(newM);
             t.matches.push(newM.id);
@@ -521,63 +540,79 @@ async function loginToMatch() {
     const pw = document.getElementById('login-password').value.trim();
     if (!pw) { showToast('Password required!', 'error'); return; }
 
-    const baseUrl = window.BACKEND_BASE_URL || 'http://localhost:3000';
+    // Use the globally exposed BACKEND_BASE_URL (set in db.js)
+    const baseUrl = BACKEND_BASE_URL || window.BACKEND_BASE_URL || window.location.origin;
     const tournamentId = currentTournament?.id || currentMatch?.tournamentId || null;
 
-    // 1. LOCAL CHECK FIRST
+    // ── STEP 1: LOCAL PLAINTEXT CHECK (works for creator's device) ──────────
     if (!tournamentId) {
-        if (currentMatch && (currentMatch.scoringPassword || currentMatch.password)) {
-            const localPw = currentMatch.scoringPassword || currentMatch.password;
-            if (pw === localPw) {
-                loadMatch(currentMatch);
-                return;
-            }
+        // Single match: check local plain-text password
+        const localPw = currentMatch?.scoringPassword || currentMatch?.password;
+        if (localPw && pw === localPw) {
+            showToast('✅ Access Granted!', 'success');
+            loadMatch(currentMatch);
+            return;
         }
     } else {
+        // Tournament match: check local tournament password
         const localT = DB.getTournament(tournamentId);
-        if (localT && localT.scoringPassword && localT.scoringPassword === pw) {
+        const localPw = localT?.scoringPassword || localT?.password;
+        if (localPw && pw === localPw) {
             setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
+            showToast('✅ Access Granted!', 'success');
             if (currentTournament && !currentMatch) {
                 openTournamentHub(currentTournament.id);
                 currentTournament = null;
                 showScreen('setup');
-                return;
-            }
-            if (currentMatch) {
+            } else if (currentMatch) {
                 loadMatch(currentMatch);
-                return;
             }
+            return;
         }
     }
 
-    // 2. CLOUD CHECK / BACKEND VERIFICATION
+    // ── STEP 2: CLOUD BCRYPT CHECK (works for any device — password was hashed on save) ──
     try {
-        const type = currentTournament ? 'tournament' : 'match';
-        const id = currentTournament ? currentTournament.id : currentMatch.id;
-        
+        const type = tournamentId ? 'tournament' : 'match';
+        const id = tournamentId || currentMatch?.id;
+        if (!id) { showToast('No match/tournament selected', 'error'); return; }
+
+        showToast('🔐 Verifying password...', 'default');
+
         const response = await fetch(baseUrl + '/verify-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, type, password: pw })
         });
+
+        if (!response.ok) {
+            showToast('❌ Server error. Try again.', 'error');
+            return;
+        }
         const result = await response.json();
 
         if (result.verified) {
+            showToast('✅ Access Granted!', 'success');
             if (type === 'tournament') {
                 setTournamentAuthorized(id, 'cloud-token', 1000 * 60 * 60 * 24);
-                if (currentTournament) openTournamentHub(currentTournament.id);
-                currentTournament = null;
-                showScreen('setup');
+                if (currentTournament) {
+                    openTournamentHub(currentTournament.id);
+                    currentTournament = null;
+                } else {
+                    showScreen('setup');
+                }
+                if (currentMatch) loadMatch(currentMatch);
             } else {
                 loadMatch(currentMatch);
             }
-            showToast('Access Granted!');
         } else {
-            showToast('Invalid password!', 'error');
+            showToast('❌ Wrong password! Try again.', 'error');
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-password').focus();
         }
     } catch (e) {
-        console.error("Cloud auth error", e);
-        showToast('Cloud authentication failed. Check your connection.', 'error');
+        console.error('Cloud auth error', e);
+        showToast('⚠️ Could not reach server. Check connection.', 'error');
     }
 }
 
@@ -597,9 +632,21 @@ async function startNewMatch() {
                 const tournType = document.getElementById('tourn-type') ? document.getElementById('tourn-type').value : 'unofficial';
                 const format = document.getElementById('tourn-format').value;
 
-                if (!tName) { showToast('Enter tournament name', 'error'); return; }
-                if (teamLines.length < 2) { showToast('Enter at least 2 teams', 'error'); return; }
-                if (!scoringPw) { showToast('Tournament scoring password is required', 'error'); return; }
+                if (!tName) {
+                    showToast('🏆 Enter Tournament Name to continue', 'error');
+                    document.getElementById('tourn-name').focus();
+                    return;
+                }
+                if (teamLines.length < 2) {
+                    showToast('👥 Enter at least 2 teams (one per line)', 'error');
+                    document.getElementById('tourn-teams').focus();
+                    return;
+                }
+                if (!scoringPw) {
+                    showToast('🔐 Set a Scoring Password to secure this tournament', 'error');
+                    document.getElementById('tourn-scoring-password').focus();
+                    return;
+                }
 
                 if (tournType === 'official') {
                     const matchCount = format === 'knockout' 

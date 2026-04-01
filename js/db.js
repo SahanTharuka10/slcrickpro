@@ -348,6 +348,7 @@ const DB = {
                 }, true); // skipCloud during initial creation
                 match.status = 'scheduled';
                 match.scheduledName = `Match ${i}`;
+                match.publishLive = true; // Tournament matches should be visible to everyone
                 this.saveMatch(match, true);
                 t.matches.push(match.id);
             }
@@ -409,6 +410,7 @@ const DB = {
 
                 match.status = 'scheduled';
                 match.scheduledName = mName;
+                match.publishLive = true; // Tournament matches should be visible to everyone
                 match.knockout = { round: r, matchNum: matchIndex, nextMatchIndex: null, slot: null };
                 
                 // Link predecessors to this match
@@ -489,10 +491,17 @@ const DB = {
 // ============================================================
 
 // Auto-detected Backend & Socket
-const isProd = window.location.hostname !== 'localhost' && !window.location.hostname.includes('192.168.') && !window.location.hostname.includes('10.0.0.');
-const BACKEND_BASE_URL = window.location.port === '3000' || window.location.port === '5000' || isProd 
-    ? window.location.origin 
-    : "http://" + window.location.hostname + ":3000";
+const isProd = window.location.hostname === 'slcrickpro.live' || 
+               (window.location.hostname !== 'localhost' && 
+                !window.location.hostname.includes('192.168.') && 
+                !window.location.hostname.includes('10.0.0.'));
+
+const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (isProd 
+    ? "https://slcrickpro-server.onrender.com" 
+    : "http://" + window.location.hostname + ":3000");
+
+// Expose globally so inline scripts (loginToMatch, etc.) can reference it
+window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 
 let socket = null;
 if (typeof io !== 'undefined') {
@@ -598,12 +607,11 @@ async function pullGlobalData() {
             local.forEach(lm => {
                 if (!merged.find(x => x.id === lm.id)) merged.push(lm);
             });
-            localStorage.setItem('cricpro_matches', JSON.stringify(merged));
+            DB._secureSet(DB_KEYS.MATCHES, merged);
         }
 
         if (d.tournaments) {
-            const localTournaments = DB.getTournaments();
-            localStorage.setItem('cricpro_tournaments', JSON.stringify(d.tournaments));
+            DB._secureSet(DB_KEYS.TOURNAMENTS, d.tournaments);
         }
         
         // Trigger UI refresh if we are on relevant pages
@@ -865,18 +873,27 @@ async function syncCloudData(options = {}) {
             DB.saveTeams(teamData);
         }
 
-        // Sync Matches
+        // Sync Matches — scorer page: use smart merge (don't clobber active matches)
         if (matchData) {
             const remoteMatches = Array.isArray(matchData) ? matchData : (matchData.matches || []);
             const localMatches = DB.getMatches();
             let anyUpdated = false;
 
             if (isScorer) {
-                if (!window.hasFetchedCloudOnce) {
-                    DB.saveMatches(remoteMatches);
-                    window.hasFetchedCloudOnce = true;
-                    anyUpdated = true;
-                }
+                // Smart merge: cloud wins UNLESS local match was updated more recently
+                // (meaning THIS device is actively scoring it)
+                const merged = remoteMatches.map(cm => {
+                    const lm = localMatches.find(x => x.id === cm.id);
+                    // Keep local version if it's newer (active scoring in progress)
+                    if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
+                    if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
+                    return cm;
+                });
+                // Also include local-only matches (offline-created ones)
+                localMatches.forEach(lm => {
+                    if (!merged.find(x => x.id === lm.id)) { merged.push(lm); anyUpdated = true; }
+                });
+                if (anyUpdated) DB.saveMatches(merged);
             } else {
                 // For viewers, cloud is the source of truth
                 const merged = remoteMatches.map(cm => {
@@ -899,6 +916,8 @@ async function syncCloudData(options = {}) {
                 if (typeof renderOngoing === 'function') renderOngoing();
                 if (typeof updateTicker === 'function') updateTicker();
                 if (typeof renderLive === 'function') renderLive();
+                // Refresh Open Match list on scorer setup screen
+                if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
                 localStorage.setItem('cricpro_force_update', Date.now().toString());
             }
         }
@@ -908,17 +927,15 @@ async function syncCloudData(options = {}) {
             const remoteTournaments = Array.isArray(tournData) ? tournData : (tournData.tournaments || []);
             const localTournaments = DB.getTournaments();
             
-            if (isScorer) {
-                if (!window.hasFetchedCloudOnce) DB.saveTournaments(remoteTournaments);
-            } else {
-                if (JSON.stringify(localTournaments) !== JSON.stringify(remoteTournaments)) {
-                    DB.saveTournaments(remoteTournaments);
-                    if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
-                }
+            // Both scorer and viewer: merge tournaments from cloud
+            const tournChanged = JSON.stringify(localTournaments) !== JSON.stringify(remoteTournaments) || options.forceRefresh;
+            if (tournChanged) {
+                DB.saveTournaments(remoteTournaments);
+                if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
+                // Refresh Open Match list
+                if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
             }
         }
-
-        if (isScorer) window.hasFetchedCloudOnce = true;
 
     } catch (err) {
         if (!options.silent) console.warn('📡 Sync Fallback Active:', err.message);
