@@ -189,11 +189,25 @@ function renderTournamentSelector() {
     }
 }
 
-function selectTournament(id) {
+function onTournSelect(id) {
     selectedTournId = id;
+    selectedTournSubTab = 'standings';
+    
+    // WebSocket Room Join
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('joinTournament', id);
+    }
+    
+    renderTournDetails(id);
+}
+
+function selectTournament(id) {
+    if (selectedTournId && typeof socket !== 'undefined' && socket) {
+        socket.emit('leaveTournament', selectedTournId);
+    }
+    onTournSelect(id);
     tournamentPageView = 'matches';
     renderTournamentSelector();
-    renderTournDetails(id);
     switchTournamentPageView('matches');
 }
 
@@ -281,7 +295,7 @@ function switchTournSubTab(tab) {
     if (tab === 'bracket') {
         if (content) content.style.display = 'none';
         if (bracketPanel) { bracketPanel.style.display = 'block'; renderBracket(selectedTournId); }
-    } else if (tab === 'fixtures') {
+    } else if (tab === 'fixtures' || tab === 'matches') {
         if (content) content.style.display = 'none';
         if (fixturePanel) { fixturePanel.style.display = 'block'; renderFullSchedule(selectedTournId); }
     } else {

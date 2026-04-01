@@ -496,10 +496,10 @@ io.on('connection', (socket) => {
 function emitUpdate(type, id, data) {
     if (type === 'match') {
         const room = `match_${id}`;
-        const lightData = buildLightScorePayload(data) || { id };
-        io.to(room).emit('scoreUpdate', lightData);
+        // Send full data for real-time synchronization across scoring devices
+        io.to(room).emit('scoreUpdate', data);
         if (data?.tournamentId) {
-            io.to(`tournament_${data.tournamentId}`).emit('scoreUpdate', lightData);
+            io.to(`tournament_${data.tournamentId}`).emit('scoreUpdate', data);
         }
     } else if (type === 'tournament') {
         io.to(`tournament_${id}`).emit('tournamentUpdate', data);
@@ -508,7 +508,8 @@ function emitUpdate(type, id, data) {
         if (id) io.to(`match_${id}`).emit('broadcastCmd', data);
         if (data.tournamentId) io.to(`tournament_${data.tournamentId}`).emit('broadcastCmd', data);
     }
-    io.emit('globalUpdate', { type, id }); // For ticker/ongoing pages
+    io.emit('globalUpdate', { type, id, data }); // Global update with data
+    io.emit('allDevicesUpdate', { timestamp: Date.now(), type, id }); // Status heartbeat
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

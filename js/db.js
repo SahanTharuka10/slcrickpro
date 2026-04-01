@@ -179,13 +179,13 @@ const DB = {
     getMatch(id) {
         return this.getMatches().find(m => m.id === id);
     },
-    saveMatch(match) {
+    saveMatch(match, skipCloud = false) {
         match.lastUpdated = Date.now();
         const arr = this.getMatches();
         const idx = arr.findIndex(m => m.id === match.id);
         if (idx !== -1) arr[idx] = match; else arr.push(match);
-        this.saveMatches(arr);
-        syncToDB('match', match);
+        localStorage.setItem('cricpro_matches', JSON.stringify(arr));
+        if (!skipCloud) syncToDB('match', match);
     },
     deleteMatch(id) {
         let arr = this.getMatches();
@@ -289,12 +289,13 @@ const DB = {
     getTournament(id) {
         return this.getTournaments().find(t => t.id === id);
     },
-    saveTournament(t) {
+    saveTournament(tourn, skipCloud = false) {
+        tourn.lastUpdated = Date.now();
         const arr = this.getTournaments();
-        const idx = arr.findIndex(x => x.id === t.id);
-        if (idx !== -1) arr[idx] = t; else arr.push(t);
-        this.saveTournaments(arr);
-        syncToDB('tournament', t);
+        const idx = arr.findIndex(t => t.id === tourn.id);
+        if (idx !== -1) arr[idx] = tourn; else arr.push(tourn);
+        localStorage.setItem('cricpro_tournaments', JSON.stringify(arr));
+        if (!skipCloud) syncToDB('tournament', tourn);
     },
     deleteTournament(id) {
         // Cascade delete all matches belonging to this tournament
@@ -610,9 +611,38 @@ let socket = null;
 if (typeof io !== 'undefined') {
     socket = io(BACKEND_BASE_URL);
     socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
+    
+    // Immediate refresh on match-specific updates
     socket.on('scoreUpdate', (data) => {
         console.log('⚡ Score Update received:', data);
-        pullGlobalData(); // Immediate refresh on update
+        if (data && data.id) {
+            DB.saveMatch(data, true); // Immediate local save, skip cloud sync loop
+            if (typeof renderOngoing === 'function') renderOngoing();
+        } else { pullGlobalData(); }
+    });
+
+    // Handle global updates (tournaments, players, etc.)
+    socket.on('globalUpdate', (info) => {
+        console.log('🌍 Global Update received:', info);
+        if (info.type === 'match' && info.data) {
+            DB.saveMatch(info.data, true);
+        } else if (info.type === 'tournament' && info.data) {
+            DB.saveTournament(info.data, true);
+        } else {
+            pullGlobalData();
+            return;
+        }
+        if (typeof renderOngoing === 'function') renderOngoing();
+    });
+
+    socket.on('allDevicesUpdate', (hb) => {
+        console.log('📡 Sync Heartbeat (Multi-device):', hb);
+    });
+
+    // Real-time broadcast commands (overlays, etc.)
+    socket.on('broadcastCmd', (data) => {
+        console.log('📺 Broadcast Command received:', data);
+        if (typeof handleBroadcastEvent === 'function') handleBroadcastEvent(data);
     });
 }
 

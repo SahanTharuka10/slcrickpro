@@ -336,51 +336,44 @@ let currentTournamentTab = 'matches';
 
 function switchTournamentTab(tab) {
     currentTournamentTab = tab;
-    const tMatches = document.getElementById('tm-tab-matches');
-    const tTeams = document.getElementById('tm-tab-teams');
     const pMatches = document.getElementById('tm-panel-matches');
     const pTeams = document.getElementById('tm-panel-teams');
+    const btnMatches = document.getElementById('tm-tab-matches');
+    const btnTeams = document.getElementById('tm-tab-teams');
 
-    if (tab === 'matches') {
-        tMatches.classList.add('active');
-        tTeams.classList.remove('active');
-        pMatches.style.display = 'block';
-        pTeams.style.display = 'none';
-        renderTournamentMatches();
-    } else {
-        tMatches.classList.remove('active');
-        tTeams.classList.add('active');
-        pMatches.style.display = 'none';
-        pTeams.style.display = 'block';
-        renderTournamentTeams();
-    }
+    if (btnMatches) btnMatches.classList.toggle('active', tab === 'matches');
+    if (btnTeams) btnTeams.classList.toggle('active', tab === 'teams');
+
+    if (pMatches) pMatches.style.display = tab === 'matches' ? 'block' : 'none';
+    if (pTeams) pTeams.style.display = tab === 'teams' ? 'block' : 'none';
+
+    if (tab === 'matches') renderTournamentMatches();
+    else renderTournamentTeams();
 }
 
 function openTournamentHub(id) {
-    const t = typeof id === 'object' ? id : DB.getTournament(id);
-    if (!t) {
-        showToast('Tournament not found!', 'error');
+    if (!id) return;
+    currentTournament = DB.getTournament(id);
+    if (!currentTournament) {
+        showToast('Tournament not found', 'error');
         return;
     }
 
-    currentTournament = t;
-    currentMatch = null;
-    if (!t.rosters) t.rosters = {};
+    document.getElementById('tm-title').textContent = currentTournament.name;
+    document.getElementById('modal-tournament-matches').style.display = 'flex';
     
-    document.getElementById('tm-title').textContent = t.name;
-    document.getElementById('btn-add-tourn-match').onclick = () => {
-        _setup_tourn_match_defaults(t);
-        showScreen('setup');
-        setTab('single');
-    };
-
+    // Reset to matches tab
     switchTournamentTab('matches');
-    openModal('modal-tournament-matches');
 }
 
 function promptTournamentLogin() {
     const tId = prompt('Enter Tournament ID:');
     if (tId) openTournamentHub(tId.trim());
+}
+
+// Alias for button in tournament summary screen
+function openTournamentMatchesModal(id) {
+    openTournamentHub(id);
 }
 
 function renderTournamentMatches() {
@@ -466,9 +459,6 @@ function renderTournamentMatches() {
         btnEnd.style.display = (t.status === 'active' || t.status === 'approved') ? 'block' : 'none';
         btnEnd.onclick = () => endTournamentManually(t.id);
     }
-
-    showScreen('setup');
-    openModal('modal-tournament-matches');
 }
 
 function endTournamentManually(tournId) {
@@ -809,6 +799,12 @@ function loadMatch(m) {
     const pt = document.getElementById('publish-toggle');
     if (pt) pt.checked = m.publishLive;
     updateHeaderActions();
+
+    // WebSocket Room Join
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('joinMatch', m.id);
+        if (m.tournamentId) socket.emit('joinTournament', m.tournamentId);
+    }
 }
 
 function updateHeaderActions() {
@@ -2139,11 +2135,8 @@ function syncOfficialStats(m, t) {
 // ========== ROSTER & OVERLAYS ==========
 function renderTournamentTeams() {
     const t = currentTournament;
+    if (!t) return;
     const container = document.getElementById('tm-teams-list');
-    if (!t || !t.teams || !t.teams.length) {
-        container.innerHTML = '<div style="text-align:center;color:white;padding:20px;opacity:0.6">No teams found</div>';
-        return;
-    }
 
     container.innerHTML = t.teams.map(teamName => {
         const roster = t.rosters[teamName] || [];
@@ -2517,3 +2510,16 @@ function broadcastPartnership() {
     });
     showToast('📺 Partnership Graphic Broadcasted!', 'success');
 }
+
+// ========== GLOBAL SYNC HANDLERS ==========
+window.renderOngoing = function() {
+    console.log("🔄 Scorer UI refreshing from Global Sync...");
+    if (document.getElementById('screen-scoring').style.display === 'block') {
+        renderScoring();
+    } else if (document.getElementById('modal-tournament-matches').style.display === 'flex') {
+        if (currentTournamentTab === 'matches') renderTournamentMatches();
+        else renderTournamentTeams();
+    } else if (document.getElementById('screen-setup').style.display === 'block') {
+        renderResumeMatches();
+    }
+};
