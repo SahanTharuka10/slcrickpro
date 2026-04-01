@@ -69,6 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Ensure Single Match form is properly visible on load
+    toggleMatchConfig(true);
+
     renderResumeMatches();
     
     // Check for matchId parameter for direct scoring access

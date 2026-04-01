@@ -22,6 +22,9 @@
   --c-purple: #7c4dff;
   --c-blue: #3b82f6;
   --c-red: #ef4444;
+  /* Global primary color (used in scorer.css overlays) */
+  --c-primary: #7c4dff;
+  --c-primary-rgb: 124, 77, 255;
   --gradient-gold: linear-gradient(135deg, #fbbf24, #ffb302);
   --gradient-live: linear-gradient(135deg, #2eb086, #14b8a6);
   --gradient-score: linear-gradient(135deg, #7c4dff, #4f46e5);

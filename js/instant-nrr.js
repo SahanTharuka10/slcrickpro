@@ -84,6 +84,10 @@ function populateNRRTeamsSelection() {
     const opts = nrrState.teams.map(t => `<option value="${t}">${t}</option>`).join('');
     t1Sel.innerHTML = opts;
     t2Sel.innerHTML = opts;
+    // Default team2 to second team to avoid "same team" validation error
+    if (nrrState.teams.length >= 2) {
+        t2Sel.value = nrrState.teams[1];
+    }
 }
 
 function openNRRMatchModal(idx) {
