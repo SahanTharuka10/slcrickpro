@@ -631,9 +631,12 @@ function startNewMatch() {
                         matchCount: matchCount 
                     });
                     setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
-                    showToast(`Tournament "${tName}" created!`, 'success');
+                    showToast(`🏆 Tournament "${tName}" created!`, 'success');
                     renderResumeMatches();
-                    // window.open removed as per user request
+                    
+                    // IMPROVED UX: Open the dashboard immediately
+                    currentTournament = null; 
+                    openTournamentHub(tourn.id);
                     return;
                 }
             } else {

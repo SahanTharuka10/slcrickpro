@@ -18,8 +18,6 @@ const DB_KEYS = {
     if (savedTheme === 'light') {
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.add('light-mode');
-            const btn = document.getElementById('theme-toggle');
-            if (btn) btn.textContent = '🌙';
         });
     }
 })();
@@ -34,8 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function toggleTheme() {
     const isLight = document.body.classList.toggle('light-mode');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.textContent = isLight ? '🌙' : '☀️';
 }
 
 const DB = {
@@ -184,7 +180,7 @@ const DB = {
         const arr = this.getMatches();
         const idx = arr.findIndex(m => m.id === match.id);
         if (idx !== -1) arr[idx] = match; else arr.push(match);
-        localStorage.setItem('cricpro_matches', JSON.stringify(arr));
+        this._secureSet(DB_KEYS.MATCHES, arr);
         if (!skipCloud) syncToDB('match', match);
     },
     deleteMatch(id) {
@@ -294,7 +290,7 @@ const DB = {
         const arr = this.getTournaments();
         const idx = arr.findIndex(t => t.id === tourn.id);
         if (idx !== -1) arr[idx] = tourn; else arr.push(tourn);
-        localStorage.setItem('cricpro_tournaments', JSON.stringify(arr));
+        this._secureSet(DB_KEYS.TOURNAMENTS, arr);
         if (!skipCloud) syncToDB('tournament', tourn);
     },
     deleteTournament(id) {
