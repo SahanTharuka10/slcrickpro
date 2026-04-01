@@ -5,6 +5,13 @@ let selectedTournSubTab = 'standings';
 let tournamentPageView = 'matches';
 let refreshInterval;
 
+window.renderOngoing = function() {
+    console.log("🔄 Ongoing UI refreshing from Global Sync...");
+    if (currentTab === 'live') renderLive();
+    if (currentTab === 'tournament') renderTournamentSelector();
+    if (currentTab === 'recent') renderRecent();
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   renderLive();
   // Global sync handle will trigger re-renders now

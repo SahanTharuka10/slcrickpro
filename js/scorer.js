@@ -204,10 +204,11 @@ function renderResumeMatches() {
 
     // 1. Get ALL matches (live, paused, AND scheduled)
     const allMatches = DB.getMatches();
-    const liveMatches = allMatches.filter(m => ['live', 'paused'].includes(m.status));
+    const liveMatches = allMatches.filter(m => ['live', 'paused', 'ongoing'].includes(m.status));
     const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' && !m.tournamentId);
     
-    const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active'].includes(t.status));
+    // Improved tournament filtering: include 'scheduled' for newly created locally
+    const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled'].includes(t.status));
 
     if (!liveMatches.length && !scheduledMatches.length && !tourns.length) {
         container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:32px;text-align:center;background:rgba(255,255,255,0.02);border-radius:16px;border:1px dashed rgba(255,255,255,0.1)">No active matches or tournaments.</div>`;
@@ -287,14 +288,14 @@ function renderResumeMatches() {
     container.innerHTML = html;
 }
 
-function submitMatchRequest() {
+async function submitMatchRequest() {
     const name = document.getElementById('req-name').value.trim();
     const pw = document.getElementById('req-password').value.trim();
     const phone = document.getElementById('req-phone') ? document.getElementById('req-phone').value.trim() : '';
     if (!name || !pw) { showToast('Name and Password are required!', 'error'); return; }
 
     if (_pendingTournPayload) {
-        const tourn = DB.createTournament(_pendingTournPayload);
+        const tourn = await DB.createTournament(_pendingTournPayload);
         tourn.status = 'requested';
         tourn.scoringPassword = pw;
         DB.saveTournament(tourn);
@@ -578,7 +579,7 @@ async function loginToMatch() {
 }
 
 
-function startNewMatch() {
+async function startNewMatch() {
     let existingOfficialTournamentId = null;
 
     if (!currentMatch || !currentMatch.isScheduledTemplate) {
@@ -623,7 +624,7 @@ function startNewMatch() {
                     const matchCount = format === 'knockout' 
                         ? (parseInt(document.getElementById('tourn-team-count').value) - 1)
                         : (parseInt(document.getElementById('tourn-match-count')?.value) || 10);
-                    const tourn = DB.createTournament({
+                    const tourn = await DB.createTournament({
                         name: tName, format, overs, ballsPerOver: bpo, 
                         scoringPassword: scoringPw,
                         teams: teamLines, isOfficial: false, 

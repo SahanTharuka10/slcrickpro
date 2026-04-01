@@ -1,4 +1,8 @@
-// Home page JS
+window.renderOngoing = function() {
+    console.log("🔄 Home Ticker refreshing from Global Sync...");
+    updateTicker();
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initParticles();
     updateClock();

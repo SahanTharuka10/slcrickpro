@@ -195,7 +195,6 @@ const DB = {
                 this.saveTournament(t);
             }
         });
-        // Sync deletion to cloud
         this.deleteMatchFromCloud(id);
     },
     deleteMatchFromCloud(id) {
@@ -314,11 +313,11 @@ const DB = {
         fetch(BACKEND_BASE_URL + '/sync/tournaments/' + id, { method: 'DELETE' })
             .catch(() => {});
     },
-    createTournament(cfg) {
+    async createTournament(cfg) {
         const t = {
             id: 'TOURN-' + Date.now(),
             name: cfg.name,
-            format: cfg.format || 'league', // league | knockout
+            format: cfg.format || 'league',
             overs: cfg.overs || 20,
             ballsPerOver: cfg.ballsPerOver || 6,
             startDate: cfg.startDate || '',
@@ -332,50 +331,43 @@ const DB = {
             totalTeams: cfg.totalTeams || cfg.teams.length,
             prizes: cfg.prizes || { first: '', second: '', third: '' },
             scoringPassword: cfg.scoringPassword || null,
-            rosters: {}, // { teamName: [playerIds] }
+            rosters: {},
         };
 
         if (t.format === 'knockout') {
             this._generateKnockoutMatches(t);
         } else if (cfg.matchCount > 0) {
-            // League format pre-scheduling
             for (let i = 1; i <= cfg.matchCount; i++) {
-                let mName = `Match ${i}`;
-                if (i === cfg.matchCount) mName = "Final 🏆";
-                else if (i === cfg.matchCount - 1) mName = "Qualifier 2 🏏";
-                else if (i === cfg.matchCount - 2) mName = "Eliminator 💥";
-                else if (i === cfg.matchCount - 3 && cfg.matchCount >= 4) mName = "Qualifier 1 🏏";
-
-                let team1 = "TBD", team2 = "TBD";
-                if (i <= Math.floor(cfg.matchCount / 2) && t.teams.length >= 2) {
-                    team1 = t.teams[(i - 1) % t.teams.length];
-                    team2 = t.teams[i % t.teams.length];
-                }
-
                 const match = this.createMatch({
-                    type: 'tournament', tournamentId: t.id, tournamentName: t.name,
-                    team1, team2, overs: t.overs, ballsPerOver: t.ballsPerOver,
+                    type: 'tournament',
+                    tournamentId: t.id,
+                    tournamentName: t.name,
+                    team1: "TBD", team2: "TBD",
+                    overs: t.overs, ballsPerOver: t.ballsPerOver,
                     scoringPassword: t.scoringPassword
-                });
+                }, true); // skipCloud during initial creation
                 match.status = 'scheduled';
-                match.scheduledName = mName;
-                this.saveMatch(match);
+                match.scheduledName = `Match ${i}`;
+                this.saveMatch(match, true);
                 t.matches.push(match.id);
             }
         }
-
-        // Init standings & rosters
-        t.teams.forEach(team => {
-            t.standings[team] = {
-                played: 0, won: 0, lost: 0, tied: 0,
-                points: 0, for: 0, against: 0, nrr: 0,
-                runsScored: 0, ballsFaced: 0,
-                runsConceded: 0, ballsBowled: 0,
-            };
-            if (!t.rosters[team]) t.rosters[team] = [];
-        });
-
-        this.saveTournament(t);
+        
+        this.saveTournament(t); // This syncs the tournament
+        
+        // SEQUENTIAL SYNC: Sync matches to cloud one by one to avoid overwhelming server
+        if (t.matches.length > 0) {
+            console.log("🕒 Bulk syncing tournament matches...");
+            for (const mId of t.matches) {
+                const m = this.getMatch(mId);
+                if (m) syncToDB('match', m);
+                await new Promise(r => setTimeout(r, 100)); // Small delay
+            }
+        }
+        
+        // Force UI refresh if available
+        if (typeof renderOngoing === 'function') renderOngoing();
+        
         return t;
     },
 
@@ -496,23 +488,48 @@ const DB = {
 //  BACKEND SYNC → MongoDB Atlas (via Express server)
 // ============================================================
 
-// Default: local server for dev, current domain for production (Vercel)
-var BACKEND_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3000' 
-    : 'https://slcrickpro.live';
+// Auto-detected Backend & Socket
+const isProd = window.location.hostname !== 'localhost' && !window.location.hostname.includes('192.168.') && !window.location.hostname.includes('10.0.0.');
+const BACKEND_BASE_URL = window.location.port === '3000' || window.location.port === '5000' || isProd 
+    ? window.location.origin 
+    : "http://" + window.location.hostname + ":3000";
 
-
-// Manual connection setup removed for seamless experience.
-
-
-// Secret shortcut: Triple-tap the header logo to open Settings
-document.addEventListener('DOMContentLoaded', () => {
-    // Backend connection logic is now automatic.
-
+let socket = null;
+if (typeof io !== 'undefined') {
+    socket = io(BACKEND_BASE_URL);
+    socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
     
-    // Visual status indicator removed as sync is now automatic and transparent.
+    // Immediate refresh on match-specific updates
+    socket.on('scoreUpdate', (data) => {
+        console.log('⚡ Score Update received:', data);
+        if (data && data.id) {
+            DB.saveMatch(data, true); 
+            if (typeof renderOngoing === 'function') renderOngoing();
+            if (typeof window.renderOngoing === 'function') window.renderOngoing();
+        } else { pullGlobalData(); }
+    });
 
-});
+    // Handle global updates
+    socket.on('globalUpdate', (info) => {
+        console.log('🌍 Global Update received:', info);
+        if (info.type === 'match' && info.data) {
+            DB.saveMatch(info.data, true);
+        } else if (info.type === 'tournament' && info.data) {
+            DB.saveTournament(info.data, true);
+        } else {
+            pullGlobalData();
+            return;
+        }
+        if (typeof renderOngoing === 'function') renderOngoing();
+        if (typeof window.renderOngoing === 'function') window.renderOngoing();
+        if (typeof updateTicker === 'function') updateTicker();
+    });
+
+    socket.on('broadcastCmd', (data) => {
+        console.log('📺 Broadcast Command received:', data);
+        if (typeof handleBroadcastEvent === 'function') handleBroadcastEvent(data);
+    });
+}
 
 /**
  * Sync a player or team to MongoDB.
@@ -602,45 +619,7 @@ async function pullGlobalData() {
 setInterval(pullGlobalData, 10000);
 setTimeout(pullGlobalData, 1000);
 
-// socket.io-client integration if script is loaded
-let socket = null;
-if (typeof io !== 'undefined') {
-    socket = io(BACKEND_BASE_URL);
-    socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
-    
-    // Immediate refresh on match-specific updates
-    socket.on('scoreUpdate', (data) => {
-        console.log('⚡ Score Update received:', data);
-        if (data && data.id) {
-            DB.saveMatch(data, true); // Immediate local save, skip cloud sync loop
-            if (typeof renderOngoing === 'function') renderOngoing();
-        } else { pullGlobalData(); }
-    });
-
-    // Handle global updates (tournaments, players, etc.)
-    socket.on('globalUpdate', (info) => {
-        console.log('🌍 Global Update received:', info);
-        if (info.type === 'match' && info.data) {
-            DB.saveMatch(info.data, true);
-        } else if (info.type === 'tournament' && info.data) {
-            DB.saveTournament(info.data, true);
-        } else {
-            pullGlobalData();
-            return;
-        }
-        if (typeof renderOngoing === 'function') renderOngoing();
-    });
-
-    socket.on('allDevicesUpdate', (hb) => {
-        console.log('📡 Sync Heartbeat (Multi-device):', hb);
-    });
-
-    // Real-time broadcast commands (overlays, etc.)
-    socket.on('broadcastCmd', (data) => {
-        console.log('📺 Broadcast Command received:', data);
-        if (typeof handleBroadcastEvent === 'function') handleBroadcastEvent(data);
-    });
-}
+// ... (remove old redundant socket declaration section)
 
 /**
  * Sync a single product to MongoDB.
