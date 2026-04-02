@@ -997,10 +997,18 @@ async function syncCloudData(options = {}) {
             let anyUpdated = false;
 
             // SMART MERGE: Preserve local updates and local-only matches
+            const NOW = Date.now();
+            const LOCAL_LOCK_WINDOW = 15000; // Ignore cloud for 15s if we just updated locally
+
             const mergedMatches = remoteMatches.map(cm => {
                 const lm = localMatches.find(x => x.id === cm.id);
-                // Keep local version if it's newer
+                // 1. Keep local version if it's newer
                 if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
+                
+                // 2. SAFETY LOCK: If the local version was updated VERY recently (within 15s), 
+                // ignore cloud version (it might be stale/delayed version of our own update)
+                if (lm && (NOW - (lm.lastUpdated || 0)) < LOCAL_LOCK_WINDOW) return lm;
+
                 // Otherwise take cloud version
                 if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
                 return cm;
@@ -1032,9 +1040,14 @@ async function syncCloudData(options = {}) {
             let anyTUpdated = false;
 
             // SMART MERGE: Preserve local updates and local-only tournaments
+            const NOW = Date.now();
+            const LOCAL_LOCK_WINDOW = 15000; 
+
             const mergedTournaments = remoteTournaments.map(ct => {
                 const lt = localTournaments.find(x => x.id === ct.id);
                 if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) return lt;
+                if (lt && (NOW - (lt.lastUpdated || 0)) < LOCAL_LOCK_WINDOW) return lt;
+                
                 if (!lt || JSON.stringify(lt) !== JSON.stringify(ct)) anyTUpdated = true;
                 return ct;
             });
