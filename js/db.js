@@ -540,7 +540,7 @@ const isProd = window.location.hostname === 'slcrickpro.live' ||
 // Specifically unified production backend on Render.com to support stable WebSockets and consistent DB access
 const PROD_BACKEND = "https://slcrickpro-server.onrender.com";
 
-const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (
+let BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (
     isProd ? PROD_BACKEND : ("http://" + window.location.hostname + ":3000")
 );
 
