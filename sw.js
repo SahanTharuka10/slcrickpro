@@ -49,6 +49,10 @@ self.addEventListener('fetch', (event) => {
     // Skip non-HTTP requests (chrome-extension:// etc.)
     return;
   }
+  const url = new URL(event.request.url);
+  if (url.pathname.includes('/socket.io/') || url.pathname.includes('/sync/') || url.pathname.includes('/api/') || url.hostname.includes('slcrickpro-server')) {
+    return; // Let API/Socket requests pass completely unintercepted
+  }
   // Network first, falling back to cache
   event.respondWith(
     fetch(event.request)
