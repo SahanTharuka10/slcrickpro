@@ -530,6 +530,8 @@ const DB = {
 // Auto-detected Backend & Socket
 const isProd = window.location.hostname === 'slcrickpro.live' || 
                window.location.hostname === 'www.slcrickpro.live' ||
+               window.location.hostname === 'slcrickpro.vercel.app' ||
+               window.location.hostname === 'www.slcrickpro.vercel.app' ||
                (window.location.hostname !== 'localhost' && 
                 window.location.hostname !== '127.0.0.1' &&
                 !window.location.hostname.includes('192.168.') && 
@@ -544,6 +546,12 @@ const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (
 
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
+
+// Enforce HTTPS in production to avoid mixed-content blocking
+if (isProd && BACKEND_BASE_URL.startsWith('http://')) {
+    BACKEND_BASE_URL = BACKEND_BASE_URL.replace('http://', 'https://');
+    localStorage.setItem('cricpro_backend_url', BACKEND_BASE_URL);
+}
 
 let socket = null;
 if (typeof io !== 'undefined') {
