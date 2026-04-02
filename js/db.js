@@ -386,7 +386,8 @@ const DB = {
             }
         }
         
-        this.saveTournament(t); // This syncs the tournament
+        // Save tournament and preserve scoring token if any
+        await this.saveTournamentWithAuth(t);
         
         // SEQUENTIAL SYNC: Sync matches to cloud one by one to avoid overwhelming server
         if (t.matches.length > 0) {
@@ -556,7 +557,7 @@ if (typeof io !== 'undefined') {
             DB.saveMatch(data, true); 
             if (typeof renderOngoing === 'function') renderOngoing();
             if (typeof window.renderOngoing === 'function') window.renderOngoing();
-        } else { pullGlobalData(); }
+        } else { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }
     });
 
     // Handle global updates
@@ -567,7 +568,7 @@ if (typeof io !== 'undefined') {
         } else if (info.type === 'tournament' && info.data) {
             DB.saveTournament(info.data, true);
         } else {
-            pullGlobalData();
+            if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
             return;
         }
         if (typeof renderOngoing === 'function') renderOngoing();
@@ -741,8 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Start background discovery
-setInterval(pullGlobalData, 10000);
-setTimeout(pullGlobalData, 1000);
+setInterval(() => { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }, 10000);
+setTimeout(() => { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }, 1000);
 
 // ... (remove old redundant socket declaration section)
 
@@ -1071,9 +1072,9 @@ async function syncCloudData(options = {}) {
     }
 }
 
-// Map the old function names
-const pullGlobalData = () => syncCloudData({ silent: true });
-const pullLiveUpdates = () => syncCloudData({ silent: true });
+// Backward compatibility names
+window.pullGlobalData = window.pullGlobalData || (() => syncCloudData({ silent: true }));
+window.pullLiveUpdates = () => syncCloudData({ silent: true });
 
 // Initial grab on page boot
 setTimeout(() => syncCloudData({ forceRefresh: true }), 500);

@@ -114,9 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── GLOBAL HOOK: expose renderResumeMatches so db.js can call it after cloud sync ──
 window.renderResumeMatches = function() {
-    // Call the local function directly by name
-    if (typeof renderResumeMatches === 'function') {
-        renderResumeMatches();
+    if (typeof renderResumeMatchesImpl === 'function') {
+        renderResumeMatchesImpl();
     }
 };
 
@@ -217,7 +216,7 @@ function toggleMatchConfig(show) {
     if (btn) btn.innerHTML = show ? 'Start Match' : 'Create Tournament';
 }
 
-function renderResumeMatches() {
+function renderResumeMatchesImpl() {
     const container = document.getElementById('resume-matches-list');
     if (!container) return;
 
@@ -413,7 +412,7 @@ function switchTournamentTab(tab) {
     else renderTournamentTeams();
 }
 
-function openTournamentHub(id) {
+async function openTournamentHub(id) {
     if (!id) return;
     const t = DB.getTournament(id);
     if (!t) {
@@ -421,15 +420,47 @@ function openTournamentHub(id) {
         return;
     }
 
-    // AUTH CHECK: If tournament has password, must be authorized
-    if (t.password && !isTournamentAuthorized(t.id)) {
-        const pass = prompt(`🔐 Enter Password for "${t.name}":`);
-        if (pass === t.password) {
-            setTournamentAuthorized(t.id, 'user', 7200000); // 2 hours
-        } else {
-            showToast('❌ Invalid Password', 'error');
+    // AUTH CHECK: If tournament is locked by password then require auth before showing hub
+    const locked = !!t.scoringPassword || !!t.password || !!t.isLocked;
+    if (locked && !isTournamentAuthorized(t.id)) {
+        const pass = prompt(`🔐 Enter password for "${t.name}":`);
+        if (!pass) {
+            showToast('❌ Password is required', 'error');
             return;
         }
+
+        let verified = false;
+        // Local password (for directly created tournaments where cleartext is available)
+        if (t.scoringPassword && pass === t.scoringPassword) verified = true;
+        if (!verified && t.password && pass === t.password) verified = true;
+
+        // Cloud validate if not already verified locally
+        if (!verified) {
+            try {
+                const baseUrl = BACKEND_BASE_URL || window.BACKEND_BASE_URL || window.location.origin;
+                const response = await fetch(`${baseUrl}/verify-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: t.id, type: 'tournament', password: pass })
+                });
+                if (response.ok) {
+                    const json = await response.json();
+                    verified = !!json.verified;
+                }
+            } catch (e) {
+                console.error('Password validation error', e);
+                showToast('❌ Password validation failed (server unreachable)', 'error');
+                return;
+            }
+        }
+
+        if (!verified) {
+            showToast('❌ Invalid password. Access denied.', 'error');
+            return;
+        }
+
+        setTournamentAuthorized(t.id, 'user', 7200000); // 2 hours
+        showToast('✅ Access Granted! Opening dashboard...', 'success');
     }
 
     currentTournament = t;

@@ -2,7 +2,7 @@
 let currentTab = 'requests';
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof pullGlobalData === 'function') pullGlobalData();
+    if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
     checkAdminAuth();
     renderRequests();
 });

@@ -45,13 +45,19 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith('http')) {
+    // Skip non-HTTP requests (chrome-extension:// etc.)
+    return;
+  }
   // Network first, falling back to cache
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
         const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
+          cache.put(event.request, responseClone).catch(() => {
+            // Ignore unsupported request scheme (e.g., chrome-extension://)
+          });
         });
         return networkResponse;
       })

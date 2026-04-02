@@ -9,7 +9,7 @@ let currentProductId = null;
 window.renderProducts = renderProducts;
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof pullGlobalData === 'function') pullGlobalData();
+  if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
   cart = JSON.parse(localStorage.getItem('cricpro_cart') || '{}');
   // Reset DB to new products (only wipe plain/old-format cache, never secure admin-saved products)
   if (!localStorage.getItem('cricpro_products_v2')) {

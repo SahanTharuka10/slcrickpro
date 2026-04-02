@@ -4,7 +4,7 @@ window.renderOngoing = function() {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof pullGlobalData === 'function') pullGlobalData();
+    if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
     initParticles();
     updateClock();
     setInterval(updateClock, 1000);
