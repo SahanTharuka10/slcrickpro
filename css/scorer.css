@@ -759,3 +759,26 @@
 @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
 .roster-item { animation: fadeInUp 0.4s ease forwards; }
 .player-stat-card { animation: slideInLeft 0.5s ease forwards; }
+
+/* Roster Editor Custom Styling */
+.roster-slot {
+    transition: all 0.2s ease-out;
+}
+.roster-slot:focus-within {
+    border-color: var(--c-primary) !important;
+    background: rgba(var(--c-primary-rgb), 0.1) !important;
+    transform: scale(1.02);
+}
+.roster-container {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-right: -8px;
+}
+.roster-container::-webkit-scrollbar {
+    width: 6px;
+}
+.roster-container::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+}

@@ -239,7 +239,7 @@ const DB = {
             id: 'MATCH-' + Date.now(),
             createdAt: Date.now(),
             status: 'setup', // setup | live | paused | completed
-            publishLive: config.type === 'tournament' ? true : false,
+            publishLive: true, // Default to true so matches show up on mobile/others by default
             type: config.type || 'single', // single | tournament
             tournamentId: config.tournamentId || null,
             tournamentName: config.tournamentName || null,
@@ -534,13 +534,11 @@ const isProd = window.location.hostname === 'slcrickpro.live' ||
                 !window.location.hostname.includes('192.168.') && 
                 !window.location.hostname.includes('10.0.0.'));
 
-const isVercel = window.location.hostname.includes('vercel.app');
-const isCustomDomain = window.location.hostname === 'slcrickpro.live';
+// Specifically unified production backend on Render.com to support stable WebSockets and consistent DB access
+const PROD_BACKEND = "https://slcrickpro-server.onrender.com";
 
 const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (
-    (isVercel || isCustomDomain) 
-        ? window.location.origin + "/api" 
-        : (isProd ? "https://slcrickpro-server.onrender.com" : "http://" + window.location.hostname + ":3000")
+    isProd ? PROD_BACKEND : ("http://" + window.location.hostname + ":3000")
 );
 
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it

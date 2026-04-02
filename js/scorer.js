@@ -428,7 +428,7 @@ function renderTournamentMatches() {
 
         let statusBadge = '';
         let btn = '';
-        let matchName = `Match ${index + 1}`;
+        let matchName = m.scheduledName || `Match ${index + 1}`;
         let subInfo = 'Scheduled';
         let cardStyle = '';
         const pw = (m.scoringPassword || m.password || (t && t.scoringPassword));
@@ -437,48 +437,42 @@ function renderTournamentMatches() {
         if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
             btn = `<button class="btn btn-primary btn-sm" onclick="resumeMatch('${m.id}')">Resume</button>`;
-            matchName = `${m.team1 || 'TBD'} vs ${m.team2 || 'TBD'}`;
             subInfo = `Match ${index + 1} · ${m.overs} ov`;
             cardStyle = 'border-left: 4px solid #00e676;';
         } else if (m.status === 'completed') {
             statusBadge = `<span class="badge badge-blue" style="font-size:10px">✅ Done</span>`;
             btn = `<button class="btn btn-ghost btn-sm" disabled>View Result</button>`;
-            matchName = `${m.team1} vs ${m.team2}`;
             subInfo = `Match ${index + 1} · Completed`;
             cardStyle = 'opacity: 0.8;';
         } else {
-            // Default: Scheduled, Requested, or any other status
             statusBadge = `<span class="badge badge-amber" style="font-size:10px">Scheduled</span>`;
             btn = `<button class="btn btn-primary btn-sm" onclick="startOfficialMatch('${m.id}')">Start Match</button>`;
-            if (m.team1 && m.team2 && m.team1 !== 'TBD') {
-                matchName = `${m.team1} vs ${m.team2}`;
-            }
         }
 
-        html += `<div class="resume-card" style="margin-bottom:8px; align-items: center; ${cardStyle}">
+        html += `<div class="resume-card" style="margin-bottom:12px; align-items: center; ${cardStyle}; padding: 16px">
             <div class="resume-card-info" style="flex: 1">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-muted); margin-bottom: 2px">${subInfo}</div>
-                <h4 style="font-size: 16px; font-weight: 800">${locked}${matchName}</h4>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--c-muted); margin-bottom: 4px">${subInfo}</div>
+                <h4 style="font-size: 17px; font-weight: 850; margin-bottom: 6px">${locked}${matchName}</h4>
+                <div style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px; color:var(--c-primary)">
+                    <span style="cursor:pointer; border-bottom:1px dashed rgba(255,255,255,0.2)" onclick="editMatchTeam('${m.id}', 1)">${m.team1 || 'TBD'}</span>
+                    <span style="font-weight:400; opacity:0.4; font-size:10px">VS</span>
+                    <span style="cursor:pointer; border-bottom:1px dashed rgba(255,255,255,0.2)" onclick="editMatchTeam('${m.id}', 2)">${m.team2 || 'TBD'}</span>
+                </div>
             </div>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 8px; align-items: flex-end">
                 ${statusBadge}
                 ${btn}
             </div>
         </div>`;
     });
 
-    document.getElementById('tm-list').innerHTML = html;
+    document.getElementById('tm-list').innerHTML = html || '<div style="padding:40px;text-align:center;opacity:0.5">No matches scheduled yet</div>';
     
     // Add Match listener
     const btnAdd = document.getElementById('btn-add-tourn-match');
     if (btnAdd) {
         btnAdd.onclick = () => {
-            const maxOriginal = parseInt(t.matchCount) || 0;
             const count = t.matches.length + 1;
-            const matchName = (maxOriginal > 0 && count > maxOriginal) 
-                ? `Extra Match ${count - maxOriginal}` 
-                : `Match ${count}`;
-
             const newM = DB.createMatch({
                 type: 'tournament',
                 tournamentId: t.id,
@@ -490,12 +484,13 @@ function renderTournamentMatches() {
                 ballsPerOver: t.ballsPerOver,
                 playersPerSide: 11
             });
-            newM.scheduledName = matchName;
+            newM.scheduledName = `Extra Match ${count}`;
             newM.status = 'scheduled';
             DB.saveMatch(newM);
             t.matches.push(newM.id);
             DB.saveTournament(t);
-            renderTournamentMatches(); // Refresh the list
+            renderTournamentMatches();
+            showToast('New extra match added!', 'success');
         };
     }
 
@@ -504,6 +499,19 @@ function renderTournamentMatches() {
     if (btnEnd) {
         btnEnd.style.display = (t.status === 'active' || t.status === 'approved') ? 'block' : 'none';
         btnEnd.onclick = () => endTournamentManually(t.id);
+    }
+}
+
+function editMatchTeam(matchId, teamSlot) {
+    const m = DB.getMatch(matchId);
+    if (!m) return;
+    const oldName = teamSlot === 1 ? m.team1 : m.team2;
+    const newName = prompt(`Enter Team ${teamSlot} name:`, oldName === 'TBD' ? '' : oldName);
+    if (newName !== null) {
+        if (teamSlot === 1) m.team1 = newName.trim() || 'TBD';
+        else m.team2 = newName.trim() || 'TBD';
+        DB.saveMatch(m);
+        renderTournamentMatches();
     }
 }
 
@@ -1760,14 +1768,20 @@ function showMatchResult() {
     const mrBackBtn = document.querySelector('#modal-result .btn-ghost');
     if (mrHomeBtn && mrBackBtn) {
         if (m.tournamentId) {
-            mrHomeBtn.innerHTML = 'Tournament Summary';
-            mrHomeBtn.onclick = () => { closeModal('modal-result'); openTournamentSummary(); };
-            mrBackBtn.innerHTML = '📅 Match Schedule';
-            mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentHub(m.tournamentId); };
+            mrHomeBtn.innerHTML = '📅 Manage Tournament Hub';
+            mrHomeBtn.onclick = () => { 
+                closeModal('modal-result'); 
+                openTournamentHub(m.tournamentId); 
+            };
+            mrBackBtn.innerHTML = '📊 Tournament Table';
+            mrBackBtn.onclick = () => { 
+                closeModal('modal-result'); 
+                openTournamentSummary(); 
+            };
         } else {
-            mrHomeBtn.innerHTML = '🏠 Home';
+            mrHomeBtn.innerHTML = '🏠 Back to Home';
             mrHomeBtn.onclick = () => { location.href = '../index.html'; };
-            mrBackBtn.innerHTML = 'Back to Setup';
+            mrBackBtn.innerHTML = '🔄 Score New Match';
             mrBackBtn.onclick = () => { closeModal('modal-result'); showScreen('setup'); };
         }
     }
@@ -2269,35 +2283,72 @@ function openRosterEditor(teamName) {
     const listEl = document.getElementById('tm-teams-list');
     if (!listEl) return;
 
-    // We want 11 blanks
     let inputsHtml = '';
+    const playersDB = DB.getPlayers();
+
     for (let i = 0; i < 11; i++) {
         const val = roster[i] || '';
+        // Try to find photo for initial value
+        const pMatch = playersDB.find(p => p.name.toLowerCase().trim() === val.toLowerCase().trim());
+        const photo = pMatch ? playerPhotoSrc(pMatch) : DEFAULT_PLAYER_PHOTO;
+
         inputsHtml += `
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-                <div style="width:24px;font-size:12px;opacity:0.5;font-weight:700">${i + 1}</div>
-                <input type="text" class="form-input roster-player-input" 
-                       value="${escapeHTML(val)}" placeholder="Player Name" 
-                       style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.1); height:36px; font-size:13px" />
+            <div class="roster-slot" style="display:flex;align-items:center;gap:12px;margin-bottom:12px; background:rgba(255,255,255,0.03); padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
+                <div style="width:20px;font-size:10px;opacity:0.3;font-weight:900;text-align:center">${i + 1}</div>
+                <div class="roster-slot-photo" style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:2px solid rgba(var(--c-primary-rgb), 0.3); background:#000">
+                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'" />
+                </div>
+                <div style="flex:1">
+                    <input type="text" class="form-input roster-player-input" 
+                           value="${escapeHTML(val)}" placeholder="Type player name..." 
+                           oninput="onRosterInputChanged(${i}, this.value)"
+                           style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" />
+                    <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); height:12px; margin-top:2px; font-weight:600">${pMatch ? '✅ Registered Player' : ''}</div>
+                </div>
             </div>
         `;
     }
 
     listEl.innerHTML = `
-        <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center">
-            <div style="font-weight:900; color:var(--c-amber); font-size:14px">📝 ROSTER: ${editingTeamName}</div>
-            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()" style="font-size:11px">← Back to List</button>
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center">
+            <div>
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.5; margin-bottom:2px">Editing Roster</div>
+                <div style="font-weight:950; color:var(--c-amber); font-size:18px; letter-spacing:-0.5px">${editingTeamName}</div>
+            </div>
+            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1)">← Back to List</button>
         </div>
 
-        <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
+        <div class="roster-container" style="padding-bottom:10px">
             ${inputsHtml}
         </div>
 
-        <div style="margin-top:20px">
-            <button class="btn btn-primary btn-full" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Roster</button>
+        <div style="margin-top:20px; position:sticky; bottom:0; padding-top:10px; background:var(--c-bg)">
+            <button class="btn btn-primary btn-full" style="height:50px; font-weight:900; font-size:16px; border-radius:15px; box-shadow:0 10px 20px rgba(var(--c-primary-rgb), 0.2)" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Team Roster</button>
         </div>
     `;
 }
+
+window.onRosterInputChanged = function(idx, val) {
+    const players = DB.getPlayers();
+    const cleanVal = val.toLowerCase().trim();
+    const infoEl = document.getElementById(`roster-info-${idx}`);
+    const imgEl = document.getElementById(`roster-photo-${idx}`);
+    
+    if (!cleanVal) {
+        if (infoEl) infoEl.textContent = '';
+        if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
+        return;
+    }
+
+    const p = players.find(x => x.name.toLowerCase().trim() === cleanVal);
+    if (p) {
+        if (infoEl) infoEl.textContent = '✅ Registered Player (' + (p.playerId || '') + ')';
+        if (imgEl) imgEl.src = playerPhotoSrc(p);
+    } else {
+        if (infoEl) infoEl.textContent = '';
+        if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
+    }
+};
 
 function saveRoster(teamName) {
     const t = currentTournament;
