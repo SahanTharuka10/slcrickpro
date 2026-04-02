@@ -21,12 +21,26 @@ window.renderLive = renderLive;
 document.addEventListener('DOMContentLoaded', async () => {
     // Show loading state initially
     const grid = document.getElementById('live-matches-grid');
-    if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--c-muted)">📡 Synchronizing live matches...</div>';
+    if (grid) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:64px 20px;color:var(--c-muted);background:rgba(255,255,255,0.02);border-radius:24px;border:1px dashed rgba(255,255,255,0.1)">
+                <div class="syncing-animate" style="font-size:42px;margin-bottom:16px;display:inline-block">🔄</div>
+                <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px">Synchronizing Live Database</div>
+                <p style="font-size:14px;opacity:0.6">Please wait while we fetch the latest results from SLCRICKPRO cloud...</p>
+            </div>`;
+    }
 
     if (typeof pullGlobalData === 'function') {
         await pullGlobalData(); // Wait for data before rendering
     }
     renderLive();
+    
+    // Safety Fallback: Render again in 3s if cloud was slow
+    setTimeout(() => {
+        if (grid && grid.innerHTML.includes('Synchronizing')) {
+             renderLive();
+        }
+    }, 3000);
 });
 
 function startAutoRefresh() {

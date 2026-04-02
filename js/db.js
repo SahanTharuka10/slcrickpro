@@ -510,9 +510,14 @@ const isProd = window.location.hostname === 'slcrickpro.live' ||
                 !window.location.hostname.includes('192.168.') && 
                 !window.location.hostname.includes('10.0.0.'));
 
-const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (isProd 
-    ? "https://slcrickpro-server.onrender.com" 
-    : "http://" + window.location.hostname + ":3000");
+const isVercel = window.location.hostname.includes('vercel.app');
+const isCustomDomain = window.location.hostname === 'slcrickpro.live';
+
+const BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || (
+    (isVercel || isCustomDomain) 
+        ? window.location.origin + "/api" 
+        : (isProd ? "https://slcrickpro-server.onrender.com" : "http://" + window.location.hostname + ":3000")
+);
 
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
@@ -686,6 +691,15 @@ window.pullGlobalData = async function(showFeedback = false) {
 document.addEventListener('DOMContentLoaded', () => {
     // Force sync on match load
     window.pullGlobalData(false);
+
+    // Live Clock Ticker
+    setInterval(() => {
+        const el = document.getElementById('live-clock');
+        if (el) {
+            const now = new Date();
+            el.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+        }
+    }, 1000);
 });
 
 // Start background discovery

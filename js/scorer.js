@@ -74,14 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderResumeMatches();
 
-    // Auto-refresh Open Match list every 15 seconds so newly scheduled
-    // matches from other devices appear without a full page reload
+    // Auto-refresh Open Match list every 5 seconds
     setInterval(() => {
         if (document.getElementById('screen-setup') &&
             document.getElementById('screen-setup').style.display !== 'none') {
             renderResumeMatches();
         }
-    }, 15000);
+    }, 5000);
     
     // Check for matchId parameter for direct scoring access
     const urlParams = new URLSearchParams(window.location.search);
@@ -226,8 +225,11 @@ function renderResumeMatches() {
     
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled'].includes(t.status));
+    
+    // ADDED: Include pending requests so they show up for everyone once synced
+    const requests = DB.getRequests().filter(r => r.type === 'tournament' && r.status === 'pending');
 
-    if (!liveMatches.length && !scheduledMatches.length && !tourns.length) {
+    if (!liveMatches.length && !scheduledMatches.length && !tourns.length && !requests.length) {
         container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:32px;text-align:center;background:rgba(255,255,255,0.02);border-radius:16px;border:1px dashed rgba(255,255,255,0.1)">No active matches or tournaments.</div>`;
         return;
     }
@@ -252,6 +254,24 @@ function renderResumeMatches() {
                         <p style="opacity:0.7">${t.isOfficial ? 'Official' : 'Unofficial'} · ${t.matches ? t.matches.length : 0} matches</p>
                     </div>
                     ${t.status !== 'requested' ? `<button class="btn btn-primary btn-sm" onclick="openTournamentHub('${t.id}')">Dashboard</button>` : ''}
+                </div>
+            `;
+        });
+    }
+
+    // --- PENDING REQUESTS SECTION ---
+    if (requests && requests.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#ffc107; margin:24px 0 12px 10px; opacity:0.8">⏳ PENDING APPROVAL</div>`;
+        requests.forEach(r => {
+            html += `
+                <div class="resume-card" style="border-left: 4px solid #ffc107; background:linear-gradient(90deg, rgba(255,193,7,0.05), transparent)">
+                    <div class="resume-card-info">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                            <span style="font-size:10px; background:rgba(255,193,7,0.15); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">PENDING</span>
+                        </div>
+                        <h4 style="font-size:18px; font-weight:800">${r.tournamentName || r.matchName || 'Tournament Request'}</h4>
+                        <p style="opacity:0.7">Scheduled by ${r.requesterName} · Waiting for Admin approval</p>
+                    </div>
                 </div>
             `;
         });
