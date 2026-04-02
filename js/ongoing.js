@@ -767,7 +767,7 @@ async function generateMatchPDF(matchId) {
     
     // Improved container for better PDF capture
     const container = document.createElement('div');
-    container.style = `position:fixed; top:20px; left:20px; width:900px; padding:40px; background:#fff; color:#000; font-family:'Outfit',sans-serif; z-index:-100; opacity:0.01; pointer-events:none; border-radius:8px; line-height:1.5;`;
+    container.style = `position:fixed; top:0; left:-10000px; width:900px; padding:40px; background:#fff; color:#000; font-family:'Outfit',sans-serif; z-index:9999; opacity:1; pointer-events:none; border-radius:0; line-height:1.5;`;
     
     const inn0 = m.innings ? m.innings[0] : null;
     const inn1 = m.innings ? m.innings[1] : null;
@@ -874,7 +874,7 @@ async function generateMatchPDF(matchId) {
     document.body.appendChild(container);
 
     // Wait for internal rendering browser-side
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const opt = {
         margin: [10, 10, 10, 10],
@@ -1105,7 +1105,7 @@ async function generateTournamentPDF(tournId) {
     showToast('📊 Generating Comprehensive Report...', 'default');
     
     const container = document.createElement('div');
-    container.style = `position:absolute; left:-9999px; width:800px; background:#fff; color:#000; padding:40px; font-family:'Outfit', sans-serif;`;
+    container.style = `position:fixed; top:0; left:-10000px; width:900px; background:#fff; color:#000; padding:40px; font-family:'Outfit', sans-serif; z-index:9999; opacity:1; pointer-events:none;`;
     
     let html = `
         <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:20px; margin-bottom:30px">
@@ -1190,6 +1190,7 @@ async function generateTournamentPDF(tournId) {
     };
 
     try {
+        await new Promise(resolve => setTimeout(resolve, 2000));
         await html2pdf().set(opt).from(container).save();
         showToast('🔥 Report Generated Successfully!', 'success');
     } catch (err) {
