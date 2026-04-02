@@ -626,12 +626,10 @@ window.pullGlobalData = async function(showFeedback = false) {
         
         if (d.matches) {
             const local = DB.getMatches();
-            // Merge: Cloud data wins unless the local version is newer (client-side edits)
             const merged = d.matches.map(cm => {
                 const lm = local.find(x => x.id === cm.id);
-                return (lm && lm.lastUpdated > cm.lastUpdated) ? lm : cm;
+                return (lm && lm.lastUpdated > (cm.lastUpdated || 0)) ? lm : cm;
             });
-            // Add any local-only matches (offline mode)
             local.forEach(lm => {
                 if (!merged.find(x => x.id === lm.id)) merged.push(lm);
             });
@@ -639,7 +637,15 @@ window.pullGlobalData = async function(showFeedback = false) {
         }
 
         if (d.tournaments) {
-            DB._secureSet(DB_KEYS.TOURNAMENTS, d.tournaments);
+            const local = DB.getTournaments();
+            const mergedT = d.tournaments.map(ct => {
+                const lt = local.find(x => x.id === ct.id);
+                return (lt && lt.lastUpdated > (ct.lastUpdated || 0)) ? lt : ct;
+            });
+            local.forEach(lt => {
+                if (!mergedT.find(x => x.id === lt.id)) mergedT.push(lt);
+            });
+            DB._secureSet(DB_KEYS.TOURNAMENTS, mergedT);
         }
         
         // --- FETCH PRODUCTS ---
@@ -647,43 +653,38 @@ window.pullGlobalData = async function(showFeedback = false) {
         if (rp.ok) {
             const dp = await rp.json();
             if (Array.isArray(dp)) {
-                // Merge products logic
                 const local = DB.getProducts();
-                const merged = dp.map(cp => {
+                const mergedP = dp.map(cp => {
                     const lp = local.find(x => x.id === cp.id);
-                    // Keep local version only if it's strictly newer
                     return (lp && lp.lastUpdated > (cp.lastUpdated || 0)) ? lp : cp;
                 });
-                // Add local-only items
                 local.forEach(lp => {
-                    if (!merged.find(x => x.id === lp.id)) merged.push(lp);
+                    if (!mergedP.find(x => x.id === lp.id)) mergedP.push(lp);
                 });
-                DB._secureSet(DB_KEYS.PRODUCTS, merged);
+                DB._secureSet(DB_KEYS.PRODUCTS, mergedP);
             }
         }
 
         if (showFeedback) showToast('✅ Sync Complete!', 'success');
+        window._isGlobalSyncCompleted = true;
 
-        // Throttle UI refreshes (avoid socket flood lag)
+    } catch (e) {
+        console.warn('Sync failed:', e.message);
+        if (showFeedback) showToast('⚠️ Sync Failed. Server might be sleeping.', 'error');
+    } finally {
+        if (syncBtn) syncBtn.classList.remove('syncing-animate');
+
+        // Always trigger UI refreshes eventually (throttle avoid socket flood lag)
         clearTimeout(window._syncTimer);
         window._syncTimer = setTimeout(() => {
-            // New global render hook for all pages
             if (typeof window.renderAll === 'function') window.renderAll();
-            
-            // Legacy individual hooks
             if (typeof renderMatches === 'function') renderMatches();
             if (typeof renderOngoing === 'function') renderOngoing();
             if (typeof renderProducts === 'function') renderProducts();
             if (typeof renderLive === 'function') renderLive();
             if (typeof updateTicker === 'function') updateTicker();
             if (typeof renderResumeMatches === 'function') renderResumeMatches();
-        }, 150); // Buffering delay
-        
-    } catch (e) {
-        console.warn('Sync failed:', e.message);
-        if (showFeedback) showToast('⚠️ Sync Failed. Server might be sleeping.', 'error');
-    } finally {
-        if (syncBtn) syncBtn.classList.remove('syncing-animate');
+        }, 150);
     }
 };
 

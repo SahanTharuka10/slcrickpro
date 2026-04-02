@@ -226,11 +226,14 @@ function renderResumeMatches() {
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled'].includes(t.status));
     
-    // ADDED: Include pending requests so they show up for everyone once synced
     const requests = DB.getRequests().filter(r => r.type === 'tournament' && r.status === 'pending');
 
     if (!liveMatches.length && !scheduledMatches.length && !tourns.length && !requests.length) {
-        container.innerHTML = `<div style="color:var(--c-muted);font-size:14px;padding:32px;text-align:center;background:rgba(255,255,255,0.02);border-radius:16px;border:1px dashed rgba(255,255,255,0.1)">No active matches or tournaments.</div>`;
+        const isSyncing = !window._isGlobalSyncCompleted;
+        container.innerHTML = `
+            <div style="color:var(--c-muted);font-size:14px;padding:48px 24px;text-align:center;background:rgba(255,255,255,0.01);border-radius:24px;border:1px dashed rgba(255,255,255,0.1)">
+                ${isSyncing ? '<span class="syncing-animate" style="display:inline-block;margin-bottom:12px;font-size:32px">🔄</span><br><b style="color:#fff">Connecting to SLCRICKPRO Cloud...</b><p style="font-size:12px;opacity:0.6;margin-top:8px">Searching for your scheduled matches and tournaments</p>' : 'No active matches or tournaments found.<br><span style="font-size:12px;opacity:0.6">Click "Refresh" above or schedule a new match below.</span>'}
+            </div>`;
         return;
     }
 
