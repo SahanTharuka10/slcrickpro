@@ -553,7 +553,9 @@ if (isProd && BACKEND_BASE_URL.startsWith('http://')) {
 
 let socket = null;
 if (typeof io !== 'undefined') {
-    socket = io(BACKEND_BASE_URL);
+    socket = io(BACKEND_BASE_URL, {
+        transports: ['websocket', 'polling']
+    });
     socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
     
     // Immediate refresh on match-specific updates

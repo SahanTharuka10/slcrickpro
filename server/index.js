@@ -21,12 +21,7 @@ const ALLOWED_ORIGINS = [
 
 const io = socketIo(server, {
   cors: {
-    origin: function(origin, cb) {
-      // allow non-browser or undefined origin (server-to-server)
-      if (!origin) return cb(null, true);
-      if (ALLOWED_ORIGINS.indexOf(origin) !== -1) return cb(null, true);
-      return cb(new Error('Origin not allowed'));
-    },
+    origin: ALLOWED_ORIGINS,
     methods: ['GET','POST'],
     credentials: true
   }
