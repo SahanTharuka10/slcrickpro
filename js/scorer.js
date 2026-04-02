@@ -221,10 +221,12 @@ function renderResumeMatches() {
     // 1. Get ALL matches (live, paused, AND scheduled)
     const allMatches = DB.getMatches();
     const liveMatches = allMatches.filter(m => ['live', 'paused', 'ongoing'].includes(m.status));
-    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' && !m.tournamentId);
+    
+    // Show ALL scheduled matches, even those in tournaments
+    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled');
     
     // Improved tournament filtering: include 'scheduled' for newly created locally
-    const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled'].includes(t.status));
+    const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled', 'setup'].includes(t.status));
     
     const requests = DB.getRequests().filter(r => r.type === 'tournament' && r.status === 'pending');
 
