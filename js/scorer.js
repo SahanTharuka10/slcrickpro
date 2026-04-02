@@ -239,24 +239,38 @@ function renderResumeMatches() {
 
     let html = '';
 
-    // --- TOURANMENTS SECTION ---
+    // --- TOURNAMENTS SECTION ---
     if (tourns.length) {
-        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--c-primary); margin:20px 0 12px 10px; opacity:0.8">🏆 ACTIVE TOURNAMENTS</div>`;
-        tourns.forEach(t => {
+        // Sort by creation date descending
+        const sortedTourns = tourns.sort((a, b) => b.createdAt - a.createdAt);
+        
+        html += `<div style="font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:2px; color:var(--c-primary); margin:20px 0 12px 10px; opacity:0.8">🏆 YOUR TOURNAMENTS</div>`;
+        
+        sortedTourns.forEach(t => {
             const hasPw = (t.scoringPassword || t.password || t.isLocked);
-            const statusLabel = t.status === 'requested' ? 'Pending Approval' : 'Ready to Score';
+            let statusBadge = '';
+            let btnLabel = 'Manage Hub';
             
+            if (t.status === 'requested') statusBadge = `<span style="font-size:10px; background:rgba(255,193,7,0.2); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">PENDING APPROVAL</span>`;
+            else if (t.status === 'completed') statusBadge = `<span style="font-size:10px; background:rgba(0,230,118,0.2); color:#00e676; padding:2px 8px; border-radius:100px; font-weight:800">COMPLETED</span>`;
+            else statusBadge = `<span style="font-size:10px; background:rgba(var(--c-primary-rgb),0.2); color:var(--c-primary); padding:2px 8px; border-radius:100px; font-weight:800">READY TO SCORE</span>`;
+
             html += `
-                <div class="resume-card" style="border-left: 4px solid var(--c-primary); background:linear-gradient(90deg, rgba(var(--c-primary-rgb),0.1), transparent)">
-                    <div class="resume-card-info">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
-                            <span style="font-size:10px; background:rgba(var(--c-primary-rgb),0.2); color:var(--c-primary); padding:2px 8px; border-radius:100px; font-weight:800">${statusLabel}</span>
-                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
+                <div class="resume-card" style="border-left: 4px solid var(--c-primary); background:rgba(255,255,255,0.02); margin-bottom:12px; padding:20px; transition:all 0.3s ease">
+                    <div class="resume-card-info" style="flex:1">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+                            ${statusBadge}
+                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 SECURE</span>` : ''}
                         </div>
-                        <h4 style="font-size:18px; font-weight:800">${t.name}</h4>
-                        <p style="opacity:0.7">${t.isOfficial ? 'Official' : 'Unofficial'} · ${t.matches ? t.matches.length : 0} matches</p>
+                        <h4 style="font-size:20px; font-weight:950; letter-spacing:-0.5px; margin-bottom:4px">${t.name}</h4>
+                        <div style="font-size:12px; opacity:0.6; display:flex; gap:12px">
+                            <span>Format: ${capitalize(t.format || 'League')}</span>
+                            <span>Matches: ${t.matches ? t.matches.length : 0}</span>
+                        </div>
                     </div>
-                    ${t.status !== 'requested' ? `<button class="btn btn-primary btn-sm" onclick="openTournamentHub('${t.id}')">Dashboard</button>` : ''}
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                        <button class="btn btn-primary btn-sm" style="font-weight:800; border-radius:10px" onclick="openTournamentHub('${t.id}')">Dashboard</button>
+                    </div>
                 </div>
             `;
         });
@@ -737,11 +751,13 @@ async function startNewMatch() {
                     });
                     setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
                     showToast(`🏆 Tournament "${tName}" created!`, 'success');
-                    renderResumeMatches();
                     
-                    // IMPROVED UX: Open the dashboard immediately
-                    currentTournament = null; 
-                    openTournamentHub(tourn.id);
+                    // Force immediate UI refresh and open hub
+                    renderResumeMatches();
+                    setTimeout(() => {
+                        currentTournament = null; 
+                        openTournamentHub(tourn.id);
+                    }, 500);
                     return;
                 }
             } else {
