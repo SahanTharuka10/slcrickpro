@@ -990,50 +990,36 @@ async function syncCloudData(options = {}) {
             DB.saveTeams(teamData);
         }
 
-        // Sync Matches — scorer page: use smart merge (don't clobber active matches)
+        // Sync Matches — use smart merge (don't clobber active matches)
         if (matchData) {
-            const remoteMatches = Array.isArray(matchData) ? matchData : (matchData.matches || []);
+            const remoteMatches = Array.isArray(matchData) ? (matchData.matches || matchData) : (matchData.matches || []);
             const localMatches = DB.getMatches();
             let anyUpdated = false;
 
-            if (isScorer) {
-                // Smart merge: cloud wins UNLESS local match was updated more recently
-                // (meaning THIS device is actively scoring it)
-                const merged = remoteMatches.map(cm => {
-                    const lm = localMatches.find(x => x.id === cm.id);
-                    // Keep local version if it's newer (active scoring in progress)
-                    if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
-                    if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
-                    return cm;
-                });
-                // Also include local-only matches (offline-created ones)
-                localMatches.forEach(lm => {
-                    if (!merged.find(x => x.id === lm.id)) { merged.push(lm); anyUpdated = true; }
-                });
-                if (anyUpdated) DB.saveMatches(merged);
-            } else {
-                // For viewers, cloud is the source of truth
-                const merged = remoteMatches.map(cm => {
-                    const lm = localMatches.find(x => x.id === cm.id);
-                    if (!options.forceRefresh && lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) {
-                        return lm;
-                    }
-                    if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
-                    return cm;
-                });
-                
-                if (anyUpdated || options.forceRefresh || remoteMatches.length !== localMatches.length) {
-                    DB.saveMatches(remoteMatches);
+            // SMART MERGE: Preserve local updates and local-only matches
+            const mergedMatches = remoteMatches.map(cm => {
+                const lm = localMatches.find(x => x.id === cm.id);
+                // Keep local version if it's newer
+                if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
+                // Otherwise take cloud version
+                if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
+                return cm;
+            });
+
+            // Add local-only matches (e.g. just created offline)
+            localMatches.forEach(lm => {
+                if (!mergedMatches.find(x => x.id === lm.id)) {
+                    mergedMatches.push(lm);
                     anyUpdated = true;
                 }
-            }
+            });
 
-            if (anyUpdated) {
+            if (anyUpdated || options.forceRefresh) {
+                DB.saveMatches(mergedMatches);
                 if (typeof renderMatches === 'function') renderMatches();
                 if (typeof renderOngoing === 'function') renderOngoing();
                 if (typeof updateTicker === 'function') updateTicker();
                 if (typeof renderLive === 'function') renderLive();
-                // Refresh Open Match list on scorer setup screen
                 if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
                 localStorage.setItem('cricpro_force_update', Date.now().toString());
             }
@@ -1043,13 +1029,26 @@ async function syncCloudData(options = {}) {
         if (tournData) {
             const remoteTournaments = Array.isArray(tournData) ? tournData : (tournData.tournaments || []);
             const localTournaments = DB.getTournaments();
-            
-            // Both scorer and viewer: merge tournaments from cloud
-            const tournChanged = JSON.stringify(localTournaments) !== JSON.stringify(remoteTournaments) || options.forceRefresh;
-            if (tournChanged) {
-                DB.saveTournaments(remoteTournaments);
+            let anyTUpdated = false;
+
+            // SMART MERGE: Preserve local updates and local-only tournaments
+            const mergedTournaments = remoteTournaments.map(ct => {
+                const lt = localTournaments.find(x => x.id === ct.id);
+                if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) return lt;
+                if (!lt || JSON.stringify(lt) !== JSON.stringify(ct)) anyTUpdated = true;
+                return ct;
+            });
+
+            localTournaments.forEach(lt => {
+                if (!mergedTournaments.find(x => x.id === lt.id)) {
+                    mergedTournaments.push(lt);
+                    anyTUpdated = true;
+                }
+            });
+
+            if (anyTUpdated || options.forceRefresh) {
+                DB.saveTournaments(mergedTournaments);
                 if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
-                // Refresh Open Match list
                 if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
             }
         }
@@ -1059,7 +1058,7 @@ async function syncCloudData(options = {}) {
     }
 }
 
-// Map the old function names for compatibility
+// Map the old function names
 const pullGlobalData = () => syncCloudData({ silent: true });
 const pullLiveUpdates = () => syncCloudData({ silent: true });
 
