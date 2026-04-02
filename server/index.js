@@ -10,7 +10,42 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, { cors: { origin: '*' } });
+
+// Allowed origins for production frontends
+const ALLOWED_ORIGINS = [
+  'https://www.slcrickpro.live',
+  'https://slcrickpro.live',
+  'https://slcrickpro.vercel.app',
+  'https://slcrickpro-server.onrender.com'
+];
+
+const io = socketIo(server, {
+  cors: {
+    origin: function(origin, cb) {
+      // allow non-browser or undefined origin (server-to-server)
+      if (!origin) return cb(null, true);
+      if (ALLOWED_ORIGINS.indexOf(origin) !== -1) return cb(null, true);
+      return cb(new Error('Origin not allowed'));
+    },
+    methods: ['GET','POST'],
+    credentials: true
+  }
+});
+
+// Explicit CORS headers to ensure even error/404 responses include them
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 app.use(cors());
 app.use(express.json());
