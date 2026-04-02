@@ -659,14 +659,20 @@ window.pullGlobalData = async function(showFeedback = false) {
 
         if (showFeedback) showToast('✅ Sync Complete!', 'success');
 
-        // Trigger UI refresh if we are on relevant pages
-        if (typeof renderMatches === 'function') renderMatches();
-        if (typeof renderOngoing === 'function') renderOngoing();
-        if (typeof renderProducts === 'function') renderProducts();
-        if (typeof renderLive === 'function') renderLive();
-        if (typeof updateTicker === 'function') updateTicker();
-        if (typeof renderAll === 'function') renderAll();
-        if (typeof renderResumeMatches === 'function') renderResumeMatches();
+        // Throttle UI refreshes (avoid socket flood lag)
+        clearTimeout(window._syncTimer);
+        window._syncTimer = setTimeout(() => {
+            // New global render hook for all pages
+            if (typeof window.renderAll === 'function') window.renderAll();
+            
+            // Legacy individual hooks
+            if (typeof renderMatches === 'function') renderMatches();
+            if (typeof renderOngoing === 'function') renderOngoing();
+            if (typeof renderProducts === 'function') renderProducts();
+            if (typeof renderLive === 'function') renderLive();
+            if (typeof updateTicker === 'function') updateTicker();
+            if (typeof renderResumeMatches === 'function') renderResumeMatches();
+        }, 150); // Buffering delay
         
     } catch (e) {
         console.warn('Sync failed:', e.message);
@@ -675,6 +681,12 @@ window.pullGlobalData = async function(showFeedback = false) {
         if (syncBtn) syncBtn.classList.remove('syncing-animate');
     }
 };
+
+// Global Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    // Force sync on match load
+    window.pullGlobalData(false);
+});
 
 // Start background discovery
 setInterval(pullGlobalData, 10000);

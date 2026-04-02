@@ -12,13 +12,21 @@ window.renderOngoing = function() {
     if (currentTab === 'recent') renderRecent();
 };
 
+// Global sync connection
+window.renderAll = window.renderOngoing;
+
 // Export globally for sync updates
 window.renderLive = renderLive;
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof pullGlobalData === 'function') pullGlobalData();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Show loading state initially
+    const grid = document.getElementById('live-matches-grid');
+    if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--c-muted)">📡 Synchronizing live matches...</div>';
+
+    if (typeof pullGlobalData === 'function') {
+        await pullGlobalData(); // Wait for data before rendering
+    }
     renderLive();
-    // Global sync handle will trigger re-renders now
 });
 
 function startAutoRefresh() {
@@ -48,7 +56,13 @@ function switchTab(tab) {
 function renderLive() {
   const grid = document.getElementById('live-matches-grid');
   if (!grid) return;
-  const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') && m.publishLive);
+  
+  const matches = DB.getMatches().filter(m => {
+    if (!m.publishLive) return false;
+    // User request: Don't show scheduled tournament matches in live list
+    if (m.type === 'tournament' && m.status === 'scheduled') return false;
+    return (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled');
+  });
 
   if (!matches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">

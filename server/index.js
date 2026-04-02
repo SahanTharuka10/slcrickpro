@@ -615,9 +615,21 @@ app.post('/api/tournaments/:id/scoring-authorized', async (req, res) => {
 
 app.post('/sync/match', async (req, res) => {
     const data = parseBody(req);
+    const token = req.headers['x-scoring-token'];
+    
     if (!data || !data.id) return res.status(400).json({ error: 'Missing match id' });
+    
     try {
         await ensureDB();
+        
+        // Authorization Check
+        if (data.tournamentId) {
+            const payload = decodeScoringToken(token);
+            if (!payload || payload.tournamentId !== data.tournamentId) {
+                return res.status(401).json({ error: 'Unauthorized scoring session' });
+            }
+        }
+
         const update = { _id: data.id, data };
         if (data.scoringPassword) {
             update.scoring_password = await bcrypt.hash(data.scoringPassword, 10);
