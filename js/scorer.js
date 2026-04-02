@@ -114,7 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── GLOBAL HOOK: expose renderResumeMatches so db.js can call it after cloud sync ──
 window.renderResumeMatches = function() {
-    if (typeof renderResumeMatches === 'function') renderResumeMatches();
+    // Call the local function directly by name
+    if (typeof renderResumeMatches === 'function') {
+        renderResumeMatches();
+    }
 };
 
 function getScoringAuthMap() {
@@ -233,8 +236,10 @@ function renderResumeMatches() {
     if (!liveMatches.length && !scheduledMatches.length && !tourns.length && !requests.length) {
         const isSyncing = !window._isGlobalSyncCompleted;
         container.innerHTML = `
-            <div style="color:var(--c-muted);font-size:14px;padding:48px 24px;text-align:center;background:rgba(255,255,255,0.01);border-radius:24px;border:1px dashed rgba(255,255,255,0.1)">
-                ${isSyncing ? '<span class="syncing-animate" style="display:inline-block;margin-bottom:12px;font-size:32px">🔄</span><br><b style="color:#fff">Connecting to SLCRICKPRO Cloud...</b><p style="font-size:12px;opacity:0.6;margin-top:8px">Searching for your scheduled matches and tournaments</p>' : 'No active matches or tournaments found.<br><span style="font-size:12px;opacity:0.6">Click "Refresh" above or schedule a new match below.</span>'}
+            <div style="color:var(--c-muted);font-size:14px;padding:32px 20px;text-align:center;background:rgba(255,255,255,0.015);border-radius:18px;border:1px dashed rgba(255,255,255,0.1); margin-bottom:15px">
+                ${isSyncing ? 
+                    '<span class="syncing-animate" style="display:inline-block;margin-bottom:12px;font-size:28px">🔄</span><br><b style="color:#fff">Synchronizing with Cloud...</b>' : 
+                    '<div style="font-size:24px;margin-bottom:8px">📭</div><b>No Active Tournaments or Matches</b><p style="font-size:12px;opacity:0.6;margin-top:4px">Create a new tournament above to get started</p>'}
             </div>`;
         return;
     }
@@ -2682,13 +2687,13 @@ function broadcastPartnership() {
 
 // ========== GLOBAL SYNC HANDLERS ==========
 window.renderOngoing = function() {
-    console.log("🔄 Scorer UI refreshing from Global Sync...");
     if (document.getElementById('screen-scoring').style.display === 'block') {
         renderScoring();
     } else if (document.getElementById('modal-tournament-matches').style.display === 'flex') {
         if (currentTournamentTab === 'matches') renderTournamentMatches();
         else renderTournamentTeams();
-    } else if (document.getElementById('screen-setup').style.display === 'block') {
+    } else {
+        // Always refresh the dashboard if not in a match
         renderResumeMatches();
     }
 };
