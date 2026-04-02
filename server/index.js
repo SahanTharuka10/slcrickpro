@@ -42,6 +42,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '..')));
+
+// Specifically handle common pages for clean URLs (optional but good)
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'index.html')));
+app.get('/admin-portal', (req, res) => res.sendFile(path.join(__dirname, '..', 'pages', 'admin.html')));
+
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const playerSchema = new mongoose.Schema({
