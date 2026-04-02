@@ -356,9 +356,10 @@ function renderTournDetails(id) {
                 <div class="tsm-item"><div class="tsm-val">${t.teams.length}</div><div class="tsm-lbl">Teams</div></div>
                 <div class="tsm-item"><div class="tsm-val">${completedMatches}</div><div class="tsm-lbl">Played</div></div>
                 <div class="tsm-item"><div class="tsm-val" style="color:#00e676">${liveMatches}</div><div class="tsm-lbl">Live</div></div>
-                <div class="tsm-item" style="display:flex;align-items:center;margin-left:15px">
-                    <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:700" onclick="generateTournamentPDF('${t.id}')">Report</button>
-                    <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; margin-left:10px; padding:10px 14px; font-size:12px; font-weight:700">Display</a>
+                <div class="tsm-item" style="display:flex;align-items:center;margin-left:15px;gap:8px">
+                    <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:800;border-radius:8px" onclick="generateTournamentPDF('${t.id}')">Report</button>
+                    <a href="score-match.html?tournamentId=${t.id}" class="badge" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px; background:var(--c-primary); color:#fff">Go to Score</a>
+                    <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px">Display</a>
                 </div>
             </div>
         </div>
