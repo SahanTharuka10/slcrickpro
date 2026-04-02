@@ -105,8 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     } else if (tId) {
-        showScreen('setup');
-        setTimeout(() => openTournamentHub(tId), 200);
+        showScreen('setup'); 
+        openTournamentHub(tId);
     } else {
         showScreen('setup');
     }
@@ -415,12 +415,24 @@ function switchTournamentTab(tab) {
 
 function openTournamentHub(id) {
     if (!id) return;
-    currentTournament = DB.getTournament(id);
-    if (!currentTournament) {
+    const t = DB.getTournament(id);
+    if (!t) {
         showToast('Tournament not found', 'error');
         return;
     }
 
+    // AUTH CHECK: If tournament has password, must be authorized
+    if (t.password && !isTournamentAuthorized(t.id)) {
+        const pass = prompt(`🔐 Enter Password for "${t.name}":`);
+        if (pass === t.password) {
+            setTournamentAuthorized(t.id, 'user', 7200000); // 2 hours
+        } else {
+            showToast('❌ Invalid Password', 'error');
+            return;
+        }
+    }
+
+    currentTournament = t;
     document.getElementById('tm-title').textContent = currentTournament.name;
     document.getElementById('modal-tournament-matches').style.display = 'flex';
     
