@@ -5,7 +5,11 @@ let currentCat = 'all';
 let checkoutMode = false;
 let currentProductId = null;
 
+// Export globally for pullGlobalData/sync
+window.renderProducts = renderProducts;
+
 document.addEventListener('DOMContentLoaded', () => {
+  if (typeof pullGlobalData === 'function') pullGlobalData();
   cart = JSON.parse(localStorage.getItem('cricpro_cart') || '{}');
   // Reset DB to new products (only wipe plain/old-format cache, never secure admin-saved products)
   if (!localStorage.getItem('cricpro_products_v2')) {

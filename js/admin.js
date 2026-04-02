@@ -2,6 +2,7 @@
 let currentTab = 'requests';
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (typeof pullGlobalData === 'function') pullGlobalData();
     checkAdminAuth();
     renderRequests();
 });
@@ -447,4 +448,82 @@ function saveNewPlayer() {
     } else {
         showToast('❌ Failed to register player', 'error');
     }
+}
+async function renderStoreItems() {
+    const list = document.getElementById('store-list');
+    const ordersList = document.getElementById('admin-orders-list');
+    if (!list) return;
+
+    // --- RENDER PRODUCTS ---
+    const products = DB.getProducts();
+    list.innerHTML = products.map(p => `
+        <div class="card product-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px">
+                <span class="badge badge-blue">${p.category}</span>
+                <span style="font-weight:700">Rs. ${p.price}</span>
+            </div>
+            <h4>${p.name}</h4>
+            <p style="font-size:12px; color:var(--c-muted); margin-bottom:12px">Stock: ${p.stock}</p>
+            <button class="btn btn-red btn-sm" onclick="deleteProduct('${p.id}')">🗑️ Delete</button>
+        </div>
+    `).join('');
+
+    // --- RENDER ORDERS ---
+    if (ordersList) {
+        ordersList.innerHTML = '<div style="color:var(--c-muted)">Loading active orders...</div>';
+        try {
+            const r = await fetch(BACKEND_BASE_URL + '/sync/orders');
+            const orders = await r.json();
+            if (!orders || !orders.length) {
+                ordersList.innerHTML = '<div style="color:var(--c-muted)">No orders found.</div>';
+                return;
+            }
+            ordersList.innerHTML = orders.map(o => `
+                <div class="card" style="margin-bottom:10px; background:rgba(0,0,0,0.02); border-left:4px solid var(--c-primary)">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                        <span style="font-weight:700; color:var(--c-primary)">${o._id || o.id}</span>
+                        <span style="font-size:12px; font-weight:700" class="badge ${o.status === 'pending' ? 'badge-amber' : 'badge-green'}">${o.status.toUpperCase()}</span>
+                    </div>
+                    <div style="font-size:14px; margin-bottom:8px">
+                        <strong>Customer:</strong> ${o.name} (${o.phone})<br/>
+                        <strong>Address:</strong> ${o.address}<br/>
+                        <strong>Items:</strong> ${o.items?.map(i => `${i.qty}x ${i.name}`).join(', ') || 'None'}<br/>
+                        <strong style="color:var(--c-green)">Total: Rs. ${o.total}</strong>
+                    </div>
+                    <div>
+                         ${o.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="completeOrder('${o._id || o.id}')">Mark Complete</button>` : ''}
+                         <button class="btn btn-ghost btn-sm" onclick="deleteOrder('${o._id || o.id}')">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            ordersList.innerHTML = '<div style="color:var(--c-red)">Failed to load orders from cloud.</div>';
+        }
+    }
+}
+
+async function completeOrder(id) {
+    if(!confirm('Mark this order as completed?')) return;
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/order', {
+             method: 'POST',
+             headers: {'Content-Type': 'application/json'},
+             body: JSON.stringify({id, status: 'completed'})
+        });
+        if(r.ok) {
+            showToast('Order completed!', 'success');
+            renderStoreItems();
+        }
+    } catch(e) { showToast('Sync failed', 'error'); }
+}
+
+async function deleteOrder(id) {
+    if(!confirm('Permanently remove this order?')) return;
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/orders/' + id, { method: 'DELETE' });
+        if(r.ok) {
+            showToast('Order removed', 'success');
+            renderStoreItems();
+        }
+    } catch(e) { showToast('Delete failed', 'error'); }
 }

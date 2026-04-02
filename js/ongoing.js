@@ -12,9 +12,13 @@ window.renderOngoing = function() {
     if (currentTab === 'recent') renderRecent();
 };
 
+// Export globally for sync updates
+window.renderLive = renderLive;
+
 document.addEventListener('DOMContentLoaded', () => {
-  renderLive();
-  // Global sync handle will trigger re-renders now
+    if (typeof pullGlobalData === 'function') pullGlobalData();
+    renderLive();
+    // Global sync handle will trigger re-renders now
 });
 
 function startAutoRefresh() {

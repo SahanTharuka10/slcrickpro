@@ -16,9 +16,9 @@ const DB_KEYS = {
 (function() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
-        document.addEventListener('DOMContentLoaded', () => {
-            document.body.classList.add('light-mode');
-        });
+        const apply = () => document.body.classList.add('light-mode');
+        if (document.body) apply();
+        else document.addEventListener('DOMContentLoaded', apply);
     }
 })();
 
@@ -29,9 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function toggleTheme() {
+window.toggleTheme = function() {
     const isLight = document.body.classList.toggle('light-mode');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    if (typeof showToast === 'function') {
+        showToast(`🌓 Switched to ${isLight ? 'Light' : 'Dark'} mode`, 'default');
+    }
+};
+
+function showErrorInsideProgram(msg, url, line) {
+    console.error("Critical Error:", msg, "at", url, ":", line);
+    showToast("⚠️ Operation Error: " + msg, "error");
 }
 
 const DB = {
@@ -467,8 +475,11 @@ const DB = {
         order.status = 'pending';
         arr.push(order);
         this.saveOrders(arr);
-        // Sync to Google Sheets
-        syncToSheets('order', order);
+        
+        // Sync to MongoDB Cloud
+        if (typeof syncToDB === 'function') {
+            syncToDB('order', order);
+        }
         return order;
     },
     addTeamToSheets(team) {
@@ -554,6 +565,7 @@ function syncToDB(type, data) {
     else if (type === 'team') endpoint = '/teams';
     else if (type === 'match') endpoint = '/sync/match';
     else if (type === 'tournament') endpoint = '/sync/tournament';
+    else if (type === 'order') endpoint = '/sync/order';
 
     console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
     fetch(BACKEND_BASE_URL + endpoint, {
@@ -594,9 +606,17 @@ DB.handshake = async function(id, password) {
 /**
  * Fetch ALL matches/tournaments from the cloud and merge them.
  */
-async function pullGlobalData() {
+window.pullGlobalData = async function(showFeedback = false) {
+    if (!BACKEND_BASE_URL) return;
+    if (showFeedback) showToast('🔄 Syncing with Cloud...', 'default');
+    
+    // Add animation to sync button if it exists
+    const syncBtn = document.getElementById('sync-toggle');
+    if (syncBtn) syncBtn.classList.add('syncing-animate');
+
     try {
         const r = await fetch(BACKEND_BASE_URL + '/sync/matches');
+        if (!r.ok) throw new Error('Cloud unreachable');
         const d = await r.json(); // { matches: [], tournaments: [] }
         
         if (d.matches) {
@@ -617,14 +637,44 @@ async function pullGlobalData() {
             DB._secureSet(DB_KEYS.TOURNAMENTS, d.tournaments);
         }
         
+        // --- FETCH PRODUCTS ---
+        const rp = await fetch(BACKEND_BASE_URL + '/sync/products');
+        if (rp.ok) {
+            const dp = await rp.json();
+            if (Array.isArray(dp)) {
+                // Merge products logic
+                const local = DB.getProducts();
+                const merged = dp.map(cp => {
+                    const lp = local.find(x => x.id === cp.id);
+                    // Keep local version only if it's strictly newer
+                    return (lp && lp.lastUpdated > (cp.lastUpdated || 0)) ? lp : cp;
+                });
+                // Add local-only items
+                local.forEach(lp => {
+                    if (!merged.find(x => x.id === lp.id)) merged.push(lp);
+                });
+                DB._secureSet(DB_KEYS.PRODUCTS, merged);
+            }
+        }
+
+        if (showFeedback) showToast('✅ Sync Complete!', 'success');
+
         // Trigger UI refresh if we are on relevant pages
         if (typeof renderMatches === 'function') renderMatches();
         if (typeof renderOngoing === 'function') renderOngoing();
+        if (typeof renderProducts === 'function') renderProducts();
+        if (typeof renderLive === 'function') renderLive();
+        if (typeof updateTicker === 'function') updateTicker();
+        if (typeof renderAll === 'function') renderAll();
+        if (typeof renderResumeMatches === 'function') renderResumeMatches();
         
     } catch (e) {
-        console.warn('Discovery failed:', e.message);
+        console.warn('Sync failed:', e.message);
+        if (showFeedback) showToast('⚠️ Sync Failed. Server might be sleeping.', 'error');
+    } finally {
+        if (syncBtn) syncBtn.classList.remove('syncing-animate');
     }
-}
+};
 
 // Start background discovery
 setInterval(pullGlobalData, 10000);

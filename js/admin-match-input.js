@@ -214,6 +214,10 @@ async function saveOfficialMatchAdmin() {
     matches.push(matchData);
     DB.saveMatches(matches);
 
-    showToast('Match saved. Updating stats...', 'info');
-    reSyncAllStats();
+    // Sync to Cloud
+    if (typeof syncToDB === 'function') {
+        syncToDB('match', matchData);
+    }
+
+    showToast('Match saved and synced to cloud!', 'success');
 }

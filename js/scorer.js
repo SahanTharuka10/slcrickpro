@@ -617,6 +617,29 @@ async function loginToMatch() {
 }
 
 
+async function scheduleNewMatch() {
+    const t1 = document.getElementById('team1-name').value.trim();
+    const t2 = document.getElementById('team2-name').value.trim();
+    if (!t1 || !t2) { showToast('Please enter both team names!', 'error'); return; }
+
+    const match = DB.createMatch({
+        team1: t1,
+        team2: t2,
+        overs: parseInt(document.getElementById('setup-overs').value),
+        ballsPerOver: parseInt(document.getElementById('setup-bpo').value),
+        playersPerSide: parseInt(document.getElementById('setup-pps').value),
+        venue: document.getElementById('setup-venue').value.trim(),
+        scorer: document.getElementById('setup-scorer').value.trim(),
+        scoringPassword: document.getElementById('match-scoring-password').value.trim()
+    });
+    match.status = 'scheduled';
+    DB.saveMatch(match);
+    showToast('Match scheduled successfully!', 'success');
+    setTimeout(() => {
+        location.href = '../index.html';
+    }, 1500);
+}
+
 async function startNewMatch() {
     let existingOfficialTournamentId = null;
 

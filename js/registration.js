@@ -100,14 +100,34 @@ function stopCamera() {
 
 function capturePhoto() {
     const video = document.getElementById('camera-video');
-    const canvas = document.getElementById('camera-canvas');
+    const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.width = 400;
-    canvas.height = 400;
-    context.drawImage(video, 0, 0, 400, 400);
-    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    canvas.width = 300;
+    canvas.height = 300;
+    context.drawImage(video, 0, 0, 300, 300);
+    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6); // 60% quality
     renderPreview();
     stopCamera();
+}
+
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 300, 300);
+            capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+            renderPreview();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
 // ========== REGISTER ==========

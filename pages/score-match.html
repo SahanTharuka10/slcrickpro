@@ -195,9 +195,10 @@
                     </select>
                 </div>
             </div>
-            <button class="btn btn-primary btn-full" id="start-btn" onclick="startNewMatch()" style="margin-top:10px">
-                🏏 Start Match
-            </button>
+            <div style="display:flex; gap:12px; margin-top:20px">
+                <button class="btn btn-ghost" style="flex:1" onclick="scheduleNewMatch()">🗓️ Schedule Match</button>
+                <button class="btn btn-primary" style="flex:1.5" id="start-btn" onclick="startNewMatch()">🏏 Start Live Scoring</button>
+            </div>
         </div>
 
         <!-- Recent Tournaments & Matches -->

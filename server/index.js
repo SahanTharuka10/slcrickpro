@@ -161,6 +161,20 @@ const productSchema = new mongoose.Schema({
 
 const Product = mongoose.model('Product', productSchema);
 
+const orderSchema = new mongoose.Schema({
+    _id:      { type: String }, // ORD-<timestamp>
+    name:     { type: String },
+    phone:    { type: String },
+    address:  { type: String },
+    note:     { type: String },
+    items:    { type: Array },
+    total:    { type: Number },
+    status:   { type: String, default: 'pending' },
+    date:     { type: Number }
+}, { _id: false, timestamps: true });
+
+const Order = mongoose.model('Order', orderSchema);
+
 // ─── Connect to MongoDB (serverless-safe, promise-cached) ────────────────────
 
 let _connectPromise = null;
@@ -643,6 +657,39 @@ app.get('/sync/matches', async (req, res) => {
         res.json({ matches: publicMatches, tournaments: publicTournaments });
     } catch (e) {
         res.status(500).json({ error: e.message || 'Failed to fetch matches' });
+    }
+});
+
+app.post('/sync/order', async (req, res) => {
+    const data = parseBody(req);
+    if (!data || !data.id) return res.status(400).json({ error: 'Missing order id' });
+    try {
+        await ensureDB();
+        await Order.findByIdAndUpdate(data.id, { _id: data.id, ...data }, { upsert: true });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to sync order' });
+    }
+});
+
+app.get('/sync/orders', async (req, res) => {
+    try {
+        await ensureDB();
+        const orders = await Order.find().sort({ date: -1 }).lean();
+        res.json(orders);
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to fetch orders' });
+    }
+});
+
+app.delete('/sync/orders/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await ensureDB();
+        await Order.findByIdAndDelete(id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Failed to delete order' });
     }
 });
 
