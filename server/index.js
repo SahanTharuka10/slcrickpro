@@ -562,7 +562,7 @@ function emitUpdate(type, id, data) {
 //  SECURITY: Password Verification
 // ═══════════════════════════════════════════════════════════════════════════
 
-app.post('/api/verify-scoring-password', async (req, res) => {
+app.post('/api/handshake', async (req, res) => {
     const { id, type, password } = req.body;
     if (!id || !type || !password) return res.status(400).json({ error: 'Missing id, type, or password' });
     
@@ -572,13 +572,15 @@ app.post('/api/verify-scoring-password', async (req, res) => {
         const doc = await Model.findById(id).lean();
         
         if (!doc || !doc.scoring_password) {
-            return res.json({ ok: true, message: 'No password required' });
+            // No password set, but if it's a request, user needs a token to start
+            const token = (type === 'tournament' || doc?.tournamentId) ? createScoringToken(id) : null;
+            return res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
         }
         
         const match = await bcrypt.compare(password, doc.scoring_password);
         if (match) {
-            const tournamentId = type === 'tournament' ? id : null;
-            const token = tournamentId ? createScoringToken(tournamentId) : null;
+            const tournamentId = type === 'tournament' ? id : (doc.tournamentId || id);
+            const token = createScoringToken(tournamentId);
             res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
         } else {
             res.status(401).json({ error: 'Invalid password' });
@@ -756,8 +758,12 @@ app.post('/sync/tournament', async (req, res) => {
             delete data.scoringPassword;
         }
         await Tournament.findByIdAndUpdate(data.id, update, { upsert: true });
+        
+        // Return a scoring token for the creator so they can sync matches immediately
+        const token = createScoringToken(data.id);
+        
         emitUpdate('tournament', data.id, data);
-        res.json({ ok: true });
+        res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message || 'Failed to sync tournament' });

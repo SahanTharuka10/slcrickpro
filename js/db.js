@@ -191,6 +191,30 @@ const DB = {
         this._secureSet(DB_KEYS.MATCHES, arr);
         if (!skipCloud) syncToDB('match', match);
     },
+    // New: specialized save that ensures we get a token back for new tournaments
+    async saveTournamentWithAuth(tourn) {
+        tourn.lastUpdated = Date.now();
+        const arr = this.getTournaments();
+        const idx = arr.findIndex(t => t.id === tourn.id);
+        if (idx !== -1) arr[idx] = tourn; else arr.push(tourn);
+        this._secureSet(DB_KEYS.TOURNAMENTS, arr);
+
+        // Sync and capture token if returned
+        if (BACKEND_BASE_URL) {
+            try {
+                const resp = await fetch(BACKEND_BASE_URL + '/sync/tournament', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(tourn)
+                });
+                const d = await resp.json();
+                if (d.token) {
+                    localStorage.setItem('cricpro_token', d.token);
+                    localStorage.setItem('cricpro_token_expiry', (Date.now() + d.expiresInMs).toString());
+                }
+            } catch(e) { console.warn('Cloud save error:', e); }
+        }
+    },
     deleteMatch(id) {
         let arr = this.getMatches();
         arr = arr.filter(m => m.id !== id);
@@ -573,13 +597,25 @@ function syncToDB(type, data) {
     else if (type === 'order') endpoint = '/sync/order';
 
     console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
+    const token = localStorage.getItem('cricpro_token');
+    const headers = { 
+        'Content-Type': 'application/json',
+        'x-api-key': 'slcrickpro-v1' // Simple API secret for backend consistency
+    };
+    if (token) headers['x-scoring-token'] = token;
+
     fetch(BACKEND_BASE_URL + endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(data),
     })
     .then(r => r.json())
-    .then(d => console.log('✅ Sync response:', d))
+    .then(d => {
+        if (d.error === 'Unauthorized scoring session') {
+            console.warn('Scoring token expired or invalid.');
+            showToast('🔄 Sync limited: Please re-authorize session', 'default');
+        }
+    })
     .catch(err => console.error('❌ Sync failed:', err));
 }
 
@@ -596,7 +632,10 @@ DB.handshake = async function(id, password) {
         });
         const d = await r.json();
         if (d.ok) {
-            // Save local grant so user doesn't have to enter it again on this device
+            if (d.token) {
+                localStorage.setItem('cricpro_token', d.token);
+                if (d.expiresInMs) localStorage.setItem('cricpro_token_expiry', (Date.now() + d.expiresInMs).toString());
+            }
             const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
             grants[id] = true;
             localStorage.setItem('cricpro_grants', JSON.stringify(grants));

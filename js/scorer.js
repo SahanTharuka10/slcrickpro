@@ -335,10 +335,10 @@ async function submitMatchRequest() {
     if (!name || !pw) { showToast('Name and Password are required!', 'error'); return; }
 
     if (_pendingTournPayload) {
+        _pendingTournPayload.scoringPassword = pw;
         const tourn = await DB.createTournament(_pendingTournPayload);
         tourn.status = 'requested';
-        tourn.scoringPassword = pw;
-        DB.saveTournament(tourn);
+        await DB.saveTournamentWithAuth(tourn);
 
         DB.addRequest({ tournamentId: tourn.id, requesterName: name, organizerPhone: phone, requestedPassword: pw, type: 'tournament' });
 
