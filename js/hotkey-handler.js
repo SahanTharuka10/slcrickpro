@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionToken = sessionStorage.getItem('match_session_token');
 
     if (!activeMatchId) {
-        console.warn('Hotkey Mode: missing matchId in URL and session');
+        // console.warn('Hotkey Mode: missing matchId in URL and session');
         return;
     }
 
