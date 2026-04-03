@@ -11,38 +11,31 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const app = express();
 const server = http.createServer(app);
 
-// Allowed origins for production frontends
-const ALLOWED_ORIGINS = [
-  'https://www.slcrickpro.live',
-  'https://slcrickpro.live',
-  'https://slcrickpro.vercel.app',
-  'https://slcrickpro-server.onrender.com'
-];
-
+// Accept any origin and reflect it back to fully bypass strict CORS limitations
 const io = socketIo(server, {
   cors: {
-    origin: ALLOWED_ORIGINS,
-    methods: ['GET','POST'],
+    origin: true, // Echoes the origin
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
 
-// Explicit CORS headers to ensure even error/404 responses include them
+// Using standard cors to apply CORS universally
+app.use(cors({
+  origin: true, // Dynamically set the Access-Control-Allow-Origin to the requested origin
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token']
+}));
+
+// A fallback middleware strictly for cases where `cors()` might be skipped
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  } else if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  if (!res.headersSent && req.headers.origin) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-
-app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'text/plain' }));
 app.use(express.static(path.join(__dirname, '..')));
