@@ -577,29 +577,21 @@ const DB = {
 // ============================================================
 
 // Auto-detected Backend & Socket
-// Auto-detected Backend & Socket
-const isProd = window.location.hostname === 'slcrickpro.live' || 
-               window.location.hostname === 'www.slcrickpro.live' ||
-               window.location.hostname === 'slcrickpro.vercel.app' ||
-               window.location.hostname === 'www.slcrickpro.vercel.app' ||
-               (window.location.hostname !== 'localhost' && 
-                window.location.hostname !== '127.0.0.1' &&
-                !window.location.hostname.includes('192.168.') && 
-                !window.location.hostname.includes('10.0.0.'));
+// ============================================
+// HOW TO DEPLOY TO THE INTERNET (RAILWAY.APP)
+// ============================================
+// 1. Change `IS_PRODUCTION` to true
+// 2. Paste your Railway backend link into `PROD_BACKEND_URL`
+const IS_PRODUCTION = false; 
+const PROD_BACKEND_URL = "https://your-backend-app.railway.app"; 
 
-// Specifically unified production backend on Render.com to support stable WebSockets and consistent DB access
-const PROD_BACKEND = "https://slcrickpro-server.onrender.com";
-
-let BACKEND_BASE_URL = isProd ? PROD_BACKEND : (localStorage.getItem('cricpro_backend_url') || ("http://" + window.location.hostname + ":3000"));
+let BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || 
+                      (IS_PRODUCTION ? PROD_BACKEND_URL : "http://" + window.location.hostname + ":3000");
 
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 
-// Enforce HTTPS in production to avoid mixed-content blocking
-if (isProd && BACKEND_BASE_URL.startsWith('http://')) {
-    BACKEND_BASE_URL = BACKEND_BASE_URL.replace('http://', 'https://');
-    localStorage.setItem('cricpro_backend_url', BACKEND_BASE_URL);
-}
+// local manual network backend
 
 let socket = null;
 if (typeof io !== 'undefined') {

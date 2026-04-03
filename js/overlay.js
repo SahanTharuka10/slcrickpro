@@ -83,9 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Backend URL Discovery ─────────────────────────────────
-    const baseUrl = window.BACKEND_BASE_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000' : 'https://slcrickpro-server.onrender.com');
+    const baseUrl = window.BACKEND_BASE_URL || ('http://' + window.location.hostname + ':3000');
 
     // ── Socket.io: Instant push-based updates from the server
     if (typeof io !== 'undefined') {

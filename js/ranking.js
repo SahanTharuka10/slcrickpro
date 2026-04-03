@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function fetchLiveStats() {
-    const baseUrl = window.BACKEND_BASE_URL || localStorage.getItem('cricpro_backend_url') || 'https://slcrickpro-server.onrender.com';
+    const baseUrl = window.BACKEND_BASE_URL || localStorage.getItem('cricpro_backend_url') || ('http://' + window.location.hostname + ':3000');
     if (!baseUrl) return;
     
     try {

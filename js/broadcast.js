@@ -30,9 +30,7 @@ const Broadcast = {
         console.log(`📡 Broadcast Sent (Local): ${cmd}`, data);
 
         // SYNC TO SERVER (Cross-Device WebSocket Support)
-        const baseUrl = window.BACKEND_BASE_URL || localStorage.getItem('cricpro_backend_url') || 
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:3000' : 'https://slcrickpro-server.onrender.com');
+        const baseUrl = window.BACKEND_BASE_URL || localStorage.getItem('cricpro_backend_url') || ('http://' + window.location.hostname + ':3000');
                 
         fetch(baseUrl + '/sync/broadcast', {
             method: 'POST',
