@@ -585,8 +585,14 @@ const DB = {
 const IS_PRODUCTION = true; 
 const PROD_BACKEND_URL = "https://slcrickpro-production.up.railway.app"; 
 
-let BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || 
-                      (IS_PRODUCTION ? PROD_BACKEND_URL : "http://" + window.location.hostname + ":3000");
+let BACKEND_BASE_URL = IS_PRODUCTION 
+    ? PROD_BACKEND_URL 
+    : (localStorage.getItem('cricpro_backend_url') || "http://" + window.location.hostname + ":3000");
+
+// Clear old cache if in production
+if (IS_PRODUCTION) {
+    localStorage.removeItem('cricpro_backend_url');
+}
 
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
