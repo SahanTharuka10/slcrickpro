@@ -86,6 +86,8 @@ const DB = {
         arr.forEach(p => syncToDB('player', p));
     },
     addPlayer(player) {
+        if (!this._playerPhotoCache) this._playerPhotoCache = {};
+
         const arr = this.getPlayers();
         const id = this.generatePlayerId(arr);
         player.playerId = id;
@@ -97,15 +99,28 @@ const DB = {
             wickets: 0, overs: 0, bowlingRuns: 0, maidens: 0, bestBowling: "0/0",
             catches: 0, stumpings: 0,
         };
+
+        // Keep image in separate in-memory cache, so localStorage quota doesn't blow up
+        if (player.photo && String(player.photo).startsWith('data:')) {
+            this._playerPhotoCache[id] = player.photo;
+            player.photo = '';
+        }
+
         arr.push(player);
         this.savePlayers(arr);
+
         // Ensure last ID is tracked immediately
         const m = (player.playerId || '').match(/CP-?(\d+)/);
         if (m) {
             localStorage.setItem('cricpro_last_pid', (parseInt(m[1]) || 0).toString());
         }
-        // Sync to MongoDB
-        syncToDB('player', player);
+
+        // Sync to MongoDB (strip heavy data URI to avoid 413)
+        const syncPayload = { ...player };
+        if (syncPayload.photo && String(syncPayload.photo).startsWith('data:')) {
+            syncPayload.photo = '';
+        }
+        syncToDB('player', syncPayload);
         return player;
     },
     generatePlayerId(arr) {
@@ -123,7 +138,42 @@ const DB = {
         return 'CP' + String(max + 1).padStart(4, '0');
     },
     getPlayerById(id) {
-        return this.getPlayers().find(p => p.playerId === id);
+        const p = this.getPlayers().find(p => p.playerId === id);
+        if (!p) return null;
+        if ((!p.photo || p.photo === '') && this._playerPhotoCache && this._playerPhotoCache[id]) {
+            p.photo = this._playerPhotoCache[id];
+        }
+        return p;
+    },
+    updatePlayer(player) {
+        if (!player || !player.playerId) return null;
+        if (!this._playerPhotoCache) this._playerPhotoCache = {};
+
+        const arr = this.getPlayers();
+        const idx = arr.findIndex(p => p.playerId === player.playerId);
+        if (idx === -1) {
+            return this.addPlayer(player);
+        }
+
+        // Handle photo caching to avoid localStorage quota issues.
+        if (player.photo && String(player.photo).startsWith('data:')) {
+            this._playerPhotoCache[player.playerId] = player.photo;
+            player.photo = '';
+        }
+
+        arr[idx] = { ...arr[idx], ...player };
+
+        // Keep the in-memory photo cache to use for display, but do not persist data URI heavy payload.
+        if (this._playerPhotoCache[player.playerId]) {
+            arr[idx].photo = '';
+        }
+
+        this.savePlayers(arr);
+
+        const syncPayload = { ...arr[idx], photo: '' };
+        syncToDB('player', syncPayload);
+
+        return arr[idx];
     },
     updatePlayerStats(playerId, stats) {
         const arr = this.getPlayers();
@@ -597,15 +647,38 @@ if (typeof io !== 'undefined') {
 function syncToDB(type, data) {
     if (!BACKEND_BASE_URL) return;
     let endpoint = '';
-    if (type === 'player') endpoint = '/players';
+    if (type === 'player') {
+        endpoint = '/players';
+        if (data && data.photo && String(data.photo).startsWith('data:')) {
+            data = { ...data, photo: '' };
+        }
+    }
     else if (type === 'team') endpoint = '/teams';
     else if (type === 'match') endpoint = '/sync/match';
     else if (type === 'tournament') endpoint = '/sync/tournament';
     else if (type === 'order') endpoint = '/sync/order';
 
     console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
-    const token = localStorage.getItem('cricpro_token');
-    const headers = { 
+    let token = localStorage.getItem('cricpro_token');
+    const expiry = parseInt(localStorage.getItem('cricpro_token_expiry') || '0');
+    if (expiry && Date.now() > expiry) {
+        console.warn('Sync token expired (local expiration). Clearing it.');
+        token = null;
+        localStorage.removeItem('cricpro_token');
+        localStorage.removeItem('cricpro_token_expiry');
+    }
+
+    // If match belongs to locked tournament and we currently have no valid token, skip cloud sync.
+    if (type === 'match' && data && data.tournamentId && !token) {
+        const tournament = (DB && DB.getTournament) ? DB.getTournament(data.tournamentId) : null;
+        const locked = tournament && (tournament.scoringPassword || tournament.password || tournament.isLocked);
+        if (locked) {
+            console.warn('Skipping match sync for locked tournament without valid token.');
+            return;
+        }
+    }
+
+    const headers = {
         'Content-Type': 'application/json',
         'x-api-key': 'slcrickpro-v1' // Simple API secret for backend consistency
     };
@@ -616,10 +689,27 @@ function syncToDB(type, data) {
         headers: headers,
         body: JSON.stringify(data),
     })
-    .then(r => r.json())
+    .then(async (r) => {
+        if (r.status === 401) {
+            console.warn('Scoring token expired or invalid (401). Clearing local token.');
+            localStorage.removeItem('cricpro_token');
+            localStorage.removeItem('cricpro_token_expiry');
+            showToast('🔐 Scoring token expired, please re-open tournament and unlock again', 'error');
+            return null;
+        }
+        if (!r.ok) {
+            const text = await r.text();
+            console.warn('Sync failed with status', r.status, text);
+            return null;
+        }
+        return r.json();
+    })
     .then(d => {
+        if (!d) return;
         if (d.error === 'Unauthorized scoring session') {
             console.warn('Scoring token expired or invalid.');
+            localStorage.removeItem('cricpro_token');
+            localStorage.removeItem('cricpro_token_expiry');
             showToast('🔄 Sync limited: Please re-authorize session', 'default');
         }
     })
@@ -632,13 +722,16 @@ function syncToDB(type, data) {
 DB.handshake = async function(id, password) {
     const type = id.startsWith('MATCH') ? 'match' : 'tournament';
     try {
+        if (!BACKEND_BASE_URL) return { ok: false, error: 'No backend URL configured' };
+
         const r = await fetch(BACKEND_BASE_URL + '/api/handshake', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, type, password })
         });
+
         const d = await r.json();
-        if (d.ok) {
+        if (r.ok && d.ok) {
             if (d.token) {
                 localStorage.setItem('cricpro_token', d.token);
                 if (d.expiresInMs) localStorage.setItem('cricpro_token_expiry', (Date.now() + d.expiresInMs).toString());
@@ -648,8 +741,10 @@ DB.handshake = async function(id, password) {
             localStorage.setItem('cricpro_grants', JSON.stringify(grants));
             return { ok: true };
         }
-        return { ok: false, error: d.error || 'Access Denied' };
+
+        return { ok: false, error: (d && d.error) ? d.error : 'Access Denied' };
     } catch (e) {
+        console.error('DB.handshake error', e);
         return { ok: false, error: 'Connection failed' };
     }
 };

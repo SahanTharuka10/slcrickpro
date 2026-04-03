@@ -57,6 +57,9 @@ function resolvePlayerProfileForBatter(inn, bName) {
 
 function playerPhotoSrc(p) {
     if (p && p.photo && String(p.photo).trim()) return p.photo;
+    if (p && p.playerId && DB && DB._playerPhotoCache && DB._playerPhotoCache[p.playerId]) {
+        return DB._playerPhotoCache[p.playerId];
+    }
     return DEFAULT_PLAYER_PHOTO;
 }
 
@@ -220,19 +223,16 @@ function renderResumeMatchesImpl() {
     const container = document.getElementById('resume-matches-list');
     if (!container) return;
 
-    // 1. Get ALL matches (live, paused, AND scheduled)
+    // 1. Get ALL matches and keep only paused ones for score/resume behavior
     const allMatches = DB.getMatches();
-    const liveMatches = allMatches.filter(m => ['live', 'paused', 'ongoing'].includes(m.status));
-    
-    // Show ALL scheduled matches, even those in tournaments
-    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled');
-    
+    const pausedMatches = allMatches.filter(m => m.status === 'paused');
+
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled', 'setup'].includes(t.status));
     
     const requests = DB.getRequests().filter(r => r.type === 'tournament' && r.status === 'pending');
 
-    if (!liveMatches.length && !scheduledMatches.length && !tourns.length && !requests.length) {
+    if (!pausedMatches.length && !tourns.length && !requests.length) {
         const isSyncing = !window._isGlobalSyncCompleted;
         container.innerHTML = `
             <div style="color:var(--c-muted);font-size:14px;padding:32px 20px;text-align:center;background:rgba(255,255,255,0.015);border-radius:18px;border:1px dashed rgba(255,255,255,0.1); margin-bottom:15px">
@@ -300,50 +300,31 @@ function renderResumeMatchesImpl() {
         });
     }
 
-    // --- LIVE MATCHES SECTION ---
-    if (liveMatches.length) {
-        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#00e676; margin:24px 0 12px 10px; opacity:0.8">🔴 ONGOING MATCHES</div>`;
-        liveMatches.forEach(m => {
+    // --- PAUSED MATCHES SECTION ---
+    if (pausedMatches.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#ffc107; margin:24px 0 12px 10px; opacity:0.8">⏸ PAUSED MATCHES</div>`;
+        pausedMatches.forEach(m => {
             const inn = m.innings ? m.innings[m.currentInnings] : null;
-            const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : 'Match in Progress';
+            const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : 'Match paused';
             const hasPw = (m.scoringPassword || m.password || m.isLocked);
-            
+
             html += `
-                <div class="resume-card" style="border-left: 4px solid #00e676; background:linear-gradient(90deg, rgba(0,230,118,0.05), transparent)">
+                <div class="resume-card" style="border-left: 4px solid #ffc107; background:linear-gradient(90deg, rgba(255,193,7,0.05), transparent)">
                     <div class="resume-card-info">
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
-                            <span style="font-size:10px; background:rgba(0,230,118,0.15); color:#00e676; padding:2px 8px; border-radius:100px; font-weight:800">${m.status.toUpperCase()}</span>
+                            <span style="font-size:10px; background:rgba(255,193,7,0.15); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">PAUSED</span>
                             ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
                         </div>
                         <h4 style="font-size:18px; font-weight:800">${m.team1} vs ${m.team2}</h4>
                         <p style="opacity:0.7">${score} · ${m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match'}</p>
                     </div>
-                    <button class="btn btn-green btn-sm" onclick="resumeMatch('${m.id}')">▶ Resume</button>
+                    <button class="btn btn-green btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">🔁 Resume</button>
                 </div>
             `;
         });
     }
 
-    // --- SCHEDULED MATCHES SECTION ---
-    if (scheduledMatches.length) {
-        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--c-amber); margin:24px 0 12px 10px; opacity:0.8">📅 SCHEDULED MATCHES</div>`;
-        scheduledMatches.forEach(m => {
-            const hasPw = (m.scoringPassword || m.password || m.isLocked);
-            html += `
-                <div class="resume-card" style="border-left: 4px solid var(--c-amber); background:linear-gradient(90deg, rgba(255,193,7,0.05), transparent)">
-                    <div class="resume-card-info">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
-                            <span style="font-size:10px; background:rgba(255,193,7,0.15); color:var(--c-amber); padding:2px 8px; border-radius:100px; font-weight:800">SCHEDULED</span>
-                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
-                        </div>
-                        <h4 style="font-size:18px; font-weight:800">${m.team1} vs ${m.team2}</h4>
-                        <p style="opacity:0.7">${m.overs} Overs · Single Match · ${m.venue || 'No Venue Specified'}</p>
-                    </div>
-                    <button class="btn btn-amber btn-sm" onclick="resumeMatch('${m.id}')">🏁 Start</button>
-                </div>
-            `;
-        });
-    }
+    // NOTE: Scheduled matches are not shown here per user request
 
     container.innerHTML = html;
 }
@@ -375,25 +356,98 @@ async function submitMatchRequest() {
     }
 }
 
-function resumeMatch(id) {
-    const m = DB.getMatch(id);
-    if (!m) return;
+function authorizeTournamentLocally(tournamentId) {
+    if (!tournamentId) return false;
 
-    if (m.tournamentId && isTournamentAuthorized(m.tournamentId)) {
-        loadMatch(m);
+    // Check if we have a stored password for this tournament
+    const storedPw = localStorage.getItem(`tourn_pw_${tournamentId}`);
+    if (storedPw) {
+        setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
+        return true;
+    }
+
+    const t = DB.getTournament(tournamentId);
+    if (!t) return false;
+    const pw = t.scoringPassword || t.password;
+    if (!pw) return false;
+    setTournamentAuthorized(tournamentId, 'local-token', 1000 * 60 * 60 * 24);
+    return true;
+}
+
+function onResumeOrStart(matchId, isStart = false) {
+    let m = DB.getMatch(matchId);
+
+    if (!m && !isStart) {
+        showToast('Match not found to resume', 'error');
         return;
     }
 
-    if (m.scoringPassword || m.password) {
-        currentMatch = m;
-        currentTournament = null; // Important: reset tournament context
-        document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
-        document.getElementById('login-password').value = '';
-        showScreen('login');
-    } else { loadMatch(m); }
+    if (!m && isStart) {
+        m = { id: matchId, status: 'INITIALIZING', runs:0, wickets:0, overs:0, ballsInOver:0 };
+    }
+
+    if (m.tournamentId && !isTournamentAuthorized(m.tournamentId) && !authorizeTournamentLocally(m.tournamentId)) {
+        openTournamentHub(m.tournamentId);
+        return;
+    }
+
+    showModeSelectionModal(m);
+}
+
+function resumeMatch(id) {
+    onResumeOrStart(id, false);
 }
 
 let currentTournamentTab = 'matches';
+
+function showModeSelectionModal(match) {
+    const existing = document.getElementById('mode-selection-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'mode-selection-modal';
+    modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.55);display:flex;justify-content:center;align-items:center;z-index:9999';
+    modal.innerHTML = `
+        <div style="background:#0f172a;padding:20px;border-radius:16px;max-width:360px;width:100%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.6);">
+            <h3 style="margin:0 0 14px; color:#fff">Resume Match ${match.id}</h3>
+            <button id="score-mode-btn" style="display:block;width:100%;margin:8px 0;padding:12px;font-weight:700;background:#0f766e;color:#fff;border:none;border-radius:10px;cursor:pointer;">Score Match (Scorer)</button>
+            <button id="hotkey-mode-btn" style="display:block;width:100%;margin:8px 0;padding:12px;font-weight:700;background:#a855f7;color:#fff;border:none;border-radius:10px;cursor:pointer;">Hotkey Access (TV)</button>
+            <button id="cancel-mode-btn" style="display:block;width:100%;margin:8px 0;padding:10px;font-weight:600;background:#1f2937;color:#fff;border:none;border-radius:10px;cursor:pointer;">Cancel</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('score-mode-btn').onclick = () => {
+        modal.remove();
+        openScorerDashboard(match.id);
+    };
+
+    document.getElementById('hotkey-mode-btn').onclick = () => {
+        modal.remove();
+        openHotkeyPanel(match.id);
+    };
+
+    document.getElementById('cancel-mode-btn').onclick = () => modal.remove();
+}
+
+function openScorerDashboard(matchId) {
+    // existing scorer path
+    currentMatch = DB.getMatch(matchId);
+    if (!currentMatch) { showToast('Match not available', 'error'); return; }
+    currentMatch.status = 'LIVE';
+    DB.saveMatch(currentMatch);
+    saveMatch(currentMatch);
+    loadMatch(currentMatch);
+}
+
+function openHotkeyPanel(matchId) {
+    sessionStorage.setItem('hotkey_match_id', matchId);
+    localStorage.setItem('hotkey_match_id', matchId); // robust fallback when session is lost
+    sessionStorage.setItem('hotkey_mode', 'true');
+    // Open hotkey mode on score-match with same loaded scripts + match context.
+    window.location.href = 'score-match.html?matchId=' + encodeURIComponent(matchId) + '&hotkey=true';
+}
 
 function switchTournamentTab(tab) {
     currentTournamentTab = tab;
@@ -431,8 +485,8 @@ async function openTournamentHub(id) {
 
         let verified = false;
         // Local password (for directly created tournaments where cleartext is available)
-        if (t.scoringPassword && pass === t.scoringPassword) verified = true;
-        if (!verified && t.password && pass === t.password) verified = true;
+        if (t.scoringPassword && pass.trim() === t.scoringPassword) verified = true;
+        if (!verified && t.password && pass.trim() === t.password) verified = true;
 
         // Cloud validate if not already verified locally
         if (!verified) {
@@ -441,7 +495,7 @@ async function openTournamentHub(id) {
                 const response = await fetch(`${baseUrl}/verify-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: t.id, type: 'tournament', password: pass })
+                    body: JSON.stringify({ id: t.id, type: 'tournament', password: pass.trim() })
                 });
                 if (response.ok) {
                     const json = await response.json();
@@ -458,6 +512,16 @@ async function openTournamentHub(id) {
             showToast('❌ Invalid password. Access denied.', 'error');
             return;
         }
+
+        // Get server token for syncing
+        const handshakeRes = await DB.handshake(t.id, pass.trim());
+        if (!handshakeRes.ok) {
+            showToast('❌ Failed to authenticate with server: ' + (handshakeRes.error || 'Unknown error'), 'error');
+            return;
+        }
+
+        // Store the password for future local auth
+        localStorage.setItem(`tourn_pw_${t.id}`, pass.trim());
 
         setTournamentAuthorized(t.id, 'user', 7200000); // 2 hours
         showToast('✅ Access Granted! Opening dashboard...', 'success');
@@ -600,17 +664,32 @@ function startOfficialMatch(mId) {
     if (!m) return;
 
     if (m.tournamentId && !isTournamentAuthorized(m.tournamentId)) {
-        currentMatch = m;
-        currentMatch.isScheduledTemplate = true;
-        document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
-        document.getElementById('login-password').value = '';
-        showScreen('login');
-        closeModal('modal-tournament-matches');
-        return;
+        // Attempt local auto-authorize from stored tourney password before login
+        if (authorizeTournamentLocally(m.tournamentId)) {
+            // Re-run flow now that authorized
+        } else {
+            currentMatch = m;
+            currentMatch.isScheduledTemplate = true;
+            document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
+            document.getElementById('login-password').value = '';
+            showScreen('login');
+            closeModal('modal-tournament-matches');
+            return;
+        }
     }
 
     closeModal('modal-tournament-matches');
 
+    // If this is a prepared schedule, start scoring immediately
+    if (m.status === 'scheduled') {
+        m.status = 'live';
+        m.isScheduledTemplate = false;
+        DB.saveMatch(m);
+        loadMatch(m);
+        return;
+    }
+
+    // Fallback: open setup for custom user input before starting
     showScreen('setup');
     document.getElementById('type-tournament').click();
     currentMatch = m; // Set it early to avoid null issues in other handlers
@@ -626,8 +705,6 @@ function startOfficialMatch(mId) {
         if (datalist && currentTournament && currentTournament.teams) {
             datalist.innerHTML = currentTournament.teams.map(t => `<option value="${t}"></option>`).join('');
         }
-        
-        currentMatch.isScheduledTemplate = true;
     }, 100);
 }
 
@@ -677,7 +754,7 @@ async function loginToMatch() {
         const response = await fetch(baseUrl + '/verify-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, type, password: pw })
+            body: JSON.stringify({ id, type, password: pw.trim() })
         });
 
         if (!response.ok) {
@@ -689,6 +766,8 @@ async function loginToMatch() {
         if (result.verified) {
             showToast('✅ Access Granted!', 'success');
             if (type === 'tournament') {
+                // Store password for future local auth
+                localStorage.setItem(`tourn_pw_${id}`, pw);
                 setTournamentAuthorized(id, 'cloud-token', 1000 * 60 * 60 * 24);
                 if (currentTournament) {
                     openTournamentHub(currentTournament.id);
@@ -2336,6 +2415,126 @@ function renderTournamentTeams() {
 }
 
 let editingTeamName = null;
+function resolveRosterPlayer(entry) {
+    if (!entry) return null;
+    const byId = DB.getPlayerById(entry);
+    if (byId) return byId;
+    const findName = String(entry).trim().toLowerCase();
+    return DB.getPlayers().find(p => p.name && p.name.trim().toLowerCase() === findName) || null;
+}
+
+let pendingRosterSlotToRegister = null;
+let pendingRosterName = null;
+
+function onRosterSlotClick(idx) {
+    const t = currentTournament;
+    if (!t || !editingTeamName) return;
+
+    const roster = t.rosters?.[editingTeamName] || [];
+    const currentVal = roster[idx] || '';
+    const currentPlayer = resolveRosterPlayer(currentVal);
+
+    const namePrompt = prompt(`Enter name for player slot ${idx + 1}:`, currentPlayer?.name || currentVal || '');
+    if (namePrompt === null) return;
+    const name = namePrompt.trim();
+    if (!name) return;
+
+    const existingPlayer = resolveRosterPlayer(name);
+    if (existingPlayer) {
+        assignRosterSlot(idx, existingPlayer);
+        return;
+    }
+
+    if (!confirm(`Player '${name}' is not registered. Add as new player and upload profile photo?`)) {
+        return;
+    }
+
+    pendingRosterSlotToRegister = idx;
+    pendingRosterName = name;
+    const fileInput = document.getElementById('roster-photo-file-input');
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+    }
+}
+
+function onRosterPhotoClick(idx) {
+    const t = currentTournament;
+    if (!t || !editingTeamName) return;
+
+    const roster = t.rosters?.[editingTeamName] || [];
+    const currentValue = roster[idx] || '';
+    const player = resolveRosterPlayer(currentValue);
+
+    pendingRosterSlotToRegister = idx;
+    pendingRosterName = player ? player.name : currentValue;
+    if (!pendingRosterName) {
+        const namePrompt = prompt(`Enter name for player slot ${idx + 1}:`);
+        if (!namePrompt) return;
+        pendingRosterName = namePrompt.trim();
+    }
+
+    const fileInput = document.getElementById('roster-photo-file-input');
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+    }
+}
+
+function assignRosterSlot(idx, player) {
+    const t = currentTournament;
+    if (!t || !editingTeamName || !player) return;
+
+    if (!t.rosters) t.rosters = {};
+    const roster = t.rosters[editingTeamName] || [];
+    roster[idx] = player.playerId || player.name;
+    t.rosters[editingTeamName] = roster;
+    DB.saveTournament(t);
+
+    openRosterEditor(editingTeamName);
+}
+
+function onRosterPhotoFileSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file || pendingRosterSlotToRegister === null) {
+        pendingRosterSlotToRegister = null;
+        pendingRosterName = null;
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const imageData = event.target.result;
+
+        const t = currentTournament;
+        if (!t || !editingTeamName) return;
+
+        const roster = t.rosters?.[editingTeamName] || [];
+        const existingValue = roster[pendingRosterSlotToRegister] || '';
+        let player = resolveRosterPlayer(existingValue);
+
+        // If the input contains a name but not a player object, create on first upload
+        if (!player && pendingRosterName) {
+            player = DB.addPlayer({ name: pendingRosterName, photo: imageData, role: 'Player' });
+        }
+
+        // If we found an existing player, update their photo
+        if (player) {
+            player.photo = imageData;
+            if (DB.updatePlayer) {
+                player = DB.updatePlayer(player);
+            } else {
+                player = DB.addPlayer(player);
+            }
+            assignRosterSlot(pendingRosterSlotToRegister, player);
+        }
+
+        pendingRosterSlotToRegister = null;
+        pendingRosterName = null;
+    };
+    reader.readAsDataURL(file);
+}
+
 function openRosterEditor(teamName) {
     const t = currentTournament;
     if (!t) return;
@@ -2350,13 +2549,12 @@ function openRosterEditor(teamName) {
     if (!listEl) return;
 
     let inputsHtml = '';
-    const playersDB = DB.getPlayers();
 
     for (let i = 0; i < 11; i++) {
-        const val = roster[i] || '';
-        // Try to find photo for initial value
-        const pMatch = playersDB.find(p => p.name.toLowerCase().trim() === val.toLowerCase().trim());
-        const photo = pMatch ? playerPhotoSrc(pMatch) : DEFAULT_PLAYER_PHOTO;
+        const slotValue = roster[i] || '';
+        const player = resolveRosterPlayer(slotValue);
+        const displayName = player ? player.name : slotValue;
+        const photo = player ? playerPhotoSrc(player) : DEFAULT_PLAYER_PHOTO;
 
         inputsHtml += `
             <div class="roster-slot" style="display:flex;align-items:center;gap:12px;margin-bottom:12px; background:rgba(255,255,255,0.03); padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
@@ -2364,13 +2562,16 @@ function openRosterEditor(teamName) {
                 <div class="roster-slot-photo" style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:2px solid rgba(var(--c-primary-rgb), 0.3); background:#000">
                     <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'" />
                 </div>
-                <div style="flex:1">
-                    <input type="text" class="form-input roster-player-input" 
-                           value="${escapeHTML(val)}" placeholder="Type player name..." 
+                <div style="flex:1;display:flex;align-items:center;gap:8px">
+                    <input id="roster-name-${i}" type="text" class="form-input roster-player-input" 
+                           value="${escapeHTML(displayName)}" placeholder="Type player name..." 
                            oninput="onRosterInputChanged(${i}, this.value)"
-                           style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" />
-                    <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); height:12px; margin-top:2px; font-weight:600">${pMatch ? '✅ Registered Player' : ''}</div>
+                           onkeydown="if(event.key==='Enter'){event.preventDefault(); onRosterSlotClick(${i});}"
+                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" />
+                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation(); onRosterSlotClick(${i})">✎</button>
+                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation(); onRosterPhotoClick(${i})">📷</button>
                 </div>
+                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:160px; text-align:right; font-weight:600">${player ? '✅ Registered' : (slotValue ? '🆕 New/Unregistered' : '')}</div>
             </div>
         `;
     }
@@ -2390,12 +2591,12 @@ function openRosterEditor(teamName) {
 
         <div style="margin-top:20px; position:sticky; bottom:0; padding-top:10px; background:var(--c-bg)">
             <button class="btn btn-primary btn-full" style="height:50px; font-weight:900; font-size:16px; border-radius:15px; box-shadow:0 10px 20px rgba(var(--c-primary-rgb), 0.2)" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Team Roster</button>
+            <input id="roster-photo-file-input" type="file" accept="image/*" style="display:none" onchange="onRosterPhotoFileSelected(event)">
         </div>
     `;
 }
 
 window.onRosterInputChanged = function(idx, val) {
-    const players = DB.getPlayers();
     const cleanVal = val.toLowerCase().trim();
     const infoEl = document.getElementById(`roster-info-${idx}`);
     const imgEl = document.getElementById(`roster-photo-${idx}`);
@@ -2406,12 +2607,12 @@ window.onRosterInputChanged = function(idx, val) {
         return;
     }
 
-    const p = players.find(x => x.name.toLowerCase().trim() === cleanVal);
+    const p = resolveRosterPlayer(cleanVal);
     if (p) {
         if (infoEl) infoEl.textContent = '✅ Registered Player (' + (p.playerId || '') + ')';
         if (imgEl) imgEl.src = playerPhotoSrc(p);
     } else {
-        if (infoEl) infoEl.textContent = '';
+        if (infoEl) infoEl.textContent = '🆕 New/Unregistered';
         if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
     }
 };
@@ -2423,7 +2624,31 @@ function saveRoster(teamName) {
     const inputs = document.querySelectorAll('.roster-player-input');
     const newRoster = [];
     inputs.forEach(inp => {
-        newRoster.push(inp.value.trim());
+        const nameOrId = inp.value.trim();
+        if (!nameOrId) {
+            newRoster.push('');
+            return;
+        }
+
+        const byId = DB.getPlayerById(nameOrId);
+        if (byId) {
+            newRoster.push(byId.playerId);
+            return;
+        }
+
+        const byName = DB.getPlayers().find(p => p.name && p.name.trim().toLowerCase() === nameOrId.toLowerCase());
+        if (byName) {
+            newRoster.push(byName.playerId);
+            return;
+        }
+
+        // Create unregistered player entry with fallback photo
+        const created = DB.addPlayer({
+            name: nameOrId,
+            photo: DEFAULT_PLAYER_PHOTO,
+            role: 'Player'
+        });
+        newRoster.push(created.playerId);
     });
     
     if (!t.rosters) t.rosters = {};

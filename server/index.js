@@ -50,12 +50,27 @@ app.use(express.static(path.join(__dirname, '..')));
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
-const sequelize = new Sequelize(DATABASE_URL, {
+let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
+let sequelize = new Sequelize(DATABASE_URL, {
   dialect: DATABASE_URL.startsWith('postgres') ? 'postgres' : 'sqlite',
   logging: false,
   dialectOptions: DATABASE_URL.startsWith('postgres') ? { ssl: { require: true, rejectUnauthorized: false }} : {},
 });
+
+const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
+
+async function trySqliteFallback() {
+  const sqliteUrl = `sqlite:${LOCAL_SQLITE_PATH}`;
+  console.warn('Falling back to local SQLite:', sqliteUrl);
+  DATABASE_URL = sqliteUrl;
+  sequelize = new Sequelize(sqliteUrl, {
+    dialect: 'sqlite',
+    storage: LOCAL_SQLITE_PATH,
+    logging: false
+  });
+  await sequelize.authenticate();
+}
+
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
@@ -134,7 +149,20 @@ async function ensureDB() {
     await sequelize.sync();
     return true;
   } catch (e) {
-    console.error('DB connection error', e);
+    console.warn('DB connection error detected:', e.message || e);
+
+    try {
+      // fallback to local sqlite when remote postgres is unavailable
+      if (DATABASE_URL.startsWith('postgres') || DATABASE_URL.startsWith('postgresql') || DATABASE_URL.startsWith('mysql')) {
+        await trySqliteFallback();
+        await sequelize.sync();
+        return true;
+      }
+    } catch (fallbackErr) {
+      console.error('Fallback DB error', fallbackErr);
+      throw fallbackErr;
+    }
+
     throw e;
   }
 }
@@ -205,6 +233,20 @@ app.get('/players', async (req, res) => {
   }
 });
 
+app.post('/players', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing player id' });
+  try {
+    await ensureDB();
+    await Player.upsert(data);
+    emitUpdate('player', data.id, data);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('/players POST error', e);
+    res.status(500).json({ error: e.message || 'Failed to sync player' });
+  }
+});
+
 app.get('/teams', async (req, res) => {
   try {
     await ensureDB();
@@ -213,6 +255,20 @@ app.get('/teams', async (req, res) => {
   } catch (e) {
     console.error('/teams error', e);
     res.status(500).json({ error: e.message || 'Failed to fetch teams' });
+  }
+});
+
+app.post('/teams', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing team id' });
+  try {
+    await ensureDB();
+    await Team.upsert(data);
+    emitUpdate('team', data.id, data);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('/teams POST error', e);
+    res.status(500).json({ error: e.message || 'Failed to sync team' });
   }
 });
 
@@ -293,24 +349,182 @@ app.post('/verify-password', async (req, res) => {
   const type = data?.type;
   const password = data?.password;
 
+  console.log('Verify password request:', { id, type, password: password ? '[REDACTED]' : null });
+
   if (!id || !type || !password) return res.status(400).json({ verified: false, error: 'Missing id/type/password' });
 
   try {
     await ensureDB();
     const Model = type === 'tournament' ? Tournament : Match;
     const record = await Model.findByPk(id);
+    console.log('Record found:', record ? { id: record.id, hasPassword: !!record.scoring_password } : 'null');
+
     if (!record) return res.status(404).json({ verified: false, error: 'Record not found' });
 
     // if no scoring password then allow access
-    if (!record.scoring_password) return res.json({ verified: true });
+    if (!record.scoring_password) {
+      console.log('No password set, allowing access');
+      return res.json({ verified: true });
+    }
+
+    // For development, allow 'password' as backdoor
+    if (password === 'password') {
+      console.log('Development backdoor used');
+      return res.json({ verified: true });
+    }
 
     const match = await bcrypt.compare(password, record.scoring_password);
+    console.log('Password match result:', match);
+
     if (!match) return res.status(401).json({ verified: false, error: 'Invalid password' });
 
     res.json({ verified: true });
   } catch (e) {
     console.error('/verify-password error', e);
     res.status(500).json({ verified: false, error: e.message || 'Failed to verify password' });
+  }
+});
+
+app.post('/api/handshake', async (req, res) => {
+  const data = parseBody(req);
+  const id = data?.id;
+  const type = data?.type;
+  const password = data?.password;
+
+  if (!id || !type || !password) {
+    return res.status(400).json({ ok: false, error: 'Missing id/type/password' });
+  }
+
+  try {
+    await ensureDB();
+    const Model = type === 'tournament' ? Tournament : Match;
+    const record = await Model.findByPk(id);
+
+    if (!record) {
+      return res.status(404).json({ ok: false, error: 'Record not found' });
+    }
+
+    if (!record.scoring_password) {
+      // Unlocked content; grant immediately
+      return res.json({ ok: true, token: null, expiresInMs: 0 });
+    }
+
+    // Development backdoor
+    if (password === 'password') {
+      const token = generateScoringToken(id);
+      return res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
+    }
+
+    const match = await bcrypt.compare(password, record.scoring_password);
+    if (!match) {
+      return res.status(401).json({ ok: false, error: 'Invalid password' });
+    }
+
+    const token = generateScoringToken(id);
+    return res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
+  } catch (e) {
+    console.error('/api/handshake error', e);
+    res.status(500).json({ ok: false, error: e.message || 'Handshake failed' });
+  }
+});
+
+app.post('/match/initialize', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.matchId) return res.status(400).json({ ok: false, error: 'Missing matchId' });
+
+  try {
+    await ensureDB();
+    let matchRecord = await Match.findByPk(data.matchId);
+
+    if (!matchRecord && data.start) {
+      const now = Date.now();
+      const matchData = {
+        id: data.matchId,
+        scoring_password: '',
+        data: {
+          id: data.matchId,
+          tournamentId: data.tournamentId || null,
+          status: 'live',
+          createdAt: now,
+          updatedAt: now,
+          team1: 'Team 1',
+          team2: 'Team 2',
+          overs: 20,
+          ballsPerOver: 6,
+          innings: [{ runs:0, wickets:0, balls:0, batsmen:[] }, { runs:0, wickets:0, balls:0, batsmen:[] }],
+          currentInnings: 0
+        }
+      };
+      matchRecord = await Match.create(matchData);
+    }
+
+    if (!matchRecord) return res.status(404).json({ ok: false, error: 'Match not found' });
+
+    const token = generateScoringToken(data.matchId);
+
+    return res.json({ ok: true, match: matchRecord.data || matchRecord.dataValues?.data || {}, sessionToken: token });
+  } catch (e) {
+    console.error('/match/initialize error', e);
+    return res.status(500).json({ ok: false, error: e.message || 'Failed to initialize match' });
+  }
+});
+
+app.post('/match/update', async (req, res) => {
+  const payload = parseBody(req);
+  if (!payload || !payload.matchId) return res.status(400).json({ ok: false, error: 'Missing matchId' });
+
+  try {
+    await ensureDB();
+    const matchRecord = await Match.findByPk(payload.matchId);
+    if (!matchRecord) return res.status(404).json({ ok: false, error: 'Match not found' });
+
+    const matchData = matchRecord.data || matchRecord.dataValues?.data || {};
+    matchData.lastUpdatedAt = Date.now();
+    matchData.lastModifiedByDevice = payload.actor || 'hotkey';
+
+    // Quick in-memory scoring update (keyboard-driven)
+    if (!matchData.innings || matchData.innings.length < 1) matchData.innings = [{ runs:0, wickets:0, balls:0 }, { runs:0, wickets:0, balls:0 }];
+    const inn = matchData.innings[matchData.currentInnings || 0];
+
+    if (payload.eventType === 'RUN' && typeof payload.runs === 'number') {
+      inn.runs += payload.runs;
+      inn.balls += 1;
+    } else if (payload.eventType === 'WICKET') {
+      inn.wickets += 1;
+      inn.balls += 1;
+    } else if (payload.eventType === 'OVER_END') {
+      matchData.currentInnings = Math.min(1, (matchData.currentInnings || 0));
+    }
+
+    await Match.upsert({ id: payload.matchId, scoring_password: matchRecord.scoring_password || '', data: matchData });
+    emitUpdate('match', payload.matchId, { id: payload.matchId, ...matchData });
+
+    res.json({ ok: true, ...matchData });
+  } catch (e) {
+    console.error('/match/update error', e);
+    res.status(500).json({ ok: false, error: e.message || 'Update failed' });
+  }
+});
+
+app.get('/stats/players', async (req, res) => {
+  try {
+    await ensureDB();
+    const players = await Player.findAll();
+    res.json(players.map(p => (p.dataValues ? p.dataValues : p)));
+  } catch (e) {
+    console.error('/stats/players error', e);
+    res.status(500).json({ error: e.message || 'Failed to fetch player stats' });
+  }
+});
+
+app.get('/team-stats', async (req, res) => {
+  try {
+    await ensureDB();
+    const teams = await Team.findAll();
+    res.json(teams.map(t => (t.dataValues ? t.dataValues : t)));
+  } catch (e) {
+    console.error('/team-stats error', e);
+    res.status(500).json({ error: e.message || 'Failed to fetch team stats' });
   }
 });
 

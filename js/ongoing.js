@@ -59,12 +59,12 @@ function switchTab(tab) {
 function renderLive() {
   const grid = document.getElementById('live-matches-grid');
   if (!grid) return;
-  
+
   const matches = DB.getMatches().filter(m => {
     if (!m.publishLive) return false;
-    // User request: Don't show scheduled tournament matches in live list
+    // User request: Live tab should not show scheduled matches by default
     if (m.type === 'tournament' && m.status === 'scheduled') return false;
-    return (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled');
+    return (m.status === 'live' || m.status === 'paused');
   });
 
   if (!matches.length) {
@@ -139,7 +139,7 @@ function buildMatchCard(m, isLive) {
         ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
         <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end">
             <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
-                ${m.status === 'scheduled' ? '🏏 Start Scoring' : '🔑 Resume Scoring'}
+                ${m.status === 'live' ? '▶ Continue Scoring' : (m.status === 'paused' ? '🔑 Resume Scoring' : (m.status === 'scheduled' ? '🏏 Start Scoring' : 'Open'))}
             </button>
         </div>` : (m.status === 'completed' ? `
         <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end; gap:8px">
