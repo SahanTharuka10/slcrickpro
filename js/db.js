@@ -582,8 +582,8 @@ const DB = {
 // ============================================
 // 1. Change `IS_PRODUCTION` to true
 // 2. Paste your Railway backend link into `PROD_BACKEND_URL`
-const IS_PRODUCTION = false; 
-const PROD_BACKEND_URL = "https://your-backend-app.railway.app"; 
+const IS_PRODUCTION = true; 
+const PROD_BACKEND_URL = "https://slcrickpro-production.up.railway.app"; 
 
 let BACKEND_BASE_URL = localStorage.getItem('cricpro_backend_url') || 
                       (IS_PRODUCTION ? PROD_BACKEND_URL : "http://" + window.location.hostname + ":3000");
