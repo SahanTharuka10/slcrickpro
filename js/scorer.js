@@ -477,54 +477,16 @@ async function openTournamentHub(id) {
     // AUTH CHECK: If tournament is locked by password then require auth before showing hub
     const locked = !!t.scoringPassword || !!t.password || !!t.isLocked;
     if (locked && !isTournamentAuthorized(t.id)) {
-        const pass = prompt(`🔐 Enter password for "${t.name}":`);
-        if (!pass) {
-            showToast('❌ Password is required', 'error');
+        if (authorizeTournamentLocally(t.id)) {
+            // Already authorized from local credentials
+        } else {
+            // Unlocked but unauthorized: show proper login screen
+            currentTournament = t;
+            document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
+            document.getElementById('login-password').value = '';
+            showScreen('login');
             return;
         }
-
-        let verified = false;
-        // Local password (for directly created tournaments where cleartext is available)
-        if (t.scoringPassword && pass.trim() === t.scoringPassword) verified = true;
-        if (!verified && t.password && pass.trim() === t.password) verified = true;
-
-        // Cloud validate if not already verified locally
-        if (!verified) {
-            try {
-                const baseUrl = BACKEND_BASE_URL || window.BACKEND_BASE_URL || window.location.origin;
-                const response = await fetch(`${baseUrl}/verify-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: t.id, type: 'tournament', password: pass.trim() })
-                });
-                if (response.ok) {
-                    const json = await response.json();
-                    verified = !!json.verified;
-                }
-            } catch (e) {
-                console.error('Password validation error', e);
-                showToast('❌ Password validation failed (server unreachable)', 'error');
-                return;
-            }
-        }
-
-        if (!verified) {
-            showToast('❌ Invalid password. Access denied.', 'error');
-            return;
-        }
-
-        // Get server token for syncing
-        const handshakeRes = await DB.handshake(t.id, pass.trim());
-        if (!handshakeRes.ok) {
-            showToast('❌ Failed to authenticate with server: ' + (handshakeRes.error || 'Unknown error'), 'error');
-            return;
-        }
-
-        // Store the password for future local auth
-        localStorage.setItem(`tourn_pw_${t.id}`, pass.trim());
-
-        setTournamentAuthorized(t.id, 'user', 7200000); // 2 hours
-        showToast('✅ Access Granted! Opening dashboard...', 'success');
     }
 
     currentTournament = t;
