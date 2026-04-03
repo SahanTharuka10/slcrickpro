@@ -1,6 +1,9 @@
 {
   "name": "slcrickpro",
   "version": "1.0.1",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
