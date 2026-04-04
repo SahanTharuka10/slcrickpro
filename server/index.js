@@ -536,6 +536,17 @@ app.get('/team-stats', async (req, res) => {
   }
 });
 
+app.post('/sync/broadcast', (req, res) => {
+    const data = parseBody(req);
+    if (data && data.matchId) {
+        console.log(`[HTTP Broadcast] Command '${data.cmd}' for ${data.matchId}`);
+        // Relay to all matching sockets
+        io.to(data.matchId).emit('broadcast_command', data);
+        return res.json({ ok: true });
+    }
+    res.status(400).json({ error: 'Missing matchId or data' });
+});
+
 app.get('/health', async (req, res) => {
   try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
 });

@@ -108,9 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderOverlay();
             });
 
-            socket.on('broadcastCmd', (payload) => {
+            socket.on('broadcast_command', (payload) => {
                 if (!payload || !payload.cmd) return;
-                console.log('⚡ Socket broadcastCmd:', payload.cmd);
+                console.log('⚡ Socket broadcast_command:', payload.cmd);
                 handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
             });
 

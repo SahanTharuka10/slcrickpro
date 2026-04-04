@@ -2779,6 +2779,7 @@ function sendBroadcast(cmd, data) {
         timestamp: Date.now()
     };
     localStorage.setItem('cricpro_broadcast_cmd', JSON.stringify(payload));
+    if (typeof socket !== 'undefined' && socket) socket.emit('broadcast_command', payload);
 }
 
 function broadcastTeamRoster(teamIdx) {
@@ -2943,24 +2944,105 @@ window.renderOngoing = function() {
 
 // --- BROADCAST CONTROLLER UI (Dedicated Tab for TV Overlays) ---
 function renderBroadcastController(match) {
-    // FORCE HIDE EVERYTHING ELSE VIA CSS
+    // Premium Broadcast Controller CSS
     const styleId = 'broadcast-lockdown-css';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            body, html { background: #070e14 !important; overflow: hidden !important; margin: 0; padding: 0; height: 100vh !important; }
-            .page-wrapper { border: 2px solid #ffc107 !important; min-height: 100vh !important; transition: border-color 0.3s; }
-            .page-wrapper > *:not(.broadcast-controller-content) { display: none !important; }
-            * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-            .broadcast-btn { 
-                border: none; border-radius: 20px; color: white; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                display: flex; flex-direction: column; padding: 20px; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            body, html { 
+                background: linear-gradient(135deg, #070b14 0%, #0d121f 100%) !important; 
+                overflow-x: hidden !important; 
+                margin: 0; padding: 0; 
+                min-height: 100vh !important; 
+                color: #e2e8f0;
+                font-family: 'Outfit', 'Inter', sans-serif;
             }
-            .broadcast-btn:active { transform: scale(0.96); opacity: 0.8; }
-            .btn-label { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.8; }
-            .btn-title { font-size: 18px; font-weight: 900; line-height: 1.2; }
-            .btn-sub { font-size: 12px; font-weight: 400; opacity: 0.6; margin-top: 4px; }
+            .broadcast-controller-content {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 24px;
+                padding-bottom: 100px;
+            }
+            .page-wrapper > *:not(.broadcast-controller-content) { display: none !important; }
+            
+            .b-card {
+                background: rgba(255, 255, 255, 0.03);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 24px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            .b-section-title {
+                font-size: 10px;
+                font-weight: 800;
+                color: rgba(255,255,255,0.4);
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .b-section-title::after {
+                content: "";
+                flex: 1;
+                height: 1px;
+                background: rgba(255,255,255,0.05);
+            }
+            .b-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .b-btn {
+                border: none;
+                border-radius: 16px;
+                padding: 16px;
+                color: white;
+                cursor: pointer;
+                text-align: left;
+                transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+                position: relative;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-height: 80px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+            .b-btn:active { transform: scale(0.96); }
+            .b-btn i { font-size: 20px; margin-bottom: 8px; opacity: 0.9; }
+            .b-btn-title { font-size: 14px; font-weight: 800; line-height: 1.2; text-transform: uppercase; }
+            .b-btn-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-top: 4px; }
+            
+            /* Button Variants */
+            .b-btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+            .b-btn-purple { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
+            .b-btn-emerald { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+            .b-btn-rose { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
+            .b-btn-amber { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+            .b-btn-slate { background: linear-gradient(135deg, #475569 0%, #1e293b 100%); }
+            .b-btn-black { background: #000; border: 1px solid rgba(255,255,255,0.1); }
+            
+            .v-trigger {
+                width: 100%;
+                height: 60px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                font-weight: 950;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+            .v-4 { border: 2px solid #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+            .v-6 { border: 2px solid #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+            .v-w { border: 2px solid #f43f5e; color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+            
+            .v-trigger:active { transform: scale(0.95); opacity: 0.7; }
         `;
         document.head.appendChild(style);
     }
@@ -2969,118 +3051,144 @@ function renderBroadcastController(match) {
     if (!wrapper) return;
     
     wrapper.innerHTML = `
-    <div class="broadcast-controller-content" style="padding: 24px; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
-        
-        <!-- Top Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 12px; color: #ffc107;">
-                <span style="font-size: 24px;">📡</span>
-                <span style="font-weight: 900; letter-spacing: 1px; font-size: 20px;">BROADCAST CONTROL</span>
+    <div class="broadcast-controller-content">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+            <div>
+                <div style="font-size: 10px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px;">Remote Station</div>
+                <div style="font-size: 24px; font-weight: 950; letter-spacing: -0.5px; color: #fff;">BROADCAST MASTER</div>
             </div>
-            <div style="background: #fbbf24; color: black; font-weight: 900; font-size: 12px; padding: 6px 14px; border-radius: 8px; box-shadow: 0 0 20px rgba(251,191,36,0.3);">LIVE PRO</div>
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px;">
+                CONNECTED • ${match.team1} vs ${match.team2}
+            </div>
         </div>
 
-        <!-- Master Force Update -->
-        <button class="broadcast-btn" style="background: #fbbf24; border-radius: 40px; height: 65px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; color: black;"
-                onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
-            <span style="font-size: 22px;">🔄</span>
-            <span style="font-weight: 900; font-size: 18px;">Force Update TV Scoreboard</span>
-        </button>
-
-        <!-- Hotkeys Main Grid -->
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 24px;">
-            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 20px; letter-spacing: 1px;">⌨️ TV HOTKEYS (TOUCH CONTROLS)</div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <button class="broadcast-btn" style="background: #2563eb;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Active', 'success');">
-                    <div class="btn-label">SHIFT + 1</div>
-                    <div class="btn-title">🛡️ TEAM 1 CARD</div>
-                    <div class="btn-sub">Show team info</div>
+        <!-- UTILITY TOOLS -->
+        <div class="b-card" style="border-color: rgba(245, 158, 11, 0.3);">
+            <div class="b-grid">
+                <button class="b-btn b-btn-amber" style="grid-column: span 2;" onclick="forceUpdateTV()">
+                    <div style="display:flex; align-items:center; gap:12px">
+                        <span style="font-size:24px">🔄</span>
+                        <div>
+                            <div class="b-btn-title">FORCE SYNC TV DISPLAY</div>
+                            <div class="b-btn-sub">Refresh all remote graphics instantly</div>
+                        </div>
+                    </div>
                 </button>
-
-                <button class="broadcast-btn" style="background: #7c3aed;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Active', 'success');">
-                    <div class="btn-label">SHIFT + 2</div>
-                    <div class="btn-title">🟣 TEAM 2 CARD</div>
-                    <div class="btn-sub">Show team info</div>
+                <button class="b-btn b-btn-rose" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
+                    <div class="b-btn-title">⏹ STOP OVERLAYS</div>
+                    <div class="b-btn-sub">Clear all visual elements</div>
                 </button>
-
-                <button class="broadcast-btn" style="background: #16a34a;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Active', 'success');">
-                    <div class="btn-label">SHIFT + P</div>
-                    <div class="btn-title">🏏 CURRENT BATTERS</div>
-                    <div class="btn-sub">Both on crease</div>
-                </button>
-
-                <button class="broadcast-btn" style="background: #dc2626;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Active', 'success');">
-                    <div class="btn-label">SHIFT + B</div>
-                    <div class="btn-title">⚡ STRIKER PROFILE</div>
-                    <div class="btn-sub">New batter card</div>
+                <button class="b-btn b-btn-slate" onclick="location.reload()">
+                    <div class="b-btn-title">🔌 RECONNECT</div>
+                    <div class="b-btn-sub">Reload remote controller</div>
                 </button>
             </div>
         </div>
 
-        <!-- Big Stats Row -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <button class="broadcast-btn" style="background: #f43f5e; height: 90px; align-items: center; justify-content: center;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed', 'success');">
-                <div class="btn-title" style="font-size: 20px;">🚀 RUNS NEEDED</div>
-            </button>
-            <button class="broadcast-btn" style="background: #10b981; height: 90px; align-items: center; justify-content: center;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate', 'success');">
-                <div class="btn-title" style="font-size: 20px;">📉 CURRENT RR</div>
-            </button>
-        </div>
-
-        <!-- Instant Visual Triggers -->
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 20px;">
-            <div style="font-size: 12px; font-weight: 800; color: #f59e0b; margin-bottom: 15px; letter-spacing: 1px;">⚡ INSTANT VISUAL TRIGGERS</div>
+        <!-- INSTANT ACTION TRIGGERS -->
+        <div class="b-card">
+            <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #eab308; padding: 15px; align-items: center; justify-content: center;"
-                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_4' }); showToast('FOUR Animation Sent', 'success');">
-                    <div style="font-size: 28px; font-weight: 900; color: #eab308;">4</div>
+                <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
+                <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
+                <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
+            </div>
+        </div>
+
+        <!-- PLAYER & TEAM GRAPHICS -->
+        <div class="b-card">
+            <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
+            <div class="b-grid">
+                <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
+                    <div class="b-btn-title">⚡ STRIKER PROFILE</div>
+                    <div class="b-btn-sub">Single batter stats card</div>
                 </button>
-                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #6366f1; padding: 15px; align-items: center; justify-content: center;"
-                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_6' }); showToast('SIX Animation Sent', 'success');">
-                    <div style="font-size: 28px; font-weight: 900; color: #6366f1;">6</div>
+                <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
+                    <div class="b-btn-title">🏏 CURRENT BATTERS</div>
+                    <div class="b-btn-sub">Comparison on crease</div>
                 </button>
-                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #ef4444; padding: 15px; align-items: center; justify-content: center;"
-                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_wicket' }); showToast('WICKET Animation Sent', 'error');">
-                    <div style="font-size: 28px; font-weight: 900; color: #ef4444;">W</div>
+                <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
+                    <div class="b-btn-title">🤝 PARTNERSHIP</div>
+                    <div class="b-btn-sub">Current standing pair</div>
+                </button>
+                <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
+                    <div class="b-btn-title">🥎 BOWLER PROFILE</div>
+                    <div class="b-btn-sub">Active bowler stats</div>
+                </button>
+                
+                <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
+                    <div class="b-btn-title">🛡️ ${match.team1} CARD</div>
+                    <div class="b-btn-sub">Team info & logo</div>
+                </button>
+                <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
+                    <div class="b-btn-title">🟣 ${match.team2} CARD</div>
+                    <div class="b-btn-sub">Team info & logo</div>
+                </button>
+                
+                <button class="b-btn b-btn-slate" onclick="broadcastTeamRoster(0)">
+                    <div class="b-btn-title">📋 ${match.team1} ROSTER</div>
+                    <div class="b-btn-sub">Full 11 list</div>
+                </button>
+                <button class="b-btn b-btn-slate" onclick="broadcastTeamRoster(1)">
+                    <div class="b-btn-title">📋 ${match.team2} ROSTER</div>
+                    <div class="b-btn-sub">Full 11 list</div>
                 </button>
             </div>
         </div>
 
-        <!-- Coming Up Next Section -->
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 20px;">
-            <div style="font-size: 12px; font-weight: 800; color: #94a3b8; margin-bottom: 15px; letter-spacing: 1px;">🎨 COMING UP NEXT ARTWORK</div>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <input type="text" id="next-team-a" placeholder="Team A" style="width: 50%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; color: white; text-align: center; font-weight: 600;">
-                <input type="text" id="next-team-b" placeholder="Team B" style="width: 50%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; color: white; text-align: center; font-weight: 600;">
+        <!-- MATCH STATS -->
+        <div class="b-card">
+            <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
+            <div class="b-grid">
+                <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
+                    <div class="b-btn-title">🚀 RUNS NEEDED</div>
+                    <div class="b-btn-sub">Chase requirement info</div>
+                </button>
+                <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
+                    <div class="b-btn-title">📈 RUN RATE</div>
+                    <div class="b-btn-sub">Current match RR</div>
+                </button>
+                <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
+                    <div class="b-btn-title">📄 FULL SCORECARD</div>
+                    <div class="b-btn-sub">Auto-hide after display</div>
+                </button>
+                <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
+                    <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
+                    <div class="b-btn-sub">Standings & Results</div>
+                </button>
             </div>
+        </div>
 
-            <button class="broadcast-btn" style="background: #f97316; width: 100%; height: 60px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;"
-                    onclick="const a=document.getElementById('next-team-a').value; const b=document.getElementById('next-team-b').value; if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'next_match_animation', data: { teamA: a, teamB: b } }); showToast('Promo Sent!', 'success');">
-                <span style="font-size: 20px;">🎨</span>
-                <span style="font-weight: 900;">Publish Next Match Animation</span>
+        <!-- PROMOTIONAL -->
+        <div class="b-card">
+            <div class="b-section-title">🎨 PROMOTIONS & NEXT MATCH</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="next-teama" placeholder="Team A" value="TEAM A" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-weight: 700; font-size: 14px; text-align: center;">
+                <input type="text" id="next-teamb" placeholder="Team B" value="TEAM B" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-weight: 700; font-size: 14px; text-align: center;">
+            </div>
+            <button class="b-btn b-btn-primary" style="width: 100%; align-items: center; justify-content: center; height: 60px;"
+                    onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
+                <div class="b-btn-title">PUBLISH NEXT MATCH ARTWORK</div>
             </button>
         </div>
 
-        <button onclick="window.close()" style="margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b; padding: 16px; border-radius: 12px; cursor: pointer; font-weight: 700;">CLOSE MODULE</button>
+        <button onclick="window.close()" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 16px; border-radius: 16px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Module Session</button>
     </div>
     `;
 
-    // Auto-sync Match state from cloud to keep controller updated with remote scorer
+    // Auto-sync state
     setInterval(async () => {
         if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
             const updatedMatch = DB.getMatch(match.id);
-            if (updatedMatch) {
-               console.log('[Sync] Controller local state refreshed from cloud');
-            }
+            if (updatedMatch) currentMatch = updatedMatch;
         }
     }, 5000);
 
-    // JOIN REAL-TIME ROOM IMMEDIATELY
-    if (window.socket) {
-        window.socket.emit('join_match', match.id);
-        console.log('[Socket] Controller joined match room:', match.id);
+    // JOIN REAL-TIME ROOM
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('join_match', match.id);
+        console.log('📡 Remote Controller Joined:', match.id);
     }
 }
