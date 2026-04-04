@@ -2425,25 +2425,14 @@ function onRosterSlotClick(idx) {
     const namePrompt = prompt(`Enter name for player slot ${idx + 1}:`, currentPlayer?.name || currentVal || '');
     if (namePrompt === null) return;
     const name = namePrompt.trim();
-    if (!name) return;
-
-    const existingPlayer = resolveRosterPlayer(name);
-    if (existingPlayer) {
-        assignRosterSlot(idx, existingPlayer);
-        return;
-    }
-
-    if (!confirm(`Player '${name}' is not registered. Add as new player and upload profile photo?`)) {
-        return;
-    }
-
-    pendingRosterSlotToRegister = idx;
-    pendingRosterName = name;
-    const fileInput = document.getElementById('roster-photo-file-input');
-    if (fileInput) {
-        fileInput.value = '';
-        fileInput.click();
-    }
+    
+    if (!t.rosters) t.rosters = {};
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    t.rosters[editingTeamName][idx] = name;
+    
+    DB.saveTournament(t);
+    showToast('Player name assigned to slot ' + (idx + 1), 'success');
+    openRosterEditor(editingTeamName);
 }
 
 function onRosterPhotoClick(idx) {
@@ -2550,19 +2539,15 @@ function openRosterEditor(teamName) {
         inputsHtml += `
             <div class="roster-slot" style="display:flex;align-items:center;gap:12px;margin-bottom:12px; background:rgba(255,255,255,0.03); padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
                 <div style="width:20px;font-size:10px;opacity:0.3;font-weight:900;text-align:center">${i + 1}</div>
-                <div class="roster-slot-photo" style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:2px solid rgba(var(--c-primary-rgb), 0.3); background:#000">
-                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'" />
-                </div>
                 <div style="flex:1;display:flex;align-items:center;gap:8px">
                     <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
                            value="${escapeHTML(displayName)}" placeholder="Type player name..." 
                            oninput="onRosterInputChanged(${i}, this.value)"
                            onkeydown="if(event.key==='Enter'){event.preventDefault(); onRosterSlotClick(${i});}"
                            style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" autocomplete="off" />
-                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">✎</button>
-                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Upload Photo" onclick="event.stopPropagation(); onRosterPhotoClick(${i})">📷</button>
+                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">Edit Name</button>
                 </div>
-                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:160px; text-align:right; font-weight:600">${player ? '✅ Registered' : (slotValue ? '🆕 New/Unregistered' : '')}</div>
+                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:120px; text-align:right; font-weight:600">${player ? '✔ Profile' : ''}</div>
             </div>
         `;
     }
