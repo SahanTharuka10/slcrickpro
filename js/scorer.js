@@ -1033,12 +1033,20 @@ function loadMatch(m) {
     if (pt) pt.checked = m.publishLive;
     updateHeaderActions();
 
-    // WebSocket Room Join
-    if (typeof socket !== 'undefined' && socket) {
-        socket.emit('joinMatch', m.id);
-        if (m.tournamentId) socket.emit('joinTournament', m.tournamentId);
+    // WebSocket Room Join — use the global single socket instance
+    const _activeSocket = window._cricproSocket || (typeof socket !== 'undefined' ? socket : null);
+    if (_activeSocket && _activeSocket.connected) {
+        _activeSocket.emit('join_match', m.id); // MUST match server: socket.on('join_match', ...)
+        if (m.tournamentId) _activeSocket.emit('join_match', m.tournamentId);
+    } else if (_activeSocket) {
+        // Wait for connection if not yet connected
+        _activeSocket.once('connect', () => {
+            _activeSocket.emit('join_match', m.id);
+            if (m.tournamentId) _activeSocket.emit('join_match', m.tournamentId);
+        });
     }
 }
+
 
 function updateHeaderActions() {
     const el = document.getElementById('header-actions');
