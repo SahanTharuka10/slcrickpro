@@ -363,7 +363,7 @@ app.post('/verify-password', async (req, res) => {
     const record = await Model.findByPk(id);
     console.log('Record found:', record ? { id: record.id, hasPassword: !!record.scoring_password } : 'null');
 
-    if (!record) return res.status(404).json({ verified: false, error: 'Record not found' });
+    if (!record) return res.status(404).json({ verified: false, error: 'Record not found in cloud database. Please wait for sync or try again.' });
 
     // if no scoring password then allow access
     if (!record.scoring_password) {

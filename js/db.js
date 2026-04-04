@@ -711,7 +711,10 @@ function syncToDB(type, data) {
             showToast('🔄 Sync limited: Please re-authorize session', 'default');
         }
     })
-    .catch(err => console.error('❌ Sync failed:', err));
+    .catch(err => {
+        console.error(`❌ Sync failed to ${BACKEND_BASE_URL + endpoint}:`, err);
+        if (typeof showToast === 'function') showToast('⚠️ Sync failed: Network error.', 'error');
+    });
 }
 
 /**

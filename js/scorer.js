@@ -142,14 +142,14 @@ window.renderResumeMatches = function() {
 
 function getScoringAuthMap() {
     try {
-        return JSON.parse(sessionStorage.getItem(SCORING_AUTH_KEY) || '{}');
+        return JSON.parse(localStorage.getItem(SCORING_AUTH_KEY) || '{}');
     } catch {
         return {};
     }
 }
 
 function saveScoringAuthMap(map) {
-    sessionStorage.setItem(SCORING_AUTH_KEY, JSON.stringify(map || {}));
+    localStorage.setItem(SCORING_AUTH_KEY, JSON.stringify(map || {}));
 }
 
 function setTournamentAuthorized(tournamentId, token, expiresInMs) {
@@ -762,7 +762,9 @@ async function loginToMatch() {
         });
 
         if (!response.ok) {
-            showToast('❌ Server error. Try again.', 'error');
+            const errData = await response.json().catch(() => ({}));
+            const msg = errData.error || 'Server error. Sync failed?';
+            showToast(`❌ ${msg}`, 'error');
             return;
         }
         const result = await response.json();
