@@ -104,6 +104,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (m) {
+            // Apply Hotkey Mode layout if triggered
+            if (urlParams.get('hotkey') === 'true') {
+               document.body.classList.add('hotkey-active');
+               // Hide standard scoring components for cleaner remote control
+               setTimeout(() => {
+                   const layout = document.getElementById('scorer-layout');
+                   if (layout) layout.style.opacity = '0.3';
+                   showToast('⌨️ Hotkey Remote Mode Active', 'success');
+               }, 500);
+            }
             // BYPASS ALL PASSWORD CHECKS
             if (m.status === 'scheduled') {
                 startOfficialMatch(mId);

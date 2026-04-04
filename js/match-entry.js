@@ -30,12 +30,26 @@ async function onResumeOrStart(matchId, tournamentId, isStart) {
 
 function showModeSelectionModal(match) {
     const existing = document.getElementById('modal-select-mode');
+    
+    const setupHandlers = (idScorer, idHotkey) => {
+        const btnS = document.getElementById(idScorer);
+        const btnH = document.getElementById(idHotkey);
+        if (btnS) btnS.onclick = () => { 
+            closeModal('modal-select-mode'); 
+            const dyn = document.getElementById('selection-overlay-dynamic');
+            if (dyn) dyn.remove();
+            openScorerDashboard(match.id); 
+        };
+        if (btnH) btnH.onclick = () => { 
+            closeModal('modal-select-mode'); 
+            const dyn = document.getElementById('selection-overlay-dynamic');
+            if (dyn) dyn.remove();
+            openHotkeyPanel(match.id); 
+        };
+    };
+
     if (existing) {
-        // Fallback to HTML template version if it exists
-        const btnScorer = document.getElementById('mode-btn-scorer');
-        const btnHotkey = document.getElementById('mode-btn-hotkey');
-        if (btnScorer) btnScorer.onclick = () => { closeModal('modal-select-mode'); openScorerDashboard(match.id); };
-        if (btnHotkey) btnHotkey.onclick = () => { closeModal('modal-select-mode'); openHotkeyPanel(match.id); };
+        setupHandlers('mode-btn-scorer', 'mode-btn-hotkey');
         showModal('modal-select-mode');
         return;
     }
@@ -45,6 +59,7 @@ function showModeSelectionModal(match) {
     overlay.className = 'modal-overlay';
     overlay.id = 'selection-overlay-dynamic';
     overlay.style.display = 'flex';
+    overlay.style.zIndex = '10000';
     overlay.innerHTML = `
         <div class="modal-box" style="max-width:440px; text-align:center">
             <div style="font-size:56px; margin-bottom:12px">🏏</div>
@@ -74,17 +89,7 @@ function showModeSelectionModal(match) {
     `;
 
     document.body.appendChild(overlay);
-
-    document.getElementById('dyn-btn-scorer').onclick = () => {
-        overlay.remove();
-        openScorerDashboard(match.id);
-    };
-
-    document.getElementById('dyn-btn-hotkey').onclick = () => {
-        overlay.remove();
-        openHotkeyPanel(match.id);
-    };
-
+    setupHandlers('dyn-btn-scorer', 'dyn-btn-hotkey');
     document.getElementById('dyn-btn-cancel').onclick = () => overlay.remove();
 }
 
