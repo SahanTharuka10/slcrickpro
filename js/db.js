@@ -613,40 +613,8 @@ if (IS_PRODUCTION) {
 // Expose globally so inline scripts (loginToMatch, etc.) can reference it
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 
-// local manual network backend
-window.syncToDB = syncToDB; // Expose globally for other files
-async function syncToDB(type, data) {
-    if (!BACKEND_BASE_URL) return;
-    
-    let token = null;
-    try {
-        if (typeof getTournamentToken === 'function') {
-            if (type === 'match' && data && data.tournamentId) {
-                token = getTournamentToken(data.tournamentId);
-            } else if (type === 'tournament' && data && data.id) {
-                token = getTournamentToken(data.id);
-            }
-        }
-    } catch(e) {}
-
-    try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['x-scoring-token'] = token;
-
-        const res = await fetch(`${BACKEND_BASE_URL}/sync/${type}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(data)
-        });
-        if (res.ok) {
-            console.log(`☁️ Synced ${type} to cloud successfully.`);
-        } else {
-            console.warn(`☁️ Failed to sync ${type} to cloud`, res.status);
-        }
-    } catch(err) {
-        console.error('syncToDB connection error:', err);
-    }
-};
+// Expose globally so inline scripts can reference it
+// NOTE: Only one syncToDB defined below (the canonical one at line ~694)
 
 let socket = null;
 if (typeof io !== 'undefined') {
@@ -712,14 +680,16 @@ function syncToDB(type, data) {
         localStorage.removeItem('cricpro_token_expiry');
     }
 
-    // If match belongs to locked tournament and we currently have no valid token, skip cloud sync.
+    // Only skip cloud sync if the tournament is explicitly locked AND we have no valid token
     if (type === 'match' && data && data.tournamentId && !token) {
         const tournament = (DB && DB.getTournament) ? DB.getTournament(data.tournamentId) : null;
         const locked = tournament && (tournament.scoringPassword || tournament.password || tournament.isLocked);
+        // Only skip if LOCKED — unlocked matches MUST always sync to cloud
         if (locked) {
             console.warn('Skipping match sync for locked tournament without valid token.');
             return;
         }
+        // If unlocked or no tournament password set, proceed with sync
     }
 
     const headers = {
@@ -762,10 +732,12 @@ function syncToDB(type, data) {
         if (typeof showToast === 'function') showToast('⚠️ Sync failed: Network error.', 'error');
     });
 }
+window.syncToDB = syncToDB; // Expose globally for other files
 
 /**
  * Handle password verification before scoring a remote match.
  */
+
 DB.handshake = async function(id, password) {
     const type = id.startsWith('MATCH') ? 'match' : 'tournament';
     try {
