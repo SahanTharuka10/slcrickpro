@@ -2864,7 +2864,6 @@ function broadcastStrikerProfile() {
     const age = p ? calculateAge(p.dob) : "";
     
     sendBroadcast('SHOW_STRIKER_PROFILE', { name: strikerName, profile: p, stats, age });
-};
 }
 
 function broadcastBowlerProfile() {
