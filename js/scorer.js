@@ -64,6 +64,28 @@ function playerPhotoSrc(p) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mId = urlParams.get('matchId');
+    const tId = urlParams.get('tournamentId');
+
+    // ISOLATE BROADCAST CONTROLLER IMMEDIATELY
+    if (urlParams.get('hotkey') === 'true' && mId) {
+        document.body.classList.add('broadcast-controller-active');
+        const wrapper = document.querySelector('.page-wrapper');
+        if (wrapper) wrapper.innerHTML = '<div style="text-align:center; padding:100px; color:#ffc107; font-size:24px">📡 Broadcast Remote Connecting...</div>';
+        
+        let m = DB.getMatch(mId);
+        if (!m && typeof window.pullGlobalData === 'function') {
+            await window.pullGlobalData();
+            m = DB.getMatch(mId);
+        }
+        
+        if (m) {
+           renderBroadcastController(m);
+           return; // STOP HERE
+        }
+    }
+
     // SYNC FIRST: ensure we have latest cloud data before rendering or resolving direct links
     if (typeof window.pullGlobalData === 'function') {
         await window.pullGlobalData();
