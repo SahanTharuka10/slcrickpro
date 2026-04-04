@@ -32,29 +32,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    if (typeof io === 'undefined') {
-        console.warn('Socket.IO client is not available. Hotkey socket updates will not work.');
-    } else {
-        const backendOrigin = window.BACKEND_BASE_URL || (window.location.protocol + '//' + window.location.host);
-        hotkeySocket = io(backendOrigin, {
-            transports: ['polling', 'websocket'],
-            reconnectionAttempts: 5,
-            timeout: 10000
-        });
+    // Re-use the existing centralized socket from db.js
+    const sharedSocket = window._cricproSocket;
+    if (sharedSocket) {
+        hotkeySocket = sharedSocket;
+        if (sharedSocket.connected) {
+            console.log('📡 Hotkey Mode: Reusing stable global socket');
+            if (activeMatchId) sharedSocket.emit('join_match', activeMatchId);
+        } else {
+            sharedSocket.once('connect', () => {
+                if (activeMatchId) sharedSocket.emit('join_match', activeMatchId);
+            });
+        }
 
-        hotkeySocket.on('connect', () => {
-            console.log('📡 Hotkey Socket: Connected');
-            hotkeySocket.emit('joinMatch', activeMatchId);
-        });
-
-        hotkeySocket.on('match-update', (msg) => {
-            if (msg && msg.match && msg.match.id === activeMatchId) {
-                updateHotkeyDashboard(msg.match);
+        // Listen for match updates on the shared socket
+        sharedSocket.on('scoreUpdate', () => {
+            // db.js already triggers syncCloudData on scoreUpdate, 
+            // but we can refresh our dashboard view explicitly if needed.
+            if (typeof renderScoring === 'function') renderScoring();
+            else if (typeof DB !== 'undefined' && activeMatchId) {
+                const refreshedMatch = DB.getMatch(activeMatchId);
+                if (refreshedMatch) updateHotkeyDashboard(refreshedMatch);
             }
         });
-
-        hotkeySocket.on('disconnect', () => console.warn('Hotkey socket disconnected'));
-        hotkeySocket.on('connect_error', (e) => console.warn('Hotkey socket connect_error', e));
+    } else {
+        console.warn('Hotkey Mode: Global socket not found — falling back to manual refresh');
     }
 
 
