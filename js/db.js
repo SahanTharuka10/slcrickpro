@@ -616,41 +616,54 @@ window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 // Expose globally so inline scripts can reference it
 // NOTE: Only one syncToDB defined below (the canonical one at line ~694)
 
+// ============================================================
+//  GLOBAL SOCKET.IO — Single instance, shared across all pages
+// ============================================================
 let socket = null;
 if (typeof io !== 'undefined') {
     socket = io(BACKEND_BASE_URL, {
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
     });
-    socket.on('connect', () => console.log('📡 Connected to Real-time Sync Server'));
-    
-    // Immediate refresh on match-specific updates
-    socket.on('scoreUpdate', (data) => {
-        console.log('⚡ Score Update received:', data);
-        if (data && data.id) {
-            DB.saveMatch(data, true); 
-            if (typeof renderOngoing === 'function') renderOngoing();
-            if (typeof window.renderOngoing === 'function') window.renderOngoing();
-        } else { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }
+    window._cricproSocket = socket; // Expose globally so overlay.js can reuse
+
+    socket.on('connect', () => {
+        console.log('📡 Real-time Socket: CONNECTED to', BACKEND_BASE_URL);
+        // Join the global broadcast room immediately
+        socket.emit('join_global', {});
+        // Also join any active match room (for scorer page)
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeMatchId = urlParams.get('matchId');
+        if (activeMatchId) {
+            socket.emit('join_match', activeMatchId);
+            console.log('🏏 Joined match room:', activeMatchId);
+        }
     });
 
-    // Handle global updates
+    socket.on('disconnect', () => console.warn('🔴 Socket disconnected — polling continues'));
+
+    // ── scoreUpdate: server broadcasts full match data → save + re-render
+    socket.on('scoreUpdate', (data) => {
+        console.log('⚡ scoreUpdate received');
+        // Always do a cloud pull to get guaranteed fresh data
+        if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
+    });
+
+    // ── globalUpdate: any change to match or tournament
     socket.on('globalUpdate', (info) => {
-        console.log('🌍 Global Update received:', info);
-        if (info.type === 'match' && info.data) {
-            DB.saveMatch(info.data, true);
-        } else if (info.type === 'tournament' && info.data) {
-            DB.saveTournament(info.data, true);
-        } else {
-            if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
-            return;
-        }
-        if (typeof renderOngoing === 'function') renderOngoing();
-        if (typeof window.renderOngoing === 'function') window.renderOngoing();
-        if (typeof updateTicker === 'function') updateTicker();
+        console.log('🌍 globalUpdate received:', info?.type);
+        if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
+    });
+
+    // ── broadcast_command (TV overlay hotkey events)
+    socket.on('broadcast_command', (data) => {
+        console.log('📺 broadcast_command received:', data?.cmd);
+        if (typeof handleBroadcastCommand === 'function') handleBroadcastCommand(data?.cmd, data);
+        if (typeof handleBroadcastEvent === 'function') handleBroadcastEvent(data);
     });
 
     socket.on('broadcastCmd', (data) => {
-        console.log('📺 Broadcast Command received:', data);
         if (typeof handleBroadcastEvent === 'function') handleBroadcastEvent(data);
     });
 }
@@ -1273,39 +1286,11 @@ async function syncCloudData(options = {}) {
 window.pullGlobalData = window.pullGlobalData || (() => syncCloudData({ silent: true }));
 window.pullLiveUpdates = () => syncCloudData({ silent: true });
 
-// Initial grab on page boot
-setTimeout(() => syncCloudData({ forceRefresh: true }), 500);
+// Initial grab on page boot (after 600ms so page DOM is ready)
+setTimeout(() => syncCloudData({ forceRefresh: true }), 600);
 
-// Dynamic Polling Interval (Fallback for Socket)
+// Dynamic Polling — ongoing-matches gets 5s, overlay gets 4s, scorer gets 15s
 const _isOverlayTab = window.location.pathname.includes('overlay.html');
-const _isPublicTab = window.location.pathname.includes('ongoing-matches.html');
-const _pollIntervalMs = _isOverlayTab ? 5000 : (_isPublicTab ? 8000 : 20000);
-
+const _isPublicTab  = window.location.pathname.includes('ongoing-matches.html');
+const _pollIntervalMs = _isOverlayTab ? 4000 : (_isPublicTab ? 5000 : 15000);
 setInterval(() => syncCloudData({ silent: true }), _pollIntervalMs);
-
-// WebSocket Integration
-if (typeof io !== 'undefined') {
-    const socket = io(BACKEND_BASE_URL);
-    socket.on('connect', () => console.log('📡 Real-time WebSocket: ACTIVE'));
-    
-    socket.on('scoreUpdate', (data) => {
-        console.log('⚡ Instant Match Update');
-        syncCloudData({ forceRefresh: true }); 
-    });
-    
-    socket.on('tournamentUpdate', () => {
-        console.log('🏆 Instant Tournament Update');
-        syncCloudData({ forceRefresh: true });
-    });
-    
-    socket.on('globalUpdate', () => {
-        console.log('🌍 Global Discover Update');
-        syncCloudData({ forceRefresh: true });
-    });
-    
-    socket.on('broadcastCmd', (data) => {
-        console.log('📺 Broadcast Command received');
-        if (typeof handleBroadcastCmd === 'function') handleBroadcastCmd(data);
-    });
-}
-

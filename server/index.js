@@ -203,10 +203,16 @@ function decodeScoringToken(token) {
 }
 
 function emitUpdate(type, id, data) {
-  io.emit(`${type}:${id}`, data);
+  // Broadcast globally to ALL connected clients (this ensures cross-device updates)
   io.emit('globalUpdate', { type, id, data });
   if (type === 'match') {
-    io.emit('scoreUpdate', data);
+    // scoreUpdate carries the full match object so viewers can update immediately
+    io.emit('scoreUpdate', { id, ...data });
+    // Also emit to anyone watching this match's specific room
+    io.to(id).emit('scoreUpdate', { id, ...data });
+  }
+  if (type === 'tournament') {
+    io.emit('tournamentUpdate', { id, ...data });
   }
 }
 
@@ -572,10 +578,20 @@ app.get('/health', async (req, res) => {
 io.on('connection', (socket) => {
     console.log('User connected to Sync Engine:', socket.id);
 
+    // Join the global room — all clients share this for board-level updates
+    socket.join('global');
+
+    socket.on('join_global', () => {
+        socket.join('global');
+        console.log(`Socket ${socket.id} joined global room`);
+    });
+
     socket.on('join_match', (matchId) => {
         if (matchId) {
             socket.join(matchId);
             console.log(`Socket ${socket.id} joined match room: ${matchId}`);
+            // Send immediate sync signal to newly joined viewer
+            socket.emit('globalUpdate', { type: 'joined', id: matchId });
         }
     });
 
@@ -583,14 +599,16 @@ io.on('connection', (socket) => {
     socket.on('broadcast_command', (data) => {
         if (data && data.matchId) {
             console.log(`[Broadcast] Command '${data.cmd}' for ${data.matchId}`);
-            // Forward to everyone in this match room (especially TV Overlays)
+            // Forward to the specific match room AND globally
             io.to(data.matchId).emit('broadcast_command', data);
+            io.emit('broadcast_command', data); // also global
         }
     });
 
     socket.on('force_refresh', (data) => {
         if (data && data.matchId) {
             io.to(data.matchId).emit('force_refresh', data);
+            io.emit('globalUpdate', { type: 'match', id: data.matchId, data });
         }
     });
 
