@@ -1071,12 +1071,27 @@ function loadMatch(m) {
     // Auto-populate player datalist for suggestions in official tournaments
     const dl = document.getElementById('db-players-list');
     if (dl) {
-        if (m.type === 'tournament' && DB.getTournament(m.tournamentId)?.isOfficial) {
-            const players = DB.getPlayers();
-            dl.innerHTML = players.map(p => `<option value="${p.name}">${p.playerId} - ${p.team}</option>`).join('');
-        } else {
-            dl.innerHTML = '';
+        let playersHtml = '';
+        if (m.type === 'tournament' && m.tournamentId) {
+            const tourn = DB.getTournament(m.tournamentId);
+            if (tourn && tourn.rosters) {
+                const names = new Set();
+                Object.values(tourn.rosters).forEach(roster => {
+                    roster.forEach(val => {
+                        if (!val) return;
+                        const p = DB.resolveRosterPlayer ? DB.resolveRosterPlayer(val) : DB.getPlayerById(val);
+                        names.add(p ? p.name : val);
+                    });
+                });
+                playersHtml = Array.from(names).map(name => `<option value="${escapeHTML(name)}"></option>`).join('');
+            }
         }
+        
+        if (!playersHtml && DB.getPlayers) {
+            const players = DB.getPlayers();
+            playersHtml = players.map(p => `<option value="${escapeHTML(p.name)}">${p.playerId || ''}</option>`).join('');
+        }
+        dl.innerHTML = playersHtml;
     }
     _innings_ending = false;
     DB.saveMatch(m);
@@ -2285,6 +2300,12 @@ function confirmOpenBatsmen() {
     inn.strikerIdx = 0;
 
     closeModal('modal-open-batsmen');
+    
+    // Set initial striker and initial partnership
+    inn.strikerIdx = 0;
+    inn.currentPartnership = { runs: 0, balls: 0 };
+    
+    saveAndRender();
     setTimeout(() => openNewBowlerModal(), 200);
 }
 
