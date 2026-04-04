@@ -3066,4 +3066,21 @@ function renderBroadcastController(match) {
         <button onclick="window.close()" style="margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b; padding: 16px; border-radius: 12px; cursor: pointer; font-weight: 700;">CLOSE MODULE</button>
     </div>
     `;
+
+    // Auto-sync Match state from cloud to keep controller updated with remote scorer
+    setInterval(async () => {
+        if (typeof window.pullGlobalData === 'function') {
+            await window.pullGlobalData();
+            const updatedMatch = DB.getMatch(match.id);
+            if (updatedMatch) {
+               console.log('[Sync] Controller local state refreshed from cloud');
+            }
+        }
+    }, 5000);
+
+    // JOIN REAL-TIME ROOM IMMEDIATELY
+    if (window.socket) {
+        window.socket.emit('join_match', match.id);
+        console.log('[Socket] Controller joined match room:', match.id);
+    }
 }

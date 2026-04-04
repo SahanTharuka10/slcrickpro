@@ -540,6 +540,37 @@ app.get('/health', async (req, res) => {
   try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
 });
 
+// --- REAL-TIME ENGINE (Socket.io) ---
+io.on('connection', (socket) => {
+    console.log('User connected to Sync Engine:', socket.id);
+
+    socket.on('join_match', (matchId) => {
+        if (matchId) {
+            socket.join(matchId);
+            console.log(`Socket ${socket.id} joined match room: ${matchId}`);
+        }
+    });
+
+    // BROADCAST COMMAND: Forward TV Overlay triggers (e.g. show Team Card)
+    socket.on('broadcast_command', (data) => {
+        if (data && data.matchId) {
+            console.log(`[Broadcast] Command '${data.cmd}' for ${data.matchId}`);
+            // Forward to everyone in this match room (especially TV Overlays)
+            io.to(data.matchId).emit('broadcast_command', data);
+        }
+    });
+
+    socket.on('force_refresh', (data) => {
+        if (data && data.matchId) {
+            io.to(data.matchId).emit('force_refresh', data);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected from Sync Engine:', socket.id);
+    });
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Rocket backend: http://localhost:${PORT}`);
