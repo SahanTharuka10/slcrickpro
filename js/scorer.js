@@ -385,48 +385,6 @@ function authorizeTournamentLocally(tournamentId) {
     return true;
 }
 
-function onResumeOrStart(matchId, isStart = false) {
-    let m = DB.getMatch(matchId);
-
-    if (!m && !isStart) {
-        showToast('Match not found to resume. Pulling from cloud...', 'default');
-        window.pullGlobalData().then(() => {
-            m = DB.getMatch(matchId);
-            if (m) onResumeOrStart(matchId, isStart);
-            else showToast('Match still not found.', 'error');
-        });
-        return;
-    }
-
-    if (!m && isStart) {
-        m = { id: matchId, status: 'INITIALIZING', runs:0, wickets:0, overs:0, ballsInOver:0 };
-    }
-
-    // PASSWORD BYPASSED - Direct access to mode selection
-    showModeSelectionModal(m);
-}
-
-function showModeSelectionModal(m) {
-    const btnScorer = document.getElementById('mode-btn-scorer');
-    const btnHotkey = document.getElementById('mode-btn-hotkey');
-    
-    if (btnScorer) {
-        btnScorer.onclick = () => {
-            closeModal('modal-select-mode');
-            openScorerDashboard(m.id);
-        };
-    }
-    
-    if (btnHotkey) {
-        btnHotkey.onclick = () => {
-            closeModal('modal-select-mode');
-            openHotkeyPanel(m.id);
-        };
-    }
-    
-    showModal('modal-select-mode');
-}
-
 function openScorerDashboard(matchId) {
     // existing scorer path
     currentMatch = DB.getMatch(matchId);

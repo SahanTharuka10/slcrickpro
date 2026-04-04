@@ -2,8 +2,12 @@
 
 async function onResumeOrStart(matchId, tournamentId, isStart) {
     try {
+        const baseUrl = window.BACKEND_BASE_URL || "";
         const userId = window.CURRENT_USER || 'unknown';
-        const response = await fetch('/match/initialize', {
+        
+        showToast('🔄 Initializing session...', 'default');
+        
+        const response = await fetch(baseUrl + '/match/initialize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ matchId, tournamentId, start: isStart, userId })
@@ -25,34 +29,63 @@ async function onResumeOrStart(matchId, tournamentId, isStart) {
 }
 
 function showModeSelectionModal(match) {
-    const existing = document.getElementById('selection-modal');
-    if (existing) existing.remove();
+    const existing = document.getElementById('modal-select-mode');
+    if (existing) {
+        // Fallback to HTML template version if it exists
+        const btnScorer = document.getElementById('mode-btn-scorer');
+        const btnHotkey = document.getElementById('mode-btn-hotkey');
+        if (btnScorer) btnScorer.onclick = () => { closeModal('modal-select-mode'); openScorerDashboard(match.id); };
+        if (btnHotkey) btnHotkey.onclick = () => { closeModal('modal-select-mode'); openHotkeyPanel(match.id); };
+        showModal('modal-select-mode');
+        return;
+    }
 
-    const modal = document.createElement('div');
-    modal.id = 'selection-modal';
-    modal.style = 'position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;';
-    modal.innerHTML = `
-        <div style="width:320px;padding:20px;border-radius:14px;background:#15293b;color:#fff;font-family:Arial, sans-serif;">
-            <h2 style="margin:0 0 14px;font-size:1.2rem;">Resume Match ${match.id}</h2>
-            <button id="entry-score" style="width:100%;padding:10px;margin-bottom:10px;background:#107163;border:none;border-radius:8px;cursor:pointer;color:#fff;font-weight:700;">Score Match</button>
-            <button id="entry-hotkey" style="width:100%;padding:10px;margin-bottom:10px;background:#9333ea;border:none;border-radius:8px;cursor:pointer;color:#fff;font-weight:700;">Hotkey Access</button>
-            <button id="entry-cancel" style="width:100%;padding:10px;background:#1f2937;border:none;border-radius:8px;cursor:pointer;color:#fff;">Cancel</button>
+    // Otherwise create premium inline modal
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'selection-overlay-dynamic';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+        <div class="modal-box" style="max-width:440px; text-align:center">
+            <div style="font-size:56px; margin-bottom:12px">🏏</div>
+            <div class="modal-title">Select Scoring Mode</div>
+            <div class="modal-sub">Match: ${match.team1} vs ${match.team2}</div>
+
+            <div style="display:grid; grid-template-columns:1fr; gap:16px; margin:24px 0">
+                <button class="btn btn-primary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="dyn-btn-scorer">
+                    <span style="font-size:24px">📱</span>
+                    <div style="text-align:left">
+                        <div style="font-weight:900">Score Match</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Full scoring dashboard</div>
+                    </div>
+                </button>
+
+                <button class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="dyn-btn-hotkey">
+                    <span style="font-size:24px">⌨️</span>
+                    <div style="text-align:left">
+                        <div style="font-weight:900">Hotkey Mode</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Remote Broadcast Controller</div>
+                    </div>
+                </button>
+            </div>
+
+            <button class="btn btn-ghost btn-full" id="dyn-btn-cancel">Cancel</button>
         </div>
     `;
 
-    document.body.appendChild(modal);
+    document.body.appendChild(overlay);
 
-    document.getElementById('entry-score').onclick = () => {
-        modal.remove();
+    document.getElementById('dyn-btn-scorer').onclick = () => {
+        overlay.remove();
         openScorerDashboard(match.id);
     };
 
-    document.getElementById('entry-hotkey').onclick = () => {
-        modal.remove();
+    document.getElementById('dyn-btn-hotkey').onclick = () => {
+        overlay.remove();
         openHotkeyPanel(match.id);
     };
 
-    document.getElementById('entry-cancel').onclick = () => modal.remove();
+    document.getElementById('dyn-btn-cancel').onclick = () => overlay.remove();
 }
 
 function openScorerDashboard(matchId) {
