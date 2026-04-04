@@ -42,6 +42,23 @@ function showErrorInsideProgram(msg, url, line) {
     showToast("⚠️ Operation Error: " + msg, "error");
 }
 
+// --- GLOBAL UI HELPERS ---
+window.showModal = function(id) {
+    const m = document.getElementById(id);
+    if (m) m.style.display = 'flex';
+};
+window.closeModal = function(id) {
+    const m = document.getElementById(id);
+    if (m) m.style.display = 'none';
+};
+window.showToast = function(msg, type = 'default') {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.innerText = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+};
+
 const DB = {
 
     // ---------- SECURE STORAGE ----------
