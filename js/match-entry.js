@@ -109,6 +109,7 @@ function openScorerDashboard(matchId) {
 }
 
 function openHotkeyPanel(matchId) {
-    sessionStorage.setItem('hotkey_match_id', matchId);
-    window.location.href = 'overlay.html?match=' + encodeURIComponent(matchId) + '&hotkey=true';
+    // FIX: Redirect to score-match.html (Broadcast Controller) NOT overlay.html
+    const mUrl = `score-match.html?matchId=${encodeURIComponent(matchId)}&hotkey=true`;
+    window.open(mUrl, '_blank');
 }
