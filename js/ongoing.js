@@ -554,24 +554,41 @@ function computeTournamentStandings(t) {
         const inn0 = m.innings ? m.innings[0] : null;
         const inn1 = m.innings ? m.innings[1] : null;
         if (!inn0 || !inn1) return;
-        const s1 = t.standings[m.battingFirst];
-        const s2 = t.standings[m.fieldingFirst];
+        
+        const battingFirst = m.battingFirst || m.team1;
+        const fieldingFirst = m.fieldingFirst || m.team2;
+        
+        const s1 = t.standings[battingFirst];
+        const s2 = t.standings[fieldingFirst];
         if (!s1 || !s2) return;
+        
+        const bpo = m.ballsPerOver || 6;
+        const maxBalls = m.overs * bpo;
+        const pps = m.playersPerSide || 11;
+        
         s1.played++; s2.played++;
-        s1.runsScored += inn0.runs; s1.ballsFaced += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn0.balls);
-        s1.runsConceded += inn1.runs; s1.ballsBowled += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn1.balls);
-        s2.runsScored += inn1.runs; s2.ballsFaced += (inn1.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn1.balls);
-        s2.runsConceded += inn0.runs; s2.ballsBowled += (inn0.wickets >= (m.playersPerSide-1) ? (m.overs * m.ballsPerOver) : inn0.balls);
+        
+        // If all out, full overs are counted for NRR
+        const b0 = (inn0.wickets >= pps - 1) ? maxBalls : inn0.balls;
+        const b1 = (inn1.wickets >= pps - 1) ? maxBalls : inn1.balls;
+        
+        s1.runsScored += inn0.runs; s1.ballsFaced += b0;
+        s1.runsConceded += inn1.runs; s1.ballsBowled += b1;
+        
+        s2.runsScored += inn1.runs; s2.ballsFaced += b1;
+        s2.runsConceded += inn0.runs; s2.ballsBowled += b0;
+        
         if (inn1.runs > inn0.runs) { s2.won++; s2.points += 2; s1.lost++; }
         else if (inn1.runs < inn0.runs) { s1.won++; s1.points += 2; s2.lost++; }
         else { s1.tied++; s2.tied++; s1.points++; s2.points++; }
     });
+    
     t.teams.forEach(team => {
         const s = t.standings[team];
         const bpo = t.ballsPerOver || 6;
         const batRR = s.ballsFaced ? (s.runsScored / (s.ballsFaced / bpo)) : 0;
         const bowlRR = s.ballsBowled ? (s.runsConceded / (s.ballsBowled / bpo)) : 0;
-        s.nrr = batRR - bowlRR;
+        s.nrr = parseFloat((batRR - bowlRR).toFixed(3));
     });
 }
 

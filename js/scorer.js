@@ -2068,16 +2068,27 @@ function computeStandings(t) {
         if (!t.standings[team]) t.standings[team] = {};
         Object.assign(t.standings[team], { played: 0, won: 0, lost: 0, tied: 0, points: 0, runsScored: 0, ballsFaced: 0, runsConceded: 0, ballsBowled: 0, nrr: 0 });
     });
-    DB.getMatches().filter(m => m.tournamentId === t.id && m.status === 'completed').forEach(m => {
+    const matches = DB.getMatches().filter(m => m.tournamentId === t.id && m.status === 'completed');
+    matches.forEach(m => {
         const i0 = m.innings[0]; const i1 = m.innings[1];
         if (!i0 || !i1) return;
-        const s1 = t.standings[m.battingFirst] || {}; const s2 = t.standings[m.fieldingFirst] || {};
+        
+        const battingFirst = m.battingFirst || m.team1;
+        const fieldingFirst = m.fieldingFirst || m.team2;
+
+        const s1 = t.standings[battingFirst] || {}; 
+        const s2 = t.standings[fieldingFirst] || {};
+        if (!s1.played && s1.played !== 0) return; // Team not in tournament list
+
+        const bpo = m.ballsPerOver || 6;
+        const maxBalls = m.overs * bpo;
+        const pps = m.playersPerSide || 11;
+
         s1.played++; s2.played++;
 
-        let b0 = i0.balls;
-        if (i0.wickets >= m.playersPerSide - 1) b0 = m.overs * m.ballsPerOver;
-        let b1 = i1.balls;
-        if (i1.wickets >= m.playersPerSide - 1) b1 = m.overs * m.ballsPerOver;
+        // All Out counts as full overs
+        const b0 = (i0.wickets >= pps - 1) ? maxBalls : i0.balls;
+        const b1 = (i1.wickets >= pps - 1) ? maxBalls : i1.balls;
 
         s1.runsScored += i0.runs; s1.ballsFaced += b0; s1.runsConceded += i1.runs; s1.ballsBowled += b1;
         s2.runsScored += i1.runs; s2.ballsFaced += b1; s2.runsConceded += i0.runs; s2.ballsBowled += b0;
@@ -2085,7 +2096,6 @@ function computeStandings(t) {
         if (i1.runs > i0.runs) { s2.won++; s2.points += 2; s1.lost++; }
         else if (i1.runs < i0.runs) { s1.won++; s1.points += 2; s2.lost++; }
         else { s1.tied++; s2.tied++; s1.points++; s2.points++; }
-        t.standings[m.battingFirst] = s1; t.standings[m.fieldingFirst] = s2;
     });
     t.teams.forEach(team => {
         const s = t.standings[team];
