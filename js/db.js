@@ -1148,11 +1148,28 @@ async function syncCloudData(options = {}) {
 
         // Sync Players
         if (playerData && Array.isArray(playerData)) {
-            DB.savePlayers(playerData.map(p => ({ ...p, playerId: p.playerId || p._id })));
+            const localPlayers = DB.getPlayers();
+            const mergedPlayers = playerData.map(p => ({ ...p, playerId: p.playerId || p._id }));
+            localPlayers.forEach(lp => {
+                if (!mergedPlayers.find(p => p.playerId === lp.playerId)) {
+                    mergedPlayers.push(lp);
+                    try { syncToDB('player', lp); } catch(e) {}
+                }
+            });
+            DB.savePlayers(mergedPlayers);
         }
+        
         // Sync Teams
         if (teamData && Array.isArray(teamData)) {
-            DB.saveTeams(teamData);
+            const localTeams = DB.getTeams();
+            const mergedTeams = [...teamData];
+            localTeams.forEach(lt => {
+                if (!mergedTeams.find(t => t.id === lt.id)) {
+                    mergedTeams.push(lt);
+                    try { syncToDB('team', lt); } catch(e) {}
+                }
+            });
+            DB.saveTeams(mergedTeams);
         }
 
         // Sync Matches — use smart merge (don't clobber active matches)
@@ -1179,11 +1196,18 @@ async function syncCloudData(options = {}) {
                 return cm;
             });
 
-            // Add local-only matches (e.g. just created offline)
+            // Add local-only matches (e.g. just created offline) or restore if cloud wiped
             localMatches.forEach(lm => {
-                if (!mergedMatches.find(x => x.id === lm.id)) {
-                    mergedMatches.push(lm);
-                    anyUpdated = true;
+                const cloudHasIt = remoteMatches.find(x => x.id === lm.id);
+                if (!cloudHasIt) {
+                    if (!mergedMatches.find(x => x.id === lm.id)) {
+                        mergedMatches.push(lm);
+                        anyUpdated = true;
+                    }
+                    // Self-healing: if cloud lost the data (e.g. server restart on Railway), restore it from local device!
+                    if (lm.publishLive) {
+                        try { syncToDB('match', lm); } catch(err) { console.error('Auto-reupload failed', err); }
+                    }
                 }
             });
 
@@ -1218,9 +1242,13 @@ async function syncCloudData(options = {}) {
             });
 
             localTournaments.forEach(lt => {
-                if (!mergedTournaments.find(x => x.id === lt.id)) {
-                    mergedTournaments.push(lt);
-                    anyTUpdated = true;
+                const cloudHasIt = remoteTournaments.find(x => x.id === lt.id);
+                if (!cloudHasIt) {
+                    if (!mergedTournaments.find(x => x.id === lt.id)) {
+                        mergedTournaments.push(lt);
+                        anyTUpdated = true;
+                    }
+                    try { syncToDB('tournament', lt); } catch(err) { console.error(err); }
                 }
             });
 
