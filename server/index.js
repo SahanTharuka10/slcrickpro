@@ -440,7 +440,8 @@ app.post('/match/initialize', async (req, res) => {
     await ensureDB();
     let matchRecord = await Match.findByPk(data.matchId);
 
-    if (!matchRecord && data.start) {
+    if (!matchRecord) {
+      // Creation fallback for resumes of local-only matches
       const now = Date.now();
       const matchData = {
         id: data.matchId,
