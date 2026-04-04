@@ -2935,70 +2935,97 @@ function renderBroadcastController(match) {
     const root = document.querySelector('.page-wrapper');
     if (!root) return;
     
-    // Clear page almost entirely for a clean dash
+    // Set body style for the dedicated controller look
+    document.body.style.background = '#0a1219';
+    document.body.style.border = '2px solid #ffc107'; 
+    document.body.style.minHeight = '100vh';
+
     root.innerHTML = `
-    <div class="bg-canvas">
-        <div class="bg-orb orb1" style="background:var(--c-blue)"></div>
-        <div class="bg-orb orb2" style="background:var(--c-purple)"></div>
-    </div>
-    <div class="sub-header" style="justify-content:center">
-        <div class="logo">
-          <div class="logo-icon">📡</div>
-          <div class="logo-text-animated">
-            <span class="logo-name-animated">BROADCAST <span class="pro">CONTROL</span></span>
-          </div>
+    <div style="padding: 20px; font-family: 'Inter', sans-serif; color: white; max-width: 500px; margin: 0 auto;">
+        
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px;">🚀</span>
+                <span style="font-weight: 900; letter-spacing: 1px; font-size: 20px; color: #ffc107;">BROADCAST CONTROL</span>
+            </div>
+            <div style="background: #ffc107; color: black; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 6px;">LIVE PRO</div>
         </div>
-    </div>
-    
-    <div class="content-container" style="max-width:500px; padding-top:40px">
-        <div class="card" style="border:2px solid var(--c-amber); box-shadow:0 0 30px rgba(255,193,7,0.1); padding:0">
-             <button class="btn btn-amber btn-full" style="height:70px; font-size:18px; font-weight:900; border-radius:14px" onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
+
+        <!-- Master Force Update -->
+        <div style="margin-bottom: 25px;">
+             <button style="width: 100%; background: #fbbf24; border: none; height: 65px; border-radius: 35px; color: black; font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.2s;" 
+                     onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'"
+                     onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
                 🔄 Force Update TV Scoreboard
              </button>
         </div>
 
-        <div class="card" style="background:rgba(21,41,59,0.5); border:1px solid rgba(255,255,255,0.05); margin-top:20px">
-            <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--c-muted); margin-bottom:20px; display:flex; align-items:center; gap:8px">
-                ⌨️ TV HOTKEYS (TOUCH CONTROLS)
-            </div>
+        <!-- TV Hotkeys Section -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 25px;">
+            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 18px; letter-spacing: 1px;">⌨️ TV HOTKEYS (KEYBOARD SHORTCUTS)</div>
             
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
-                <button class="btn" style="background:#2563eb; height:110px; display:flex; flex-direction:column; align-items:flex-start; padding:15px; text-align:left; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Out', 'success');">
-                    <div style="font-size:10px; opacity:0.7; margin-bottom:10px">SHIFT + 1</div>
-                    <div style="font-size:18px; font-weight:900">🛡️ TEAM 1 CARD</div>
-                    <div style="font-size:11px; opacity:0.6">Show team info</div>
-                </button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 
-                <button class="btn" style="background:#7c3aed; height:110px; display:flex; flex-direction:column; align-items:flex-start; padding:15px; text-align:left; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Out', 'success');">
-                    <div style="font-size:10px; opacity:0.7; margin-bottom:10px">SHIFT + 2</div>
-                    <div style="font-size:18px; font-weight:900">🟣 TEAM 2 CARD</div>
-                    <div style="font-size:11px; opacity:0.6">Show team info</div>
+                <!-- Team 1 Card -->
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Active', 'success');"
+                        style="background: #2563eb; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
+                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + 1</div>
+                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 1 CARD</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
-                
-                <button class="btn" style="background:#10b981; height:110px; display:flex; flex-direction:column; align-items:flex-start; padding:15px; text-align:left; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Summary Out', 'success');">
-                    <div style="font-size:10px; opacity:0.7; margin-bottom:10px">SHIFT + P</div>
-                    <div style="font-size:18px; font-weight:900">🏏 CURRENT BATTERS</div>
-                    <div style="font-size:11px; opacity:0.6">Both on crease</div>
+
+                <!-- Team 2 Card -->
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Active', 'success');"
+                        style="background: #7c3aed; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
+                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + 2</div>
+                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 2 CARD</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
-                
-                <button class="btn" style="background:#ef4444; height:110px; display:flex; flex-direction:column; align-items:flex-start; padding:15px; text-align:left; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Out', 'success');">
-                    <div style="font-size:10px; opacity:0.7; margin-bottom:10px">SHIFT + B</div>
-                    <div style="font-size:18px; font-weight:900">⚡ STRIKER PROFILE</div>
-                    <div style="font-size:11px; opacity:0.6">New batter card</div>
+
+                <!-- Current Batters -->
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Active', 'success');"
+                        style="background: #16a34a; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
+                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + P</div>
+                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🏏 CURRENT BATTERS</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Both on crease</div>
+                </button>
+
+                <!-- Striker Profile -->
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Active', 'success');"
+                        style="background: #dc2626; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
+                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + B</div>
+                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">⚡ STRIKER PROFILE</div>
+                    <div style="font-size: 12px; opacity: 0.7;">New batter card</div>
                 </button>
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px">
-             <button class="btn" style="background:#f43f5e; height:80px; font-weight:900; font-size:18px; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed Out', 'success');">🚀 RUNS NEEDED</button>
-             <button class="btn" style="background:#22c55e; height:80px; font-weight:900; font-size:18px; border-radius:16px" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate Out', 'success');">📈 RUN RATE</button>
+        <!-- Quick Launchers -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed', 'success');"
+                     style="background: #f43f5e; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer; transition: 0.2s;">
+                🚀 RUNS NEEDED
+             </button>
+             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate', 'success');"
+                     style="background: #10b981; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer; transition: 0.2s;">
+                📉 CURRENT RUN RATE
+             </button>
         </div>
 
-        <div class="card" style="margin-top:20px; background:rgba(0,0,0,0.2); border:1px dashed rgba(255,255,255,0.1); font-size:12px; text-align:center; color:var(--c-muted); border-radius:16px">
-             COMING UP NEXT ARTWORK - TO BE CONFIGURED
+        <!-- Ad/Promo Artwork Section -->
+        <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.1); border-radius: 18px; height: 60px; display: flex; align-items: center; justify-content: center; color: #475569; font-size: 13px; font-weight: 600; text-transform: uppercase;">
+            COMING UP NEXT ARTWORK
         </div>
-        
-        <button class="btn btn-ghost btn-full" style="margin-top:30px" onclick="window.close()">Close Controller</button>
+
+        <button onclick="window.close()" style="width: 100%; margin-top: 25px; background: transparent; border: 1px solid rgba(255,255,255,0.15); height: 50px; border-radius: 14px; color: #94a3b8; font-weight: 700; cursor: pointer; transition: 0.2s;">
+            CLOSE CONTROLLER
+        </button>
+
     </div>
     `;
 }
