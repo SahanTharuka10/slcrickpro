@@ -3028,10 +3028,39 @@ function renderBroadcastController(match) {
             </button>
         </div>
 
-        <!-- Footer Help -->
-        <div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center;">
-            <div style="font-size: 11px; text-transform: uppercase; color: #475569; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">COMING UP NEXT ARTWORK</div>
-            <div style="font-size: 13px; color: #94a3b8;">Controller is synced with Real-time Broadcast Engine</div>
+        <!-- Instant Visual Triggers -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 20px;">
+            <div style="font-size: 12px; font-weight: 800; color: #f59e0b; margin-bottom: 15px; letter-spacing: 1px;">⚡ INSTANT VISUAL TRIGGERS</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #eab308; padding: 15px; align-items: center; justify-content: center;"
+                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_4' }); showToast('FOUR Animation Sent', 'success');">
+                    <div style="font-size: 28px; font-weight: 900; color: #eab308;">4</div>
+                </button>
+                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #6366f1; padding: 15px; align-items: center; justify-content: center;"
+                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_6' }); showToast('SIX Animation Sent', 'success');">
+                    <div style="font-size: 28px; font-weight: 900; color: #6366f1;">6</div>
+                </button>
+                <button class="broadcast-btn" style="background: #27272a; border: 2px solid #ef4444; padding: 15px; align-items: center; justify-content: center;"
+                        onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'show_wicket' }); showToast('WICKET Animation Sent', 'error');">
+                    <div style="font-size: 28px; font-weight: 900; color: #ef4444;">W</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Coming Up Next Section -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 20px;">
+            <div style="font-size: 12px; font-weight: 800; color: #94a3b8; margin-bottom: 15px; letter-spacing: 1px;">🎨 COMING UP NEXT ARTWORK</div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="next-team-a" placeholder="Team A" style="width: 50%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; color: white; text-align: center; font-weight: 600;">
+                <input type="text" id="next-team-b" placeholder="Team B" style="width: 50%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; color: white; text-align: center; font-weight: 600;">
+            </div>
+
+            <button class="broadcast-btn" style="background: #f97316; width: 100%; height: 60px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;"
+                    onclick="const a=document.getElementById('next-team-a').value; const b=document.getElementById('next-team-b').value; if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'next_match_animation', data: { teamA: a, teamB: b } }); showToast('Promo Sent!', 'success');">
+                <span style="font-size: 20px;">🎨</span>
+                <span style="font-weight: 900;">Publish Next Match Animation</span>
+            </button>
         </div>
 
         <button onclick="window.close()" style="margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b; padding: 16px; border-radius: 12px; cursor: pointer; font-weight: 700;">CLOSE MODULE</button>
