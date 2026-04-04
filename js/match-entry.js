@@ -7,21 +7,13 @@ async function onResumeOrStart(matchId, tournamentId, isStart) {
         
         showToast('🔄 Initializing session...', 'default');
         
-        const response = await fetch(baseUrl + '/match/initialize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matchId, tournamentId, start: isStart, userId })
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            showToast('Error initializing match: ' + text, 'error');
-            return;
+        const match = DB.getMatch(matchId);
+        if (!match && !isStart) {
+            showToast('Match data missing locally. Fetching...', 'default');
+            await window.pullGlobalData();
         }
-
-        const data = await response.json();
-        sessionStorage.setItem('match_session_token', data.sessionToken);
-        showModeSelectionModal(data.match);
+        
+        showModeSelectionModal(match || { id: matchId, team1: 'TBD', team2: 'TBD' });
     } catch (err) {
         console.error('onResumeOrStart', err);
         showToast('Failed to initialize match', 'error');
