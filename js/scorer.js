@@ -2930,29 +2930,39 @@ function broadcastPartnership() {
 
 // ========== GLOBAL SYNC HANDLERS ==========
 window.renderOngoing = function() {
-    if (document.getElementById('screen-scoring').style.display === 'block') {
+    if (document.getElementById('screen-scoring') && document.getElementById('screen-scoring').style.display === 'block') {
         renderScoring();
-    } else if (document.getElementById('modal-tournament-matches').style.display === 'flex') {
-        if (currentTournamentTab === 'matches') renderTournamentMatches();
+    } else if (document.getElementById('modal-tournament-matches') && document.getElementById('modal-tournament-matches').style.display === 'flex') {
+        if (typeof currentTournamentTab !== 'undefined' && currentTournamentTab === 'matches') renderTournamentMatches();
         else renderTournamentTeams();
     } else {
         // Always refresh the dashboard if not in a match
-        renderResumeMatches();
+        if (typeof renderResumeMatches === 'function') renderResumeMatches();
     }
 };
 
 // --- BROADCAST CONTROLLER UI (Dedicated Tab for TV Overlays) ---
 function renderBroadcastController(match) {
+    // FORCE HIDE EVERYTHING ELSE VIA CSS
+    const styleId = 'broadcast-controller-css';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+            body, html { background: #0a1219 !important; overflow-x: hidden !important; border: 2px solid #ffc107 !important; min-height: 100vh !important; margin: 0; padding: 0; }
+            .page-wrapper > *:not(.broadcast-controller-content) { display: none !important; }
+            #screen-setup, #screen-scoring, .modal-overlay, .sidebar, .sub-header { display: none !important; }
+        `;
+        document.head.appendChild(style);
+    }
+
     const root = document.querySelector('.page-wrapper');
     if (!root) return;
     
-    // Set body style for the dedicated controller look
     document.body.style.background = '#0a1219';
-    document.body.style.border = '2px solid #ffc107'; 
-    document.body.style.minHeight = '100vh';
 
     root.innerHTML = `
-    <div style="padding: 20px; font-family: 'Inter', sans-serif; color: white; max-width: 500px; margin: 0 auto;">
+    <div class="broadcast-controller-content" style="padding: 20px; font-family: 'Inter', sans-serif; color: white; max-width: 500px; margin: 0 auto; position: relative; z-index: 9999;">
         
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
@@ -2966,7 +2976,6 @@ function renderBroadcastController(match) {
         <!-- Master Force Update -->
         <div style="margin-bottom: 25px;">
              <button style="width: 100%; background: #fbbf24; border: none; height: 65px; border-radius: 35px; color: black; font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.2s;" 
-                     onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'"
                      onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
                 🔄 Force Update TV Scoreboard
              </button>
@@ -2979,36 +2988,32 @@ function renderBroadcastController(match) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 
                 <!-- Team 1 Card -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Active', 'success');"
-                        style="background: #2563eb; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
-                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Out', 'success');"
+                        style="background: #2563eb; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
                     <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 1 CARD</div>
                     <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
 
                 <!-- Team 2 Card -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Active', 'success');"
-                        style="background: #7c3aed; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
-                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Out', 'success');"
+                        style="background: #7c3aed; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
                     <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 2 CARD</div>
                     <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
 
                 <!-- Current Batters -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Active', 'success');"
-                        style="background: #16a34a; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
-                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Out', 'success');"
+                        style="background: #16a34a; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
                     <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🏏 CURRENT BATTERS</div>
                     <div style="font-size: 12px; opacity: 0.7;">Both on crease</div>
                 </button>
 
                 <!-- Striker Profile -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Active', 'success');"
-                        style="background: #dc2626; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
-                        onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Out', 'success');"
+                        style="background: #dc2626; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
                     <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">⚡ STRIKER PROFILE</div>
                     <div style="font-size: 12px; opacity: 0.7;">New batter card</div>
@@ -3017,23 +3022,18 @@ function renderBroadcastController(match) {
         </div>
 
         <!-- Quick Launchers -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed', 'success');"
-                     style="background: #f43f5e; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer; transition: 0.2s;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed Out', 'success');"
+                     style="background: #f43f5e; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer;">
                 🚀 RUNS NEEDED
              </button>
-             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate', 'success');"
-                     style="background: #10b981; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer; transition: 0.2s;">
-                📉 CURRENT RUN RATE
+             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate Out', 'success');"
+                     style="background: #10b981; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer;">
+                📈 RUN RATE
              </button>
         </div>
 
-        <!-- Ad/Promo Artwork Section -->
-        <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.1); border-radius: 18px; height: 60px; display: flex; align-items: center; justify-content: center; color: #475569; font-size: 13px; font-weight: 600; text-transform: uppercase;">
-            COMING UP NEXT ARTWORK
-        </div>
-
-        <button onclick="window.close()" style="width: 100%; margin-top: 25px; background: transparent; border: 1px solid rgba(255,255,255,0.15); height: 50px; border-radius: 14px; color: #94a3b8; font-weight: 700; cursor: pointer; transition: 0.2s;">
+        <button onclick="window.close()" style="width: 100%; margin-top: 25px; background: transparent; border: 1px solid rgba(255,255,255,0.15); height: 50px; border-radius: 14px; color: #94a3b8; font-weight: 700; cursor: pointer;">
             CLOSE CONTROLLER
         </button>
 
