@@ -94,15 +94,8 @@ function showModeSelectionModal(match) {
 }
 
 function openScorerDashboard(matchId) {
-    const match = DB.getMatch(matchId);
-    if (!match) return showToast('Match not found', 'error');
-
-    match.status = 'LIVE';
-    match.lastModifiedByDevice = 'SCORER';
-    match.lastUpdatedAt = Date.now();
-    DB.saveMatch(match);
-    saveMatch(match);
-    loadMatch(match);
+    // Open full scoring dashboard in a NEW TAB
+    window.open('score-match.html?matchId=' + encodeURIComponent(matchId), '_blank');
 }
 
 function openHotkeyPanel(matchId) {
