@@ -629,21 +629,6 @@ function startOfficialMatch(mId) {
     const m = DB.getMatch(mId);
     if (!m) return;
 
-    if (m.tournamentId && !isTournamentAuthorized(m.tournamentId)) {
-        // Attempt local auto-authorize from stored tourney password before login
-        if (authorizeTournamentLocally(m.tournamentId)) {
-            // Re-run flow now that authorized
-        } else {
-            currentMatch = m;
-            currentMatch.isScheduledTemplate = true;
-            document.getElementById('login-match-title').textContent = m.scheduledName || `${m.team1} vs ${m.team2}`;
-            document.getElementById('login-password').value = '';
-            showScreen('login');
-            closeModal('modal-tournament-matches');
-            return;
-        }
-    }
-
     closeModal('modal-tournament-matches');
 
     // If this is a prepared schedule, start scoring immediately

@@ -36,9 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Socket.IO client is not available. Hotkey socket updates will not work.');
     } else {
         const backendOrigin = window.BACKEND_BASE_URL || (window.location.protocol + '//' + window.location.host);
-        hotkeySocket = io(backendOrigin, { transports: ['websocket', 'polling'] });
+        hotkeySocket = io(backendOrigin, {
+            transports: ['polling', 'websocket'],
+            reconnectionAttempts: 5,
+            timeout: 10000
+        });
 
         hotkeySocket.on('connect', () => {
+            console.log('📡 Hotkey Socket: Connected');
             hotkeySocket.emit('joinMatch', activeMatchId);
         });
 
@@ -91,9 +96,15 @@ function handleHotkeyKeydown(evt) {
         ...action
     };
 
-    fetch('/match/update', {
+    const baseUrl = window.BACKEND_BASE_URL || '';
+    
+    fetch(baseUrl + '/match/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Session-Token': sessionToken },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'Session-Token': sessionToken,
+            'x-scoring-token': localStorage.getItem('cricpro_token') || '' 
+        },
         body: JSON.stringify(payload)
     }).then(async (r) => {
         if (!r.ok) {
@@ -102,14 +113,15 @@ function handleHotkeyKeydown(evt) {
         }
         const updated = await r.json();
         updateHotkeyDashboard(updated);
+        
         if (isBroadcastMirror) {
-            fetch('/tv-display', {
+            fetch(baseUrl + '/tv-display', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
         }
-    }).catch(console.error);
+    }).catch(e => console.error('Hotkey fetch error:', e));
 }
 
 function updateHotkeyDashboard(match) {
