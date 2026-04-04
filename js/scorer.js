@@ -91,10 +91,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 10000);
     
     // Check for matchId parameter for direct scoring access
-    const urlParams = new URLSearchParams(window.location.search);
-    const mId = urlParams.get('matchId');
-    const tId = urlParams.get('tournamentId');
-
     if (mId) {
         let m = DB.getMatch(mId);
         // If not found, try one more sync just in case
@@ -104,13 +100,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (m) {
-            // Apply Broadcast Controller layout if triggered
-            if (urlParams.get('hotkey') === 'true') {
-               document.body.classList.add('broadcast-controller-active');
-               renderBroadcastController(m);
-               showToast('📡 Broadcast Controller Active', 'success');
-               return; // Stop standard scoring initialization
-            }
             // BYPASS ALL PASSWORD CHECKS
             if (m.status === 'scheduled') {
                 startOfficialMatch(mId);
