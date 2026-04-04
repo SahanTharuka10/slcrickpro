@@ -422,13 +422,12 @@ function authorizeTournamentLocally(tournamentId) {
 function openScorerDashboard(matchId) {
     // existing scorer path
     currentMatch = DB.getMatch(matchId);
-    
-    if (!currentMatch) {
-       // Start new match flow
-       startOfficialMatch(matchId);
-       return;
+    if (!currentMatch) { 
+        startOfficialMatch(matchId); 
+        return; 
     }
     
+    currentMatch.status = 'live'; // Ensured lowercase
     DB.saveMatch(currentMatch);
     loadMatch(currentMatch);
 }
@@ -468,16 +467,6 @@ function showModeSelectionModal(match) {
     };
 
     document.getElementById('cancel-mode-btn').onclick = () => modal.remove();
-}
-
-function openScorerDashboard(matchId) {
-    // existing scorer path
-    currentMatch = DB.getMatch(matchId);
-    if (!currentMatch) { showToast('Match not available', 'error'); return; }
-    currentMatch.status = 'LIVE';
-    DB.saveMatch(currentMatch);
-    saveMatch(currentMatch);
-    loadMatch(currentMatch);
 }
 
 function openHotkeyPanel(matchId) {

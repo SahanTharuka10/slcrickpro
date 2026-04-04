@@ -62,9 +62,10 @@ function renderLive() {
 
   const matches = DB.getMatches().filter(m => {
     if (!m.publishLive) return false;
-    // User request: Live tab should not show scheduled matches by default
-    if (m.type === 'tournament' && m.status === 'scheduled') return false;
-    return (m.status === 'live' || m.status === 'paused');
+    // Hide scheduled/setup matches ONLY if they are part of a tournament (they belong in Tournament Hub)
+    if (m.type === 'tournament' && (m.status === 'scheduled' || m.status === 'setup')) return false;
+    // Show single matches even if they are in setup/scheduled state
+    return (m.status === 'live' || m.status === 'paused' || m.status === 'setup' || m.status === 'scheduled');
   });
 
   if (!matches.length) {
