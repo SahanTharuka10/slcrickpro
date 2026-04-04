@@ -533,14 +533,16 @@ function _renderOverlayFromMatch(m) {
     const score   = curInn.runs + '-' + curInn.wickets;
     const ov      = formatOvers(curInn.balls, m.ballsPerOver);
 
-    const si  = curInn.currentBatsmenIdx[curInn.strikerIdx];
-    const nsi = curInn.currentBatsmenIdx[curInn.strikerIdx === 0 ? 1 : 0];
-    const striker    = curInn.batsmen[si]  || { name:'Batsman 1', runs:0, balls:0 };
-    const nonStriker = curInn.batsmen[nsi] || { name:'Batsman 2', runs:0, balls:0 };
-    const bowler     = curInn.bowlers[curInn.currentBowlerIdx] || { name:'Bowler', wickets:0, runs:0, balls:0 };
+    const siIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx] : null;
+    const nsiIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx === 0 ? 1 : 0] : null;
+
+    const striker    = (typeof siIdx === 'number' && curInn.batsmen && curInn.batsmen[siIdx]) ? curInn.batsmen[siIdx] : { name:'Batsman 1', runs:0, balls:0 };
+    const nonStriker = (typeof nsiIdx === 'number' && curInn.batsmen && curInn.batsmen[nsiIdx]) ? curInn.batsmen[nsiIdx] : { name:'Batsman 2', runs:0, balls:0 };
+    
+    const bowler     = (curInn.bowlers && typeof curInn.currentBowlerIdx !== 'undefined' && curInn.bowlers[curInn.currentBowlerIdx]) ? curInn.bowlers[curInn.currentBowlerIdx] : { name:'Bowler', wickets:0, runs:0, balls:0 };
     const b_overs    = formatOvers(bowler.balls || 0, m.ballsPerOver);
 
-    const ballsToShow = curInn.currentOver.slice(Math.max(0, curInn.currentOver.length - 6));
+    const ballsToShow = (curInn.currentOver || []).slice(Math.max(0, (curInn.currentOver || []).length - 6));
     const recentBallsHtml = ballsToShow.map(b => {
         let cls='', lbl=b.runs||'0';
         if (b.wicket)              { cls='wicket';   lbl='W'; }
