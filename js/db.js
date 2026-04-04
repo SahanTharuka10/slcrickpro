@@ -614,6 +614,39 @@ if (IS_PRODUCTION) {
 window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 
 // local manual network backend
+window.syncToDB = syncToDB; // Expose globally for other files
+async function syncToDB(type, data) {
+    if (!BACKEND_BASE_URL) return;
+    
+    let token = null;
+    try {
+        if (typeof getTournamentToken === 'function') {
+            if (type === 'match' && data && data.tournamentId) {
+                token = getTournamentToken(data.tournamentId);
+            } else if (type === 'tournament' && data && data.id) {
+                token = getTournamentToken(data.id);
+            }
+        }
+    } catch(e) {}
+
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['x-scoring-token'] = token;
+
+        const res = await fetch(`${BACKEND_BASE_URL}/sync/${type}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            console.log(`☁️ Synced ${type} to cloud successfully.`);
+        } else {
+            console.warn(`☁️ Failed to sync ${type} to cloud`, res.status);
+        }
+    } catch(err) {
+        console.error('syncToDB connection error:', err);
+    }
+};
 
 let socket = null;
 if (typeof io !== 'undefined') {
