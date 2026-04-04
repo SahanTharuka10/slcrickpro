@@ -44,14 +44,27 @@ app.use(express.static(path.join(__dirname, '..')));
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
+const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
-let sequelize = new Sequelize(DATABASE_URL, {
+
+const sequelizeConfig = {
   dialect: DATABASE_URL.startsWith('postgres') ? 'postgres' : 'sqlite',
   logging: false,
-  dialectOptions: DATABASE_URL.startsWith('postgres') ? { ssl: { require: true, rejectUnauthorized: false }} : {},
-});
+  pool: {
+    max: 10, 
+    min: 2,
+    acquire: 30000,
+    idle: 10000
+  },
+  dialectOptions: DATABASE_URL.startsWith('postgres') ? {
+    ssl: { require: true, rejectUnauthorized: false },
+    keepAlive: true,
+  } : {
+    storage: LOCAL_SQLITE_PATH
+  }
+};
 
-const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
+let sequelize = new Sequelize(DATABASE_URL, sequelizeConfig);
 
 async function trySqliteFallback() {
   const sqliteUrl = `sqlite:${LOCAL_SQLITE_PATH}`;

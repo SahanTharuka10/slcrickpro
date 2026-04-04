@@ -3076,7 +3076,10 @@ function renderBroadcastController(match) {
                     </div>
                 </button>
                 <button class="b-btn b-btn-rose" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
-                    <div class="b-btn-title">⏹ STOP OVERLAYS</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">⏹ STOP OVERLAYS</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">ESC</div>
+                    </div>
                     <div class="b-btn-sub">Clear all visual elements</div>
                 </button>
                 <button class="b-btn b-btn-slate" onclick="location.reload()">
@@ -3101,28 +3104,46 @@ function renderBroadcastController(match) {
             <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
             <div class="b-grid">
                 <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
-                    <div class="b-btn-title">⚡ STRIKER PROFILE</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">⚡ STRIKER PROFILE</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+B</div>
+                    </div>
                     <div class="b-btn-sub">Single batter stats card</div>
                 </button>
                 <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
-                    <div class="b-btn-title">🏏 CURRENT BATTERS</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🏏 CURRENT BATTERS</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+P</div>
+                    </div>
                     <div class="b-btn-sub">Comparison on crease</div>
                 </button>
                 <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
-                    <div class="b-btn-title">🤝 PARTNERSHIP</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🤝 PARTNERSHIP</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+H</div>
+                    </div>
                     <div class="b-btn-sub">Current standing pair</div>
                 </button>
                 <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                    <div class="b-btn-title">🥎 BOWLER PROFILE</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🥎 BOWLER PROFILE</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
+                    </div>
                     <div class="b-btn-sub">Active bowler stats</div>
                 </button>
                 
                 <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
-                    <div class="b-btn-title">🛡️ ${match.team1} CARD</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🛡️ ${match.team1} CARD</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+1</div>
+                    </div>
                     <div class="b-btn-sub">Team info & logo</div>
                 </button>
                 <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
-                    <div class="b-btn-title">🟣 ${match.team2} CARD</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🟣 ${match.team2} CARD</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+2</div>
+                    </div>
                     <div class="b-btn-sub">Team info & logo</div>
                 </button>
                 
@@ -3142,19 +3163,31 @@ function renderBroadcastController(match) {
             <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
             <div class="b-grid">
                 <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
-                    <div class="b-btn-title">🚀 RUNS NEEDED</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🚀 RUNS NEEDED</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+R</div>
+                    </div>
                     <div class="b-btn-sub">Chase requirement info</div>
                 </button>
                 <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
-                    <div class="b-btn-title">📈 RUN RATE</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">📈 RUN RATE</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+C</div>
+                    </div>
                     <div class="b-btn-sub">Current match RR</div>
                 </button>
                 <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
-                    <div class="b-btn-title">📄 FULL SCORECARD</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">📄 FULL SCORECARD</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+S</div>
+                    </div>
                     <div class="b-btn-sub">Auto-hide after display</div>
                 </button>
                 <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
-                    <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
+                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+T</div>
+                    </div>
                     <div class="b-btn-sub">Standings & Results</div>
                 </button>
             </div>
@@ -3176,6 +3209,27 @@ function renderBroadcastController(match) {
         <button onclick="window.close()" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 16px; border-radius: 16px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Module Session</button>
     </div>
     `;
+
+    // Remote Station Keyboard Listeners
+    const handleRemoteHotkey = (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === 'Escape') { if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY'); return; }
+        if (e.shiftKey) {
+            switch(e.key.toUpperCase()) {
+                case '1': broadcastTeamCard(0); break;
+                case '2': broadcastTeamCard(1); break;
+                case 'B': broadcastStrikerProfile(); break;
+                case 'P': broadcastCurrentBatters(); break;
+                case 'H': broadcastPartnership(); break;
+                case 'L': broadcastBowlerProfile(); break;
+                case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
+                case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
+                case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;
+                case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
+            }
+        }
+    };
+    document.addEventListener('keydown', handleRemoteHotkey);
 
     // Auto-sync state
     setInterval(async () => {

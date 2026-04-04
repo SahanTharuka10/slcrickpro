@@ -114,6 +114,17 @@ function handleHotkeyKeydown(evt) {
         const updated = await r.json();
         updateHotkeyDashboard(updated);
         
+        // AUTO-BROADCAST BIG EVENTS TO TV
+        if (typeof Broadcast !== 'undefined') {
+            if (action.eventType === 'FOUR') Broadcast.send('SHOW_BIG_EVENT', { type: 'FOUR', playerName: 'BATSMAN', matchScore: `${updated.runs}/${updated.wickets}`, teamName: updated.battingTeam });
+            if (action.eventType === 'SIX') Broadcast.send('SHOW_BIG_EVENT', { type: 'SIX', playerName: 'BATSMAN', matchScore: `${updated.runs}/${updated.wickets}`, teamName: updated.battingTeam });
+            if (action.eventType === 'WICKET') Broadcast.send('SHOW_BIG_EVENT', { type: 'WICKET', playerName: 'BATSMAN', matchScore: `${updated.runs}/${updated.wickets}`, teamName: updated.battingTeam });
+        } else if (typeof sendBroadcast === 'function') {
+            if (action.eventType === 'FOUR') sendBroadcast('SHOW_BIG_EVENT', { type: 'FOUR' });
+            if (action.eventType === 'SIX') sendBroadcast('SHOW_BIG_EVENT', { type: 'SIX' });
+            if (action.eventType === 'WICKET') sendBroadcast('SHOW_BIG_EVENT', { type: 'WICKET' });
+        }
+
         if (isBroadcastMirror) {
             fetch(baseUrl + '/tv-display', {
                 method: 'POST',
