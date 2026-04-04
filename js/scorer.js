@@ -2945,98 +2945,98 @@ window.renderOngoing = function() {
 function renderBroadcastController(match) {
     // FORCE HIDE EVERYTHING ELSE VIA CSS
     const styleId = 'broadcast-controller-css';
+    // Aggressive Lockdown Style
+    const styleId = 'broadcast-lockdown-css';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-            body, html { background: #0a1219 !important; overflow-x: hidden !important; border: 2px solid #ffc107 !important; min-height: 100vh !important; margin: 0; padding: 0; }
+            body, html { background: #070e14 !important; overflow: hidden !important; margin: 0; padding: 0; height: 100vh !important; }
+            .page-wrapper { border: 2px solid #ffc107 !important; min-height: 100vh !important; transition: border-color 0.3s; }
             .page-wrapper > *:not(.broadcast-controller-content) { display: none !important; }
-            #screen-setup, #screen-scoring, .modal-overlay, .sidebar, .sub-header { display: none !important; }
+            * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+            .broadcast-btn { 
+                border: none; border-radius: 20px; color: white; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex; flex-direction: column; padding: 20px; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            }
+            .broadcast-btn:active { transform: scale(0.96); opacity: 0.8; }
+            .btn-label { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.8; }
+            .btn-title { font-size: 18px; font-weight: 900; line-height: 1.2; }
+            .btn-sub { font-size: 12px; font-weight: 400; opacity: 0.6; margin-top: 4px; }
         `;
         document.head.appendChild(style);
     }
 
-    const root = document.querySelector('.page-wrapper');
-    if (!root) return;
+    const wrapper = document.querySelector('.page-wrapper');
+    if (!wrapper) return;
     
-    document.body.style.background = '#0a1219';
-
-    root.innerHTML = `
-    <div class="broadcast-controller-content" style="padding: 20px; font-family: 'Inter', sans-serif; color: white; max-width: 500px; margin: 0 auto; position: relative; z-index: 9999;">
+    wrapper.innerHTML = `
+    <div class="broadcast-controller-content" style="padding: 24px; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
         
-        <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 24px;">🚀</span>
-                <span style="font-weight: 900; letter-spacing: 1px; font-size: 20px; color: #ffc107;">BROADCAST CONTROL</span>
+        <!-- Top Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px; color: #ffc107;">
+                <span style="font-size: 24px;">📡</span>
+                <span style="font-weight: 900; letter-spacing: 1px; font-size: 20px;">BROADCAST CONTROL</span>
             </div>
-            <div style="background: #ffc107; color: black; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 6px;">LIVE PRO</div>
+            <div style="background: #fbbf24; color: black; font-weight: 900; font-size: 12px; padding: 6px 14px; border-radius: 8px; box-shadow: 0 0 20px rgba(251,191,36,0.3);">LIVE PRO</div>
         </div>
 
         <!-- Master Force Update -->
-        <div style="margin-bottom: 25px;">
-             <button style="width: 100%; background: #fbbf24; border: none; height: 65px; border-radius: 35px; color: black; font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.2s;" 
-                     onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
-                🔄 Force Update TV Scoreboard
-             </button>
-        </div>
+        <button class="broadcast-btn" style="background: #fbbf24; border-radius: 40px; height: 65px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; color: black;"
+                onclick="if(window.socket) window.socket.emit('force_refresh', { matchId: '${match.id}' }); showToast('Scoreboard Refreshed', 'default');">
+            <span style="font-size: 22px;">🔄</span>
+            <span style="font-weight: 900; font-size: 18px;">Force Update TV Scoreboard</span>
+        </button>
 
-        <!-- TV Hotkeys Section -->
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 25px;">
-            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 18px; letter-spacing: 1px;">⌨️ TV HOTKEYS (TOUCH CONTROLS)</div>
+        <!-- Hotkeys Main Grid -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 24px;">
+            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 20px; letter-spacing: 1px;">⌨️ TV HOTKEYS (TOUCH CONTROLS)</div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                
-                <!-- Team 1 Card -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Out', 'success');"
-                        style="background: #2563eb; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
-                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 1 CARD</div>
-                    <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <button class="broadcast-btn" style="background: #2563eb;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Active', 'success');">
+                    <div class="btn-label">SHIFT + 1</div>
+                    <div class="btn-title">🛡️ TEAM 1 CARD</div>
+                    <div class="btn-sub">Show team info</div>
                 </button>
 
-                <!-- Team 2 Card -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Out', 'success');"
-                        style="background: #7c3aed; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
-                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 2 CARD</div>
-                    <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
+                <button class="broadcast-btn" style="background: #7c3aed;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Active', 'success');">
+                    <div class="btn-label">SHIFT + 2</div>
+                    <div class="btn-title">🟣 TEAM 2 CARD</div>
+                    <div class="btn-sub">Show team info</div>
                 </button>
 
-                <!-- Current Batters -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Out', 'success');"
-                        style="background: #16a34a; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
-                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🏏 CURRENT BATTERS</div>
-                    <div style="font-size: 12px; opacity: 0.7;">Both on crease</div>
+                <button class="broadcast-btn" style="background: #16a34a;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Active', 'success');">
+                    <div class="btn-label">SHIFT + P</div>
+                    <div class="btn-title">🏏 CURRENT BATTERS</div>
+                    <div class="btn-sub">Both on crease</div>
                 </button>
 
-                <!-- Striker Profile -->
-                <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Out', 'success');"
-                        style="background: #dc2626; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; display: flex; flex-direction: column;">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
-                    <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">⚡ STRIKER PROFILE</div>
-                    <div style="font-size: 12px; opacity: 0.7;">New batter card</div>
+                <button class="broadcast-btn" style="background: #dc2626;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Active', 'success');">
+                    <div class="btn-label">SHIFT + B</div>
+                    <div class="btn-title">⚡ STRIKER PROFILE</div>
+                    <div class="btn-sub">New batter card</div>
                 </button>
             </div>
         </div>
 
-        <!-- Quick Launchers -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed Out', 'success');"
-                     style="background: #f43f5e; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer;">
-                🚀 RUNS NEEDED
-             </button>
-             <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate Out', 'success');"
-                     style="background: #10b981; border: none; border-radius: 18px; height: 85px; font-weight: 900; color: white; font-size: 18px; cursor: pointer;">
-                📈 RUN RATE
-             </button>
+        <!-- Big Stats Row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <button class="broadcast-btn" style="background: #f43f5e; height: 90px; align-items: center; justify-content: center;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'runs_needed' }); showToast('Runs Needed', 'success');">
+                <div class="btn-title" style="font-size: 20px;">🚀 RUNS NEEDED</div>
+            </button>
+            <button class="broadcast-btn" style="background: #10b981; height: 90px; align-items: center; justify-content: center;" onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'run_rate' }); showToast('Run Rate', 'success');">
+                <div class="btn-title" style="font-size: 20px;">📉 CURRENT RR</div>
+            </button>
         </div>
 
-        <button onclick="window.close()" style="width: 100%; margin-top: 25px; background: transparent; border: 1px solid rgba(255,255,255,0.15); height: 50px; border-radius: 14px; color: #94a3b8; font-weight: 700; cursor: pointer;">
-            CLOSE CONTROLLER
-        </button>
+        <!-- Footer Help -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #475569; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">COMING UP NEXT ARTWORK</div>
+            <div style="font-size: 13px; color: #94a3b8;">Controller is synced with Real-time Broadcast Engine</div>
+        </div>
 
+        <button onclick="window.close()" style="margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b; padding: 16px; border-radius: 12px; cursor: pointer; font-weight: 700;">CLOSE MODULE</button>
     </div>
     `;
 }
