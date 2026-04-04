@@ -2944,8 +2944,6 @@ window.renderOngoing = function() {
 // --- BROADCAST CONTROLLER UI (Dedicated Tab for TV Overlays) ---
 function renderBroadcastController(match) {
     // FORCE HIDE EVERYTHING ELSE VIA CSS
-    const styleId = 'broadcast-controller-css';
-    // Aggressive Lockdown Style
     const styleId = 'broadcast-lockdown-css';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
