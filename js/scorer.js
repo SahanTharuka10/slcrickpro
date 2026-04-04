@@ -45,6 +45,22 @@ function getStrikerBatterName(inn) {
     return idx != null && inn.batsmen[idx] ? inn.batsmen[idx].name : null;
 }
 
+
+function calculateAge(dob) {
+    if (!dob) return "";
+    try {
+        const birthDate = new Date(dob);
+        if (isNaN(birthDate.getTime())) return "";
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age > 0 ? age : "";
+    } catch(e) { return ""; }
+}
+
 function resolvePlayerProfileForBatter(inn, bName) {
     if (!bName || !inn || !Array.isArray(inn.batsmen)) return null;
     const bRec = inn.batsmen.find(x => x.name === bName);
@@ -2845,8 +2861,10 @@ function broadcastStrikerProfile() {
     
     const p = resolvePlayerProfileForBatter(inn, strikerName);
     const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
+    const age = p ? calculateAge(p.dob) : "";
     
-    sendBroadcast('SHOW_BATTER_PROFILES', { profiles: [{ name: strikerName, profile: p, stats }] });
+    sendBroadcast('SHOW_STRIKER_PROFILE', { name: strikerName, profile: p, stats, age });
+};
 }
 
 function broadcastBowlerProfile() {

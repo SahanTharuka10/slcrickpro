@@ -234,6 +234,9 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_BOWLER_PROFILE':
             showBowlerProfileGraphic(data);
             break;
+        case 'SHOW_STRIKER_PROFILE':
+            showStrikerProfileLeft(data);
+            break;
         case 'SHOW_PARTNERSHIP':
             showPartnershipGraphic(data);
             break;
@@ -1115,6 +1118,79 @@ function showBatterProfilesGraphic(data) {
     
     html += '</div></div></div>';
     renderBroadcastOverlay(html);
+}
+
+function showStrikerProfileLeft(data) {
+    const { name, profile: p, stats, age } = data;
+    const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    
+    // UI Artifact removal if exists
+    const old = document.getElementById('striker-profile-left');
+    if(old) old.remove();
+
+    // Premium Vertical Design on the Left (Mitchell Starc Style)
+    const htmlSnippet = `
+    <div id="striker-profile-left" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); width:330px; 
+        background: linear-gradient(135deg, rgba(8, 62, 33, 0.98) 0%, rgba(0,0,0,1) 100%); 
+        border-left: 12px solid #00e676; border-radius: 0 40px 40px 0; overflow:hidden; z-index:15000;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.9), 20px 0 50px rgba(0,230,118,0.1); font-family:'Outfit', sans-serif">
+        
+        <div style="height:10px; background: repeating-linear-gradient(90deg, #00e676 0px, #00e676 10px, transparent 10px, transparent 20px); opacity:0.3"></div>
+        
+        <div style="padding:40px 30px">
+            <div style="color:#00e676; font-weight:900; letter-spacing:4px; font-size:12px; text-transform:uppercase; margin-bottom:20px; opacity:0.8">
+                PLAYER TRACKER
+            </div>
+
+            <!-- PLAYER PHOTO -->
+            <div style="position:relative; width:100%; height:350px; background:rgba(255,255,255,0.05); border-radius:20px; overflow:hidden; margin-bottom:30px">
+                <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.4) 100%)"></div>
+            </div>
+
+            <!-- NAME & AGE -->
+            <div style="text-align:left">
+                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${name.split(' ')[0]}</div>
+                <div style="font-size:42px; font-weight:950; color:#00e676; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                ${age ? `<div style="font-size:18px; font-weight:800; color:rgba(255,255,255,0.5); letter-spacing:2px">AGE: ${age} YEARS</div>` : ''}
+            </div>
+
+            <div style="margin-top:30px; width:60px; height:6px; background:#00e676; border-radius:3px"></div>
+            
+            <!-- MINI STATS -->
+            <div style="margin-top:40px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:25px">
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.runs || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">RUNS</div></div>
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.balls || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">BALLS</div></div>
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#00e676">${stats.sixes || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">SIXES</div></div>
+            </div>
+        </div>
+
+        <div style="height:40px; background:rgba(0,230,118,0.05); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.2); font-size:10px; font-weight:800; letter-spacing:3px">
+            LIVE PRODUCTION
+        </div>
+    </div>
+    `;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'active-broadcast-wrapper';
+    wrapper.innerHTML = htmlSnippet;
+    document.body.appendChild(wrapper);
+
+    // GSAP Entrance
+    if (typeof gsap !== 'undefined') {
+        gsap.fromTo('#striker-profile-left', 
+            { x: -500, opacity: 0, skewX: 10 }, 
+            { x: 0, opacity: 1, skewX: 0, duration: 1.2, ease: "expo.out" }
+        );
+    }
+    
+    // Auto-hide after 12 seconds
+    if (window._strikerTO) clearTimeout(window._strikerTO);
+    window._strikerTO = setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to('#striker-profile-left', { x: -500, opacity:0, duration:0.8, ease:"expo.in", onComplete: () => wrapper.remove() });
+        } else wrapper.remove();
+    }, 12000);
 }
 
 let activeBroadcastOverlayId = null;
