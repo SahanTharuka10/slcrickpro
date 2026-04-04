@@ -36,8 +36,9 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(express.json());
-app.use(express.text({ type: 'text/plain' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.text({ type: 'text/plain', limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
@@ -139,14 +140,14 @@ const Order = sequelize.define('Order', {
 async function ensureDB() {
   try {
     await sequelize.authenticate();
+    // console.log('DB Authenticated');
     await sequelize.sync();
     return true;
   } catch (e) {
     console.warn('DB connection error detected:', e.message || e);
-
+    // try fallback
     try {
-      // fallback to local sqlite when remote postgres is unavailable
-      if (DATABASE_URL.startsWith('postgres') || DATABASE_URL.startsWith('postgresql') || DATABASE_URL.startsWith('mysql')) {
+      if (DATABASE_URL.includes('postgres') || DATABASE_URL.includes('mysql')) {
         await trySqliteFallback();
         await sequelize.sync();
         return true;
@@ -155,7 +156,6 @@ async function ensureDB() {
       console.error('Fallback DB error', fallbackErr);
       throw fallbackErr;
     }
-
     throw e;
   }
 }
@@ -196,7 +196,14 @@ function emitUpdate(type, id, data) {
 app.get('/sync/matches', async (req, res) => {
   try {
     await ensureDB();
-    res.json({ marker:'updated' });
+    const rows = await Match.findAll();
+    // In our model, 'data' property contains the full match object
+    const matches = rows.map(m => {
+      const d = m.data || m.dataValues?.data || {};
+      d.isLocked = !!m.scoring_password;
+      return d;
+    });
+    res.json({ matches });
   } catch (e) {
     console.error('/sync/matches error', e);
     res.status(500).json({ error: e.message || 'Failed to fetch matches' });
@@ -206,9 +213,13 @@ app.get('/sync/matches', async (req, res) => {
 app.get('/sync/tournaments', async (req, res) => {
   try {
     await ensureDB();
-    const tournaments = await Tournament.findAll();
-    const publicTournaments = tournaments.map(t => { const d = t.data || {}; d.isLocked = !!t.scoring_password; return d; });
-    res.json(publicTournaments);
+    const rows = await Tournament.findAll();
+    const tournaments = rows.map(t => {
+      const d = t.data || t.dataValues?.data || {};
+      d.isLocked = !!t.scoring_password;
+      return d;
+    });
+    res.json({ tournaments });
   } catch (e) {
     console.error('/sync/tournaments error', e);
     res.status(500).json({ error: e.message || 'Failed to fetch tournaments' });

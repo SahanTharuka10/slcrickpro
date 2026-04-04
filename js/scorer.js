@@ -63,7 +63,12 @@ function playerPhotoSrc(p) {
     return DEFAULT_PLAYER_PHOTO;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // SYNC FIRST: ensure we have latest cloud data before rendering or resolving direct links
+    if (typeof window.pullGlobalData === 'function') {
+        await window.pullGlobalData();
+    }
+
     const tf = document.getElementById('tourn-format');
     if (tf) {
         tf.addEventListener('change', (e) => {
@@ -77,13 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderResumeMatches();
 
-    // Auto-refresh Open Match list every 5 seconds
+    // Auto-refresh Open Match list every 10 seconds (slightly slower to avoid spamming)
     setInterval(() => {
         if (document.getElementById('screen-setup') &&
             document.getElementById('screen-setup').style.display !== 'none') {
             renderResumeMatches();
         }
-    }, 5000);
+    }, 10000);
     
     // Check for matchId parameter for direct scoring access
     const urlParams = new URLSearchParams(window.location.search);
@@ -91,7 +96,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const tId = urlParams.get('tournamentId');
 
     if (mId) {
-        const m = DB.getMatch(mId);
+        let m = DB.getMatch(mId);
+        // If not found, try one more sync just in case
+        if (!m && typeof window.pullGlobalData === 'function') {
+            await window.pullGlobalData();
+            m = DB.getMatch(mId);
+        }
+
         if (m) {
             if (m.tournamentId && !isTournamentAuthorized(m.tournamentId)) {
                 currentTournament = DB.getTournament(m.tournamentId) || { id: m.tournamentId, name: m.tournamentName || 'Tournament' };
@@ -106,9 +117,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (m.status === 'live' || m.status === 'paused') {
                 resumeMatch(mId);
             }
+        } else {
+            console.warn('Match not found even after sync:', mId);
         }
     } else if (tId) {
         showScreen('setup'); 
+        // Ensure hub is opened only after ensuring we have the tournament in DB
+        let t = DB.getTournament(tId);
+        if (!t && typeof window.pullGlobalData === 'function') {
+            await window.pullGlobalData();
+        }
         openTournamentHub(tId);
     } else {
         showScreen('setup');
@@ -378,7 +396,12 @@ function onResumeOrStart(matchId, isStart = false) {
     let m = DB.getMatch(matchId);
 
     if (!m && !isStart) {
-        showToast('Match not found to resume', 'error');
+        showToast('Match not found to resume. Pulling from cloud...', 'default');
+        window.pullGlobalData().then(() => {
+            m = DB.getMatch(matchId);
+            if (m) onResumeOrStart(matchId, isStart);
+            else showToast('Match still not found.', 'error');
+        });
         return;
     }
 
@@ -386,9 +409,28 @@ function onResumeOrStart(matchId, isStart = false) {
         m = { id: matchId, status: 'INITIALIZING', runs:0, wickets:0, overs:0, ballsInOver:0 };
     }
 
-    if (m.tournamentId && !isTournamentAuthorized(m.tournamentId) && !authorizeTournamentLocally(m.tournamentId)) {
-        openTournamentHub(m.tournamentId);
-        return;
+    // AUTH CHECK: Tournament OR Single Match password
+    const tournamentId = m.tournamentId;
+    const isLocked = !!m.scoringPassword || !!m.password || !!m.isLocked || (tournamentId && !!DB.getTournament(tournamentId)?.isLocked);
+
+    if (isLocked) {
+        // If tournament match, check tournament auth
+        if (tournamentId) {
+            if (!isTournamentAuthorized(tournamentId) && !authorizeTournamentLocally(tournamentId)) {
+                openTournamentHub(tournamentId);
+                return;
+            }
+        } else {
+            // Check specific match auth
+            const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+            if (!grants[m.id]) {
+                currentMatch = m;
+                document.getElementById('login-match-title').textContent = `Unlock Match: ${m.team1} vs ${m.team2}`;
+                document.getElementById('login-password').value = '';
+                showScreen('login');
+                return;
+            }
+        }
     }
 
     showModeSelectionModal(m);
@@ -727,10 +769,16 @@ async function loginToMatch() {
 
         if (result.verified) {
             showToast('✅ Access Granted!', 'success');
+            
+            // Record this grant locally
+            const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+            grants[id] = true;
+            localStorage.setItem('cricpro_grants', JSON.stringify(grants));
+
             if (type === 'tournament') {
-                // Store password for future local auth
+                // Store password for future local auth attempt
                 localStorage.setItem(`tourn_pw_${id}`, pw);
-                setTournamentAuthorized(id, 'cloud-token', 1000 * 60 * 60 * 24);
+                setTournamentAuthorized(id, result.token || 'cloud-verified', 1000 * 60 * 60 * 24);
                 if (currentTournament) {
                     openTournamentHub(currentTournament.id);
                     currentTournament = null;
@@ -739,7 +787,12 @@ async function loginToMatch() {
                 }
                 if (currentMatch) loadMatch(currentMatch);
             } else {
-                loadMatch(currentMatch);
+                if (currentMatch) loadMatch(currentMatch);
+                else {
+                    // If we just had an ID, try to find and load it
+                    const m = DB.getMatch(id);
+                    if (m) loadMatch(m);
+                }
             }
         } else {
             showToast('❌ Wrong password! Try again.', 'error');

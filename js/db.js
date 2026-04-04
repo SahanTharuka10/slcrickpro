@@ -759,32 +759,40 @@ window.pullGlobalData = async function(showFeedback = false) {
     if (syncBtn) syncBtn.classList.add('syncing-animate');
 
     try {
-        const r = await fetch(BACKEND_BASE_URL + '/sync/matches');
-        if (!r.ok) throw new Error('Cloud unreachable');
-        const d = await r.json(); // { matches: [], tournaments: [] }
-        
-        if (d.matches) {
-            const local = DB.getMatches();
-            const merged = d.matches.map(cm => {
-                const lm = local.find(x => x.id === cm.id);
-                return (lm && lm.lastUpdated > (cm.lastUpdated || 0)) ? lm : cm;
-            });
-            local.forEach(lm => {
-                if (!merged.find(x => x.id === lm.id)) merged.push(lm);
-            });
-            DB._secureSet(DB_KEYS.MATCHES, merged);
+        // --- FETCH MATCHES ---
+        const rm = await fetch(BACKEND_BASE_URL + '/sync/matches');
+        if (rm.ok) {
+            const dm = await rm.json();
+            if (dm.matches) {
+                const local = DB.getMatches();
+                const merged = dm.matches.map(cm => {
+                    const lm = local.find(x => x.id === cm.id);
+                    // Cloud-first approach for other devices, but preserve local if newer
+                    return (lm && lm.lastUpdated > (cm.lastUpdated || 0)) ? lm : cm;
+                });
+                // Add local-only matches that don't exist in cloud yet
+                local.forEach(lm => {
+                    if (!merged.find(x => x.id === lm.id)) merged.push(lm);
+                });
+                DB._secureSet(DB_KEYS.MATCHES, merged);
+            }
         }
 
-        if (d.tournaments) {
-            const local = DB.getTournaments();
-            const mergedT = d.tournaments.map(ct => {
-                const lt = local.find(x => x.id === ct.id);
-                return (lt && lt.lastUpdated > (ct.lastUpdated || 0)) ? lt : ct;
-            });
-            local.forEach(lt => {
-                if (!mergedT.find(x => x.id === lt.id)) mergedT.push(lt);
-            });
-            DB._secureSet(DB_KEYS.TOURNAMENTS, mergedT);
+        // --- FETCH TOURNAMENTS ---
+        const rt = await fetch(BACKEND_BASE_URL + '/sync/tournaments');
+        if (rt.ok) {
+            const dt = await rt.json();
+            if (dt.tournaments) {
+                const local = DB.getTournaments();
+                const mergedT = dt.tournaments.map(ct => {
+                    const lt = local.find(x => x.id === ct.id);
+                    return (lt && lt.lastUpdated > (ct.lastUpdated || 0)) ? lt : ct;
+                });
+                local.forEach(lt => {
+                    if (!mergedT.find(x => x.id === lt.id)) mergedT.push(lt);
+                });
+                DB._secureSet(DB_KEYS.TOURNAMENTS, mergedT);
+            }
         }
         
         // --- FETCH PRODUCTS ---
