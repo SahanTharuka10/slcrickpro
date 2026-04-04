@@ -615,15 +615,68 @@ function renderTournamentMatches() {
 function editMatchTeam(matchId, teamSlot) {
     const m = DB.getMatch(matchId);
     if (!m) return;
+    
+    const t = currentTournament || (m.tournamentId ? DB.getTournament(m.tournamentId) : null);
+    const existingTeams = (t && t.teams) ? t.teams : [];
+    
+    // Create a quick custom selection modal
+    const modalId = 'match-team-select-modal';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:10001;padding:20px';
+    
+    let teamsHtml = existingTeams.map(team => `
+        <button class="btn btn-ghost" style="width:100%; text-align:left; padding:15px; margin-bottom:8px; background:rgba(255,255,255,0.05); border-radius:12px; font-weight:700" onclick="confirmMatchTeamEdit('${matchId}', ${teamSlot}, '${escapeHTML(team)}')">
+            ${team}
+        </button>
+    `).join('');
+    
+    modal.innerHTML = `
+        <div style="background:#0f172a; width:100%; max-width:400px; border-radius:20px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1)">
+            <h3 style="margin:0 0 8px; color:#fff">Select Team ${teamSlot}</h3>
+            <p style="margin:0 0 20px; font-size:13px; opacity:0.6">Choose a team from the tournament or enter a new name below.</p>
+            
+            <div style="max-height:300px; overflow-y:auto; margin-bottom:20px; padding-right:5px">
+                ${teamsHtml || '<p style="text-align:center; padding:20px; opacity:0.5">No teams found in tournament</p>'}
+            </div>
+            
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:20px">
+                <button class="btn btn-primary" style="width:100%; margin-bottom:10px" onclick="promptMatchTeamManual('${matchId}', ${teamSlot})">✎ Enter Name Manually</button>
+                <button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('${modalId}').remove()">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+window.confirmMatchTeamEdit = function(matchId, teamSlot, newName) {
+    const m = DB.getMatch(matchId);
+    if (!m) return;
+    if (teamSlot === 1) m.team1 = newName;
+    else m.team2 = newName;
+    DB.saveMatch(m);
+    
+    const modal = document.getElementById('match-team-select-modal');
+    if (modal) modal.remove();
+    
+    renderTournamentMatches();
+    showToast(`Team ${teamSlot} updated!`, 'success');
+};
+
+window.promptMatchTeamManual = function(matchId, teamSlot) {
+    document.getElementById('match-team-select-modal').remove();
+    const m = DB.getMatch(matchId);
+    if (!m) return;
     const oldName = teamSlot === 1 ? m.team1 : m.team2;
     const newName = prompt(`Enter Team ${teamSlot} name:`, oldName === 'TBD' ? '' : oldName);
     if (newName !== null) {
-        if (teamSlot === 1) m.team1 = newName.trim() || 'TBD';
-        else m.team2 = newName.trim() || 'TBD';
-        DB.saveMatch(m);
-        renderTournamentMatches();
+        confirmMatchTeamEdit(matchId, teamSlot, newName.trim() || 'TBD');
     }
-}
+};
 
 function endTournamentManually(tournId) {
     if (!confirm("Are you sure you want to end this tournament? This will mark it as completed and finalize results.")) return;
