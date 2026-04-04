@@ -94,8 +94,18 @@ function showModeSelectionModal(match) {
 }
 
 function openScorerDashboard(matchId) {
-    // Open full scoring dashboard in a NEW TAB
-    window.open('score-match.html?matchId=' + encodeURIComponent(matchId), '_blank');
+    // Back to CLASSIC INLINE FLOW - Load match in current tab
+    const m = DB.getMatch(matchId);
+    if (!m) {
+        showToast('Getting match data...', 'default');
+        window.pullGlobalData().then(() => {
+            const m2 = DB.getMatch(matchId);
+            if (m2) loadMatch(m2);
+            else showToast('Match not found locally.', 'error');
+        });
+        return;
+    }
+    loadMatch(m);
 }
 
 function openHotkeyPanel(matchId) {
