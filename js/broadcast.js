@@ -29,7 +29,13 @@ const Broadcast = {
         localStorage.setItem(BROADCAST_KEYS.COMMAND, JSON.stringify(payload));
         console.log(`📡 Broadcast Sent (Local): ${cmd}`, data);
 
-        // SYNC TO SERVER (Cross-Device WebSocket Support)
+        // SYNC TO REMOTE SCREEN (Real-Time WebSocket Support)
+        if (typeof socket !== 'undefined' && socket) {
+            socket.emit('broadcast_command', payload);
+            console.log('📡 Sync Broadcast:', cmd);
+        }
+
+        // SYNC TO SERVER (HTTP Fallback)
         const baseUrl = window.BACKEND_BASE_URL || localStorage.getItem('cricpro_backend_url') || ('http://' + window.location.hostname + ':3000');
                 
         fetch(baseUrl + '/sync/broadcast', {

@@ -199,6 +199,7 @@ function handleBroadcastCommand(cmd, data) {
     // Clear existing special overlays if needed
     if (cmd === 'STOP_OVERLAY') {
         hideAllBroadcastOverlays();
+        hideBroadcastOverlay();
         return;
     }
 
