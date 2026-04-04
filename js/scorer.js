@@ -1725,11 +1725,6 @@ function confirmNewBatsman() {
     }
     
     showToast(`🏏 ${name} is now at the crease!`, 'success');
-    
-    // Pro feature: Auto-show profile overlay for new batsman after a short delay
-    setTimeout(() => {
-        showPlayerOverlay(true, name);
-    }, 1000);
 }
 
 // ========== NEW BOWLER ==========
