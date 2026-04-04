@@ -204,6 +204,10 @@ function decodeScoringToken(token) {
 
 function emitUpdate(type, id, data) {
   io.emit(`${type}:${id}`, data);
+  io.emit('globalUpdate', { type, id, data });
+  if (type === 'match') {
+    io.emit('scoreUpdate', data);
+  }
 }
 
 app.get('/sync/matches', async (req, res) => {

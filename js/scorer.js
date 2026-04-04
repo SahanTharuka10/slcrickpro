@@ -2541,6 +2541,9 @@ function openRosterEditor(teamName) {
 
     let inputsHtml = '';
 
+    const allPlayers = DB.getPlayers();
+    let datalistOptions = allPlayers.map(p => `<option value="${escapeHTML(p.name)}">`).join('');
+
     for (let i = 0; i < 11; i++) {
         const slotValue = roster[i] || '';
         const player = resolveRosterPlayer(slotValue);
@@ -2554,13 +2557,13 @@ function openRosterEditor(teamName) {
                     <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'" />
                 </div>
                 <div style="flex:1;display:flex;align-items:center;gap:8px">
-                    <input id="roster-name-${i}" type="text" class="form-input roster-player-input" 
+                    <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
                            value="${escapeHTML(displayName)}" placeholder="Type player name..." 
                            oninput="onRosterInputChanged(${i}, this.value)"
                            onkeydown="if(event.key==='Enter'){event.preventDefault(); onRosterSlotClick(${i});}"
-                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" />
-                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation(); onRosterSlotClick(${i})">✎</button>
-                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation(); onRosterPhotoClick(${i})">📷</button>
+                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" autocomplete="off" />
+                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">✎</button>
+                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Upload Photo" onclick="event.stopPropagation(); onRosterPhotoClick(${i})">📷</button>
                 </div>
                 <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:160px; text-align:right; font-weight:600">${player ? '✅ Registered' : (slotValue ? '🆕 New/Unregistered' : '')}</div>
             </div>
@@ -2568,6 +2571,9 @@ function openRosterEditor(teamName) {
     }
 
     listEl.innerHTML = `
+        <datalist id="roster-players-list">
+            ${datalistOptions}
+        </datalist>
         <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center">
             <div>
                 <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.5; margin-bottom:2px">Editing Roster</div>

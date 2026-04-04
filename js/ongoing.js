@@ -784,16 +784,19 @@ async function generateMatchPDF(matchId) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${inn.batsmen.map(b => `
+                            ${inn.batsmen.map(b => {
+                                const outDetails = b.dismissal ? `<br/><span style="font-size:11px; color:#c62828; font-weight:600">${b.dismissal}</span>` : `<span style="font-size:10px; color:#999; font-weight:400; margin-left:6px">(${b.status || 'DNB'})</span>`;
+                                return `
                                 <tr style="border-bottom:1px solid #f5f5f5">
-                                    <td style="padding:10px 8px; font-weight:700; color:#333">${b.name} <span style="font-size:10px; color:#999; font-weight:400">(${b.status || 'DNB'})</span></td>
+                                    <td style="padding:10px 8px; color:#333"><span style="font-weight:700">${b.name}</span> ${outDetails}</td>
                                     <td style="padding:10px 8px; font-weight:800; color:#1a237e">${b.runs || 0}</td>
                                     <td style="padding:10px 8px">${b.balls || 0}</td>
                                     <td style="padding:10px 8px">${b.fours || 0}</td>
                                     <td style="padding:10px 8px">${b.sixes || 0}</td>
                                     <td style="padding:10px 8px; color:#888">${formatSR(b.runs, b.balls)}</td>
                                 </tr>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                     <div style="font-size:12px; color:#666; padding:12px; background:#f8f9fa; border-radius:8px; margin-bottom:20px; border-left:4px solid #7b1fa2">
@@ -1160,7 +1163,7 @@ async function generateTournamentPDF(tournId) {
             <tbody>
                 ${allMatches.map(m => {
                     const statusLbl = m.status === 'completed' ? 'Finished' : m.status === 'live' ? 'LIVE' : 'Scheduled';
-                    const resultLbl = m.status === 'completed' ? m.resultSummary || 'Match Ended' : '-';
+                    const resultLbl = m.status === 'completed' ? m.result || m.resultSummary || 'Match Ended' : '-';
                     return `<tr><td style="padding:8px; border-bottom:1px solid #eee"><b>${m.team1}</b> vs <b>${m.team2}</b></td><td align="center">${statusLbl}</td><td style="font-size:12px; color:#444">${resultLbl}</td></tr>`;
                 }).join('')}
             </tbody>

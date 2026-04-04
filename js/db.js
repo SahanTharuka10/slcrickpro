@@ -118,6 +118,7 @@ const DB = {
         };
 
         // Keep image in separate in-memory cache, so localStorage quota doesn't blow up
+        const originalPhoto = player.photo;
         if (player.photo && String(player.photo).startsWith('data:')) {
             this._playerPhotoCache[id] = player.photo;
             player.photo = '';
@@ -132,11 +133,8 @@ const DB = {
             localStorage.setItem('cricpro_last_pid', (parseInt(m[1]) || 0).toString());
         }
 
-        // Sync to MongoDB (strip heavy data URI to avoid 413)
-        const syncPayload = { ...player };
-        if (syncPayload.photo && String(syncPayload.photo).startsWith('data:')) {
-            syncPayload.photo = '';
-        }
+        // Sync to MongoDB (keep data URI so it saves to DB instead of just cache)
+        const syncPayload = { ...player, photo: originalPhoto || '' };
         syncToDB('player', syncPayload);
         return player;
     },
@@ -173,6 +171,7 @@ const DB = {
         }
 
         // Handle photo caching to avoid localStorage quota issues.
+        const originalPhoto = player.photo;
         if (player.photo && String(player.photo).startsWith('data:')) {
             this._playerPhotoCache[player.playerId] = player.photo;
             player.photo = '';
@@ -187,7 +186,7 @@ const DB = {
 
         this.savePlayers(arr);
 
-        const syncPayload = { ...arr[idx], photo: '' };
+        const syncPayload = { ...arr[idx], photo: originalPhoto || this._playerPhotoCache[player.playerId] || '' };
         syncToDB('player', syncPayload);
 
         return arr[idx];
@@ -664,9 +663,6 @@ function syncToDB(type, data) {
     let endpoint = '';
     if (type === 'player') {
         endpoint = '/players';
-        if (data && data.photo && String(data.photo).startsWith('data:')) {
-            data = { ...data, photo: '' };
-        }
     }
     else if (type === 'team') endpoint = '/teams';
     else if (type === 'match') endpoint = '/sync/match';
@@ -829,6 +825,45 @@ window.pullGlobalData = async function(showFeedback = false) {
                     if (!mergedP.find(x => x.id === lp.id)) mergedP.push(lp);
                 });
                 DB._secureSet(DB_KEYS.PRODUCTS, mergedP);
+            }
+        }
+
+        // --- FETCH PLAYERS ---
+        const rpl = await fetch(BACKEND_BASE_URL + '/players');
+        if (rpl.ok) {
+            const dpl = await rpl.json();
+            if (Array.isArray(dpl)) {
+                const localPlayers = DB.getPlayers();
+                const mergedPlayers = dpl.map(cp => {
+                    if (cp.photo && String(cp.photo).startsWith('data:')) {
+                        if (!DB._playerPhotoCache) DB._playerPhotoCache = {};
+                        DB._playerPhotoCache[cp.id || cp.playerId] = cp.photo;
+                        cp.photo = '';
+                    }
+                    const lp = localPlayers.find(x => x.playerId === (cp.id || cp.playerId));
+                    return (lp && lp.createdAt > (cp.createdAt || 0)) ? lp : cp;
+                });
+                localPlayers.forEach(lp => {
+                    if (!mergedPlayers.find(x => (x.id || x.playerId) === lp.playerId)) mergedPlayers.push(lp);
+                });
+                DB.savePlayers(mergedPlayers);
+            }
+        }
+
+        // --- FETCH TEAMS ---
+        const rt2 = await fetch(BACKEND_BASE_URL + '/teams');
+        if (rt2.ok) {
+            const dt2 = await rt2.json();
+            if (Array.isArray(dt2)) {
+                const localTeams = DB.getTeams();
+                const mergedTeams = dt2.map(ct => {
+                    const lt = localTeams.find(x => x.id === ct.id);
+                    return (lt && lt.createdAt > (ct.createdAt || 0)) ? lt : ct;
+                });
+                localTeams.forEach(lt => {
+                    if (!mergedTeams.find(x => x.id === lt.id)) mergedTeams.push(lt);
+                });
+                DB.saveTeams(mergedTeams);
             }
         }
 
