@@ -329,7 +329,7 @@ function renderResumeMatchesImpl() {
                         <h4 style="font-size:18px; font-weight:800">${m.team1} vs ${m.team2}</h4>
                         <p style="opacity:0.7">${score} · ${m.type === 'tournament' ? (m.tournamentName || 'Tournament') : 'Single Match'}</p>
                     </div>
-                    <button class="btn btn-green btn-sm" onclick="onResumeOrStart('${m.id}', false)">🔁 Resume</button>
+                    <button class="btn btn-green btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">🔁 Resume</button>
                 </div>
             `;
         });
@@ -523,7 +523,7 @@ function renderTournamentMatches() {
 
         if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', false)">Resume</button>`;
+            btn = `<button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">Resume</button>`;
             subInfo = `Match ${index + 1} · ${m.overs} ov`;
             cardStyle = 'border-left: 4px solid #00e676;';
         } else if (m.status === 'completed') {
@@ -533,7 +533,7 @@ function renderTournamentMatches() {
             cardStyle = 'opacity: 0.8;';
         } else {
             statusBadge = `<span class="badge badge-amber" style="font-size:10px">Scheduled</span>`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', true)">Start Match</button>`;
+            btn = `<button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', true)">Start Match</button>`;
         }
 
         html += `<div class="resume-card" style="margin-bottom:12px; align-items: center; ${cardStyle}; padding: 16px">
