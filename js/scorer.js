@@ -1097,6 +1097,13 @@ function loadMatch(m) {
     DB.saveMatch(m);
     showScreen('scoring');
     renderScoring();
+
+    // AUTO-OPEN MODALS for new innings
+    const inn = m.innings[m.currentInnings];
+    if (m.status === 'live' && inn && inn.balls === 0 && inn.batsmen.length === 0) {
+        setTimeout(() => openOpenBatsmenModal(), 500);
+    }
+
     const pt = document.getElementById('publish-toggle');
     if (pt) pt.checked = m.publishLive;
     updateHeaderActions();
@@ -1941,9 +1948,9 @@ function showMatchResult() {
                 computeStandings(t);
             }
             DB.saveTournament(t);
-            if (t.isOfficial) {
-                syncOfficialStats(m, t);
-            }
+            
+            // ALWAYS update global team & player stats to ensure rankings are instant
+            syncOfficialStats(m, t);
         }
     }
 
@@ -2314,7 +2321,8 @@ function confirmOpenBatsmen() {
     setTimeout(() => openNewBowlerModal(), 200);
 }
 
-// ========== STATS SYNC ==========
+// ========== STATS SYNC (TEAM & PLAYER) ==========
+// Always update cumulative statistics so rankings are always live
 function syncOfficialStats(m, t) {
     if (!m.innings[0]) return;
 
@@ -2363,7 +2371,7 @@ function syncOfficialStats(m, t) {
             const stats = {
                 wickets:      (s.wickets     || 0) + wkt,
                 bowlingRuns:  (s.bowlingRuns || 0) + (b.runs || 0),
-                overs:        (s.overs       || 0) + ((b.balls || 0) / 6),
+                overs:        (s.overs       || 0) + ((b.balls || 0) / (m.ballsPerOver || 6)),
                 maidens:      (s.maidens     || 0) + (b.maidens || 0),
                 bestBowling:  newBest,
             };
@@ -2425,7 +2433,8 @@ function syncOfficialStats(m, t) {
         }
     });
 
-    // Check if this is the last match of the tournament — if so, bulk-push all player stats
+    // Check if this is the last match of the tournament — if so, push tournament summary
+    if (!t) return;
     const allMatches = DB.getMatches().filter(mx => mx.tournamentId === t.id);
     const allDone = allMatches.every(mx => mx.status === 'completed' || mx.id === m.id);
     if (allDone && t.isOfficial) {

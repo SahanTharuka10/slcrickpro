@@ -326,8 +326,13 @@ function renderTeams() {
 
     const sort = document.getElementById('team-sort')?.value || 'wins';
     sorted.sort((a, b) => {
-        const nrrA = a.ballsFaced > 0 && a.ballsBowled > 0 ? (a.runsFor / (a.ballsFaced / 6)) - (a.runsAgainst / (a.ballsBowled / 6)) : 0;
-        const nrrB = b.ballsFaced > 0 && b.ballsBowled > 0 ? (b.runsFor / (b.ballsFaced / 6)) - (b.runsAgainst / (b.ballsBowled / 6)) : 0;
+        const rrForA = a.ballsFaced > 0 ? (a.runsFor / (a.ballsFaced / 6)) : 0;
+        const rrAgA = a.ballsBowled > 0 ? (a.runsAgainst / (a.ballsBowled / 6)) : 0;
+        const nrrA = rrForA - rrAgA;
+        
+        const rrForB = b.ballsFaced > 0 ? (b.runsFor / (b.ballsFaced / 6)) : 0;
+        const rrAgB = b.ballsBowled > 0 ? (b.runsAgainst / (b.ballsBowled / 6)) : 0;
+        const nrrB = rrForB - rrAgB;
 
         if (sort === 'prizes') return (b.prizeMoney || 0) - (a.prizeMoney || 0) || (b.won || 0) - (a.won || 0) || nrrB - nrrA;
         if (sort === 'wins') return (b.won || 0) - (a.won || 0) || nrrB - nrrA || (b.played || 0) - (a.played || 0);
@@ -358,7 +363,7 @@ function renderTeams() {
       <div class="team-stat-row"><span class="team-stat-key">Lost</span><span class="team-stat-val" style="color:#ff6d3b">${t.lost}</span></div>
       <div class="team-stat-row"><span class="team-stat-key">Win %</span><span class="team-stat-val">${wp}%</span></div>
       <div class="team-stat-row"><span class="team-stat-key">Total Prize Money</span><span class="team-stat-val" style="color:#ffd700;font-weight:900;font-family:'JetBrains Mono',monospace">Rs. ${t.prizeMoney.toLocaleString()}</span></div>
-      <div class="team-stat-row"><span class="team-stat-key">NRR (Approx)</span><span class="team-stat-val" style="color:${nrr >= 0 ? '#00e676' : '#ff6d3b'}">${nrr >= 0 ? '+' : ''}${nrr}</span></div>
+      <div class="team-stat-row"><span class="team-stat-key">Net Run Rate (NRR)</span><span class="team-stat-val" style="color:${nrr >= 0 ? '#00e676' : '#ff6d3b'}">${nrr >= 0 ? '+' : ''}${nrr}</span></div>
     </div>`;
     }).join('');
 }
