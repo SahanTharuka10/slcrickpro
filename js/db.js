@@ -743,7 +743,10 @@ function syncToDB(type, data) {
     })
     .catch(err => {
         console.error(`❌ Sync failed to ${BACKEND_BASE_URL + endpoint}:`, err);
-        if (typeof showToast === 'function') showToast('⚠️ Sync failed: Network error.', 'error');
+        // Only show toast if user is actively doing something (e.g. manual save)
+        if (typeof showToast === 'function' && !data._isBackgroundSync) {
+            showToast('⚠️ Sync limited: Network connection issue.', 'error');
+        }
     });
 }
 window.syncToDB = syncToDB; // Expose globally for other files
@@ -1232,12 +1235,14 @@ async function syncCloudData(options = {}) {
 
             if (anyUpdated || options.forceRefresh) {
                 DB.saveMatches(mergedMatches);
-                if (typeof renderMatches === 'function') renderMatches();
-                if (typeof renderOngoing === 'function') renderOngoing();
-                if (typeof updateTicker === 'function') updateTicker();
-                if (typeof renderLive === 'function') renderLive();
-                if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
-                localStorage.setItem('cricpro_force_update', Date.now().toString());
+                if (!options.silent) {
+                    if (typeof renderMatches === 'function') renderMatches();
+                    if (typeof renderOngoing === 'function') renderOngoing();
+                    if (typeof updateTicker === 'function') updateTicker();
+                    if (typeof renderLive === 'function') renderLive();
+                    if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
+                    localStorage.setItem('cricpro_force_update', Date.now().toString());
+                }
             }
         }
 
@@ -1267,14 +1272,16 @@ async function syncCloudData(options = {}) {
                         mergedTournaments.push(lt);
                         anyTUpdated = true;
                     }
-                    try { syncToDB('tournament', lt); } catch(err) { console.error(err); }
+                    try { syncToDB('tournament', { ...lt, _isBackgroundSync: true }); } catch(err) { console.error(err); }
                 }
             });
 
             if (anyTUpdated || options.forceRefresh) {
                 DB.saveTournaments(mergedTournaments);
-                if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
-                if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
+                if (!options.silent) {
+                    if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
+                    if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
+                }
             }
         }
 
