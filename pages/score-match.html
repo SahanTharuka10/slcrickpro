@@ -1086,6 +1086,35 @@
         </div>
     </div>
 
+    <!-- Select Mode Modal -->
+    <div class="modal-overlay" id="modal-select-mode" style="display:none">
+        <div class="modal-box" style="max-width:440px; text-align:center">
+            <div style="font-size:56px; margin-bottom:12px">🏏</div>
+            <div class="modal-title">Select Scoring Mode</div>
+            <div class="modal-sub">How would you like to open this match?</div>
+
+            <div style="display:grid; grid-template-columns:1fr; gap:16px; margin:24px 0">
+                <button class="btn btn-primary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-scorer">
+                    <span style="font-size:24px">📱</span>
+                    <div style="text-align:left">
+                        <div style="font-weight:900">Score Match</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Full scoring dashboard</div>
+                    </div>
+                </button>
+
+                <button class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-hotkey">
+                    <span style="font-size:24px">⌨️</span>
+                    <div style="text-align:left">
+                        <div style="font-weight:900">Hotkey Mode</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Remote Broadcast Controller</div>
+                    </div>
+                </button>
+            </div>
+
+            <button class="btn btn-ghost btn-full" onclick="closeModal('modal-select-mode')">Cancel</button>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <datalist id="db-players-list"></datalist>
