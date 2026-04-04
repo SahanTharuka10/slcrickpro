@@ -226,7 +226,7 @@ function handleBroadcastCommand(cmd, data) {
             showTeamCardGraphic(data);
             break;
         case 'SHOW_BATTER_PROFILES':
-            showBatterProfilesGraphic(data);
+            showBatterProfilesCinema(data);
             break;
         case 'SHOW_BIG_EVENT':
             showBigEventGraphic(data);
@@ -1082,46 +1082,65 @@ function showTeamCardGraphic(data) {
     }, 100);
 }
 
-function showBatterProfilesGraphic(data) {
+function showBatterProfilesCinema(data) {
     const { profiles } = data;
     if (!profiles || profiles.length === 0) return;
     
-    let html = `
-        <div class="overlay-container show" id="overlay-players">
-            <div class="overlay-card players-card" style="${profiles.length === 1 ? 'max-width:500px' : ''}">
-                <div class="overlay-header">
-                    <div class="overlay-title">${profiles.length === 1 ? 'PLAYER PROFILE' : 'CURRENT BATTERS'}</div>
-                </div>
-                <div class="overlay-body ${profiles.length === 1 ? '' : 'player-stats-flex'}">
-    `;
-    
-    profiles.forEach(item => {
-        const { name, profile: p, stats } = item;
-        const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
-        html += `
-            <div class="player-stat-card" style="${profiles.length === 1 ? 'margin-bottom:0' : ''}; animation: slideInLeft 0.5s ease forwards">
-                <div class="player-main-info">
-                    <div class="player-large-photo">
-                        <img src="${src}" alt="" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+    // Clear old ones
+    document.querySelectorAll('.batter-cinema-left').forEach(el => el.remove());
+
+    const html = `
+    <div id="batter-cinema-dual" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); display:flex; gap:20px; z-index:15500; font-family:'Outfit', sans-serif">
+        ${profiles.map((item, idx) => {
+            const { name, profile: p, stats, age } = item;
+            const src = (p && p.photo) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+            const accent = (idx === 0) ? '#00e676' : '#3b82f6';
+            const bg = (idx === 0) 
+                ? 'linear-gradient(135deg, rgba(8, 62, 33, 0.98) 0%, rgba(0,0,0,1) 100%)'
+                : 'linear-gradient(135deg, rgba(7, 30, 62, 0.98) 0%, rgba(0,0,0,1) 100%)';
+            
+            return `
+            <div class="batter-cinema-left" style="width:280px; background:${bg}; border-left:10px solid ${accent}; border-radius:0 30px 30px 0; overflow:hidden; box-shadow:0 30px 60px rgba(0,0,0,0.8)">
+                <div style="height:6px; background:${accent}; opacity:0.3"></div>
+                <div style="padding:25px 20px">
+                    <div style="color:${accent}; font-weight:900; letter-spacing:3px; font-size:10px; text-transform:uppercase; margin-bottom:15px">
+                        ${idx === 0 ? 'STRIKER' : 'NON-STRIKER'}
                     </div>
-                    <div>
-                        <div class="player-lg-name">${name}</div>
-                        <div class="player-lg-role" style="font-size:16px; color:var(--c-primary)">${p ? (p.role || 'Player').toUpperCase() : 'BATSMAN'}</div>
+                    <div style="width:100%; height:250px; background:rgba(255,255,255,0.05); border-radius:15px; overflow:hidden; margin-bottom:20px">
+                        <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
                     </div>
-                </div>
-                <div class="player-mini-stats">
-                    <div class="m-stat"><div class="m-val">${stats.runs || 0}</div><div class="m-lbl">Runs</div></div>
-                    <div class="m-stat"><div class="m-val">${stats.balls || 0}</div><div class="m-lbl">Balls</div></div>
-                    <div class="m-stat"><div class="m-val">${stats.fours || 0}</div><div class="m-lbl">4s</div></div>
-                    <div class="m-stat"><div class="m-val">${stats.sixes || 0}</div><div class="m-lbl">6s</div></div>
+                    <div style="text-align:left">
+                        <div style="font-size:24px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1">${name.split(' ')[0]}</div>
+                        <div style="font-size:32px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                    </div>
+                    <div style="margin-top:20px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px">
+                        <div style="text-align:center"><div style="font-size:22px; font-weight:900; color:#fff">${stats.runs || 0}</div><div style="font-size:9px; font-weight:800; color:#aaa; letter-spacing:1px">RUNS</div></div>
+                        <div style="text-align:center"><div style="font-size:22px; font-weight:900; color:#fff">${stats.balls || 0}</div><div style="font-size:9px; font-weight:800; color:#aaa; letter-spacing:1px">BALLS</div></div>
+                        <div style="text-align:center"><div style="font-size:22px; font-weight:900; color:${accent}">${stats.sixes || 0}</div><div style="font-size:9px; font-weight:800; color:#aaa; letter-spacing:1px">SIXES</div></div>
+                    </div>
                 </div>
             </div>
-        `;
-    });
-    
-    html += '</div></div></div>';
-    renderBroadcastOverlay(html);
+            `;
+        }).join('')}
+    </div>
+    `;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'active-broadcast-wrapper';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+
+    if (typeof gsap !== 'undefined') {
+        gsap.from('.batter-cinema-left', { x: -600, opacity: 0, stagger: 0.2, duration: 1, ease: 'expo.out' });
+    }
+
+    activeBroadcastOverlayId = setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to('#batter-cinema-dual', { x: -600, opacity:0, duration:0.8, onComplete: () => wrapper.remove() });
+        } else wrapper.remove();
+    }, 12000);
 }
+
 
 function showStrikerProfileLeft(data, label = 'STRIKER') {
     const { name, profile: p, stats, age } = data;
