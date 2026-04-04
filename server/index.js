@@ -249,6 +249,35 @@ app.get('/sync/tournaments', async (req, res) => {
   }
 });
 
+// TV Overlay Specific Endpoint (Lightweight for frequent polling)
+app.get('/tv/matches/:matchId/light', async (req, res) => {
+  const { matchId } = req.params;
+  try {
+    await ensureDB();
+    const row = await Match.findByPk(matchId);
+    if (!row) return res.status(404).json({ error: 'Match not found' });
+    
+    const m = row.data || row.dataValues?.data || {};
+    const inn = m.innings ? m.innings[m.currentInnings || 0] : null;
+    
+    // Return minimal score data to save bandwidth
+    res.json({
+      id: matchId,
+      status: m.status,
+      score: inn ? {
+        runs: inn.runs || 0,
+        wickets: inn.wickets || 0,
+        balls: inn.balls || 0,
+        battingTeam: inn.battingTeam,
+        bowlingTeam: inn.bowlingTeam
+      } : null,
+      fullMatch: m // Fallback for components that need more data
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch light score' });
+  }
+});
+
 app.get('/players', async (req, res) => {
   try {
     await ensureDB();
