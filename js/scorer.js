@@ -2935,15 +2935,23 @@ function broadcastPartnership() {
 
     const names = getOnCreaseBatterNames(inn);
     const p = inn.currentPartnership || { runs: 0, balls: 0 };
+    const p1Profile = resolvePlayerProfileForBatter(inn, names[0]);
+    const p2Profile = resolvePlayerProfileForBatter(inn, names[1]);
+
+    const wicketLabel = ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH", "9TH", "10TH"];
+    const wicketNum = wicketLabel[inn.wickets] || (inn.wickets + 1) + "TH";
 
     sendBroadcast('SHOW_PARTNERSHIP', {
-        player1: names[0] || 'Batsman 1',
-        player2: names[1] || 'Batsman 2',
+        player1: names[0] || 'Batter 1',
+        player2: names[1] || 'Batter 2',
+        p1Profile,
+        p2Profile,
         runs: p.runs || 0,
         balls: p.balls || 0,
-        teamName: inn.battingTeam
+        teamName: inn.battingTeam,
+        wicketNum: wicketNum
     });
-    showToast('📺 Partnership Graphic Broadcasted!', 'success');
+    showToast('📺 Cinematic Partnership Broadcasted!', 'success');
 }
 
 // ========== GLOBAL SYNC HANDLERS ==========

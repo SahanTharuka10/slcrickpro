@@ -237,8 +237,11 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_STRIKER_PROFILE':
             showStrikerProfileLeft(data);
             break;
+        case 'SHOW_NON_STRIKER_PROFILE':
+            showStrikerProfileLeft(data, 'NON-STRIKER');
+            break;
         case 'SHOW_PARTNERSHIP':
-            showPartnershipGraphic(data);
+            showPartnershipGraphicCinema(data);
             break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
@@ -1120,7 +1123,7 @@ function showBatterProfilesGraphic(data) {
     renderBroadcastOverlay(html);
 }
 
-function showStrikerProfileLeft(data) {
+function showStrikerProfileLeft(data, label = 'STRIKER') {
     const { name, profile: p, stats, age } = data;
     const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
     
@@ -1128,18 +1131,25 @@ function showStrikerProfileLeft(data) {
     const old = document.getElementById('striker-profile-left');
     if(old) old.remove();
 
-    // Premium Vertical Design on the Left (Mitchell Starc Style)
+    // Custom Label Support (STRIKER / NON-STRIKER)
+    const displayLabel = label === 'NON-STRIKER' ? 'NON-STRIKER TRACKER' : 'PLAYER TRACKER';
+    const accentColor = label === 'NON-STRIKER' ? '#3b82f6' : '#00e676';
+    const bgGradient = label === 'NON-STRIKER' 
+        ? 'linear-gradient(135deg, rgba(7, 30, 62, 0.98) 0%, rgba(0,0,0,1) 100%)'
+        : 'linear-gradient(135deg, rgba(8, 62, 33, 0.98) 0%, rgba(0,0,0,1) 100%)';
+    
+    // Premium Vertical Design on the Left
     const htmlSnippet = `
     <div id="striker-profile-left" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); width:330px; 
-        background: linear-gradient(135deg, rgba(8, 62, 33, 0.98) 0%, rgba(0,0,0,1) 100%); 
-        border-left: 12px solid #00e676; border-radius: 0 40px 40px 0; overflow:hidden; z-index:15000;
-        box-shadow: 0 40px 100px rgba(0,0,0,0.9), 20px 0 50px rgba(0,230,118,0.1); font-family:'Outfit', sans-serif">
+        background: ${bgGradient}; 
+        border-left: 12px solid ${accentColor}; border-radius: 0 40px 40px 0; overflow:hidden; z-index:15000;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.9), 20px 0 50px ${accentColor}11; font-family:'Outfit', sans-serif">
         
-        <div style="height:10px; background: repeating-linear-gradient(90deg, #00e676 0px, #00e676 10px, transparent 10px, transparent 20px); opacity:0.3"></div>
+        <div style="height:10px; background: repeating-linear-gradient(90deg, ${accentColor} 0px, ${accentColor} 10px, transparent 10px, transparent 20px); opacity:0.3"></div>
         
         <div style="padding:40px 30px">
-            <div style="color:#00e676; font-weight:900; letter-spacing:4px; font-size:12px; text-transform:uppercase; margin-bottom:20px; opacity:0.8">
-                PLAYER TRACKER
+            <div style="color:${accentColor}; font-weight:900; letter-spacing:4px; font-size:12px; text-transform:uppercase; margin-bottom:20px; opacity:0.8">
+                ${displayLabel}
             </div>
 
             <!-- PLAYER PHOTO -->
@@ -1151,21 +1161,21 @@ function showStrikerProfileLeft(data) {
             <!-- NAME & AGE -->
             <div style="text-align:left">
                 <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${name.split(' ')[0]}</div>
-                <div style="font-size:42px; font-weight:950; color:#00e676; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
                 ${age ? `<div style="font-size:18px; font-weight:800; color:rgba(255,255,255,0.5); letter-spacing:2px">AGE: ${age} YEARS</div>` : ''}
             </div>
 
-            <div style="margin-top:30px; width:60px; height:6px; background:#00e676; border-radius:3px"></div>
+            <div style="margin-top:30px; width:60px; height:6px; background:${accentColor}; border-radius:3px"></div>
             
             <!-- MINI STATS -->
             <div style="margin-top:40px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:25px">
                 <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.runs || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">RUNS</div></div>
                 <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.balls || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">BALLS</div></div>
-                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#00e676">${stats.sixes || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">SIXES</div></div>
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:${accentColor}">${stats.sixes || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">SIXES</div></div>
             </div>
         </div>
 
-        <div style="height:40px; background:rgba(0,230,118,0.05); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.2); font-size:10px; font-weight:800; letter-spacing:3px">
+        <div style="height:40px; background:${accentColor}05; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.2); font-size:10px; font-weight:800; letter-spacing:3px">
             LIVE PRODUCTION
         </div>
     </div>
@@ -1191,6 +1201,64 @@ function showStrikerProfileLeft(data) {
             gsap.to('#striker-profile-left', { x: -500, opacity:0, duration:0.8, ease:"expo.in", onComplete: () => wrapper.remove() });
         } else wrapper.remove();
     }, 12000);
+}
+
+function showPartnershipGraphicCinema(data) {
+    const { player1, player2, p1Profile, p2Profile, runs, balls, teamName, wicketNum } = data;
+    const src1 = (p1Profile && p1Profile.photo) ? p1Profile.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    const src2 = (p2Profile && p2Profile.photo) ? p2Profile.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+
+    const html = `
+    <div id="partnership-cinema" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:16000; font-family:'Outfit', sans-serif">
+        <!-- PLAYER 1 (Left Wing) -->
+        <div id="p-left-card" style="position:absolute; left:40px; bottom:120px; width:280px; background:rgba(0,0,0,0.9); border-left:8px solid #00e676; border-radius:0 20px 20px 0; overflow:hidden">
+            <div style="height:220px; width:100%"><img src="${src1}" style="width:100%; height:100%; object-fit:cover" /></div>
+            <div style="padding:15px; text-align:center; color:#fff; font-size:18px; font-weight:900; background:#00e67611">${player1.toUpperCase()}</div>
+        </div>
+
+        <!-- PLAYER 2 (Right Wing) -->
+        <div id="p-right-card" style="position:absolute; right:40px; bottom:120px; width:280px; background:rgba(0,0,0,0.9); border-right:8px solid #00e676; border-radius:20px 0 0 20px; overflow:hidden">
+            <div style="height:220px; width:100%"><img src="${src2}" style="width:100%; height:100%; object-fit:cover" /></div>
+            <div style="padding:15px; text-align:center; color:#fff; font-size:18px; font-weight:900; background:#00e67611">${player2.toUpperCase()}</div>
+        </div>
+
+        <!-- CENTER STATS (Elevated Bar) -->
+        <div id="p-center-bar" style="position:absolute; left:50%; bottom:100px; transform:translateX(-50%); width:600px; 
+            background:linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(10,12,20,0.95) 15%, rgba(10,12,20,0.95) 85%, rgba(0,0,0,0) 100%);
+            padding:30px; text-align:center; border-bottom:3px solid #00e676; backdrop-filter:blur(10px)">
+            
+            <div style="color:#00e676; font-size:12px; font-weight:900; letter-spacing:5px; margin-bottom:10px; text-transform:uppercase">
+                ${wicketNum || '3RD'} WICKET PARTNERSHIP
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; gap:30px">
+                <div style="font-size:72px; font-weight:950; color:#fff; line-height:1">${runs}</div>
+                <div style="width:1px; height:50px; background:rgba(255,255,255,0.1)"></div>
+                <div style="text-align:left">
+                    <div style="font-size:24px; font-weight:950; color:#fff">${balls} <span style="font-size:14px; opacity:0.5; font-weight:700">BALLS</span></div>
+                    <div style="font-size:14px; font-weight:800; color:#00e676; letter-spacing:1px">${teamName.toUpperCase()}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'active-broadcast-wrapper';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+
+    // Dual Animation Intro
+    if (typeof gsap !== 'undefined') {
+        gsap.from('#p-left-card', { x: -400, opacity: 0, skewX: 10, duration: 1, ease: 'expo.out' });
+        gsap.from('#p-right-card', { x: 400, opacity: 0, skewX: -10, duration: 1, ease: 'expo.out' });
+        gsap.from('#p-center-bar', { y: 150, opacity: 0, duration: 1, delay: 0.3, ease: 'back.out(1.7)' });
+    }
+
+    activeBroadcastOverlayId = setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to('#partnership-cinema', { opacity: 0, y: 50, duration: 0.8, onComplete: () => wrapper.remove() });
+        } else wrapper.remove();
+    }, 10000);
 }
 
 let activeBroadcastOverlayId = null;
@@ -1224,36 +1292,69 @@ function hideBroadcastOverlay() {
 function showBowlerProfileGraphic(data) {
     const { name, profile: p, stats } = data;
     const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
-    
-    let html = `
-        <div class="overlay-container show" id="overlay-bowler">
-            <div class="overlay-card players-card" style="max-width:500px; border: 2px solid #00e676; background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(0,30,10,0.98))">
-                <div class="overlay-header" style="border-bottom: 2px solid rgba(0,230,118,0.3)">
-                    <div class="overlay-title" style="color:#00e676">BOWLER PROFILE</div>
-                </div>
-                <div class="overlay-body">
-                    <div class="player-stat-card" style="margin-bottom:0; animation: slideInLeft 0.5s ease forwards">
-                        <div class="player-main-info">
-                            <div class="player-large-photo" style="border-color:#00e676">
-                                <img src="${src}" alt="" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
-                            </div>
-                            <div>
-                                <div class="player-lg-name">${name}</div>
-                                <div class="player-lg-role" style="font-size:16px; color:#00e676">${p ? (p.role || 'Player').toUpperCase() : 'BOWLER'}</div>
-                            </div>
-                        </div>
-                        <div class="player-mini-stats">
-                            <div class="m-stat"><div class="m-val">${stats.overs || '0.0'}</div><div class="m-lbl">Overs</div></div>
-                            <div class="m-stat"><div class="m-val">${stats.maidens || 0}</div><div class="m-lbl">Mdns</div></div>
-                            <div class="m-stat"><div class="m-val">${stats.runs || 0}</div><div class="m-lbl">Runs</div></div>
-                            <div class="m-stat"><div class="m-val" style="color:#00e676">${stats.wickets || 0}</div><div class="m-lbl">Wkts</div></div>
-                        </div>
-                    </div>
+
+    // Premium Color Palette for Bowler: Deep Purple Accent
+    const accentColor = '#8b5cf6';
+    const bgGradient = 'linear-gradient(135deg, rgba(29, 13, 62, 0.98) 0%, rgba(0,0,0,1) 100%)';
+
+    const html = `
+    <div id="bowler-profile-left" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); width:330px; 
+        background: ${bgGradient}; 
+        border-left: 12px solid ${accentColor}; border-radius: 0 40px 40px 0; overflow:hidden; z-index:15000;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.9), 20px 0 50px ${accentColor}11; font-family:'Outfit', sans-serif">
+        
+        <div style="height:10px; background: repeating-linear-gradient(90deg, ${accentColor} 0px, ${accentColor} 10px, transparent 10px, transparent 20px); opacity:0.3"></div>
+        
+        <div style="padding:40px 30px">
+            <div style="color:${accentColor}; font-weight:900; letter-spacing:4px; font-size:12px; text-transform:uppercase; margin-bottom:20px; opacity:0.8">
+                BOWLER TRACKER
+            </div>
+
+            <!-- PLAYER PHOTO -->
+            <div style="position:relative; width:100%; height:350px; background:rgba(255,255,255,0.05); border-radius:20px; overflow:hidden; margin-bottom:30px">
+                <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.4) 100%)"></div>
+            </div>
+
+            <!-- NAME & DETAILS -->
+            <div style="text-align:left">
+                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${name.split(' ')[0]}</div>
+                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                <div style="font-size:18px; font-weight:800; color:rgba(255,255,255,0.5); letter-spacing:1px">
+                    ${stats.wickets} WICKETS / ${stats.runs} RUNS
                 </div>
             </div>
+
+            <div style="margin-top:30px; width:60px; height:6px; background:${accentColor}; border-radius:3px"></div>
+            
+            <!-- MINI STATS BAR -->
+            <div style="margin-top:40px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:25px">
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.overs}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">OVERS</div></div>
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:#fff">${stats.econ}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">ECON</div></div>
+                <div style="text-align:center"><div style="font-size:28px; font-weight:900; color:${accentColor}">${stats.maidens || 0}</div><div style="font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px">MDNS</div></div>
+            </div>
         </div>
+
+        <div style="height:40px; background:${accentColor}05; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.2); font-size:10px; font-weight:800; letter-spacing:3px">
+            LIVE PRODUCTION
+        </div>
+    </div>
     `;
-    renderBroadcastOverlay(html);
+
+    const div = document.createElement('div');
+    div.id = 'active-broadcast-wrapper';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+
+    if (typeof gsap !== 'undefined') {
+        gsap.fromTo('#bowler-profile-left', { x: -500, opacity: 0, skewX: 10 }, { x: 0, opacity: 1, skewX: 0, duration: 1.2, ease: "expo.out" });
+    }
+    
+    activeBroadcastOverlayId = setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            gsap.to('#bowler-profile-left', { x: -500, opacity:0, duration:0.8, ease:"expo.in", onComplete: () => div.remove() });
+        } else div.remove();
+    }, 12000);
 }
 function showBigEventGraphic(data) {
     const { type, playerName, playerPhoto, playerRuns, playerBalls, bowlerName, teamName, matchScore } = data;
