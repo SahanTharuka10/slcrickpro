@@ -2952,7 +2952,7 @@ function renderBroadcastController(match) {
 
         <!-- TV Hotkeys Section -->
         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 25px;">
-            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 18px; letter-spacing: 1px;">⌨️ TV HOTKEYS (KEYBOARD SHORTCUTS)</div>
+            <div style="font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 18px; letter-spacing: 1px;">⌨️ TV HOTKEYS (TOUCH CONTROLS)</div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 
@@ -2960,7 +2960,7 @@ function renderBroadcastController(match) {
                 <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team1_card' }); showToast('Team 1 Card Active', 'success');"
                         style="background: #2563eb; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
                         onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + 1</div>
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 1 CARD</div>
                     <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
@@ -2969,7 +2969,7 @@ function renderBroadcastController(match) {
                 <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'team2_card' }); showToast('Team 2 Card Active', 'success');"
                         style="background: #7c3aed; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
                         onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + 2</div>
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🛡️ TEAM 2 CARD</div>
                     <div style="font-size: 12px; opacity: 0.7;">Show team info</div>
                 </button>
@@ -2978,7 +2978,7 @@ function renderBroadcastController(match) {
                 <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'batters_summary' }); showToast('Batters Active', 'success');"
                         style="background: #16a34a; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
                         onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + P</div>
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">🏏 CURRENT BATTERS</div>
                     <div style="font-size: 12px; opacity: 0.7;">Both on crease</div>
                 </button>
@@ -2987,7 +2987,7 @@ function renderBroadcastController(match) {
                 <button onclick="if(window.socket) window.socket.emit('broadcast_command', { matchId: '${match.id}', cmd: 'striker_stats' }); showToast('Striker Profile Active', 'success');"
                         style="background: #dc2626; border: none; border-radius: 18px; padding: 18px; text-align: left; cursor: pointer; transition: 0.2s;"
                         onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
-                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">SHIFT + B</div>
+                    <div style="font-size: 11px; font-weight: 800; opacity: 0.8; margin-bottom: 8px;">TAP</div>
                     <div style="font-size: 17px; font-weight: 900; margin-bottom: 4px;">⚡ STRIKER PROFILE</div>
                     <div style="font-size: 12px; opacity: 0.7;">New batter card</div>
                 </button>
