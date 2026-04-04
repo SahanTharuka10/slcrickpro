@@ -699,7 +699,8 @@ function syncToDB(type, data) {
         const locked = tournament && (tournament.scoringPassword || tournament.password || tournament.isLocked);
         // Only skip if LOCKED — unlocked matches MUST always sync to cloud
         if (locked) {
-            console.warn('Skipping match sync for locked tournament without valid token.');
+            // Silently skip for background syncs to avoid console spam
+            // console.warn('Skipping match sync for locked tournament without valid token.');
             return;
         }
         // If unlocked or no tournament password set, proceed with sync
