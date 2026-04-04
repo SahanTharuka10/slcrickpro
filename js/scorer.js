@@ -104,14 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (m) {
-            if (m.tournamentId && !isTournamentAuthorized(m.tournamentId)) {
-                currentTournament = DB.getTournament(m.tournamentId) || { id: m.tournamentId, name: m.tournamentName || 'Tournament' };
-                currentMatch = m;
-                document.getElementById('login-match-title').textContent = `Tournament: ${currentTournament.name}`;
-                document.getElementById('login-password').value = '';
-                showScreen('login');
-                return;
-            }
+            // BYPASS ALL PASSWORD CHECKS
             if (m.status === 'scheduled') {
                 startOfficialMatch(mId);
             } else if (m.status === 'live' || m.status === 'paused') {
@@ -409,30 +402,7 @@ function onResumeOrStart(matchId, isStart = false) {
         m = { id: matchId, status: 'INITIALIZING', runs:0, wickets:0, overs:0, ballsInOver:0 };
     }
 
-    // AUTH CHECK: Tournament OR Single Match password
-    const tournamentId = m.tournamentId;
-    const isLocked = !!m.scoringPassword || !!m.password || !!m.isLocked || (tournamentId && !!DB.getTournament(tournamentId)?.isLocked);
-
-    if (isLocked) {
-        // If tournament match, check tournament auth
-        if (tournamentId) {
-            if (!isTournamentAuthorized(tournamentId) && !authorizeTournamentLocally(tournamentId)) {
-                openTournamentHub(tournamentId);
-                return;
-            }
-        } else {
-            // Check specific match auth
-            const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
-            if (!grants[m.id]) {
-                currentMatch = m;
-                document.getElementById('login-match-title').textContent = `Unlock Match: ${m.team1} vs ${m.team2}`;
-                document.getElementById('login-password').value = '';
-                showScreen('login');
-                return;
-            }
-        }
-    }
-
+    // PASSWORD BYPASSED - Direct access to mode selection
     showModeSelectionModal(m);
 }
 
@@ -510,27 +480,19 @@ function switchTournamentTab(tab) {
 
 async function openTournamentHub(id) {
     if (!id) return;
-    const t = DB.getTournament(id);
+    let t = DB.getTournament(id);
+    if (!t) {
+        if (typeof window.pullGlobalData === 'function') {
+            await window.pullGlobalData();
+            t = DB.getTournament(id);
+        }
+    }
     if (!t) {
         showToast('Tournament not found', 'error');
         return;
     }
 
-    // AUTH CHECK: If tournament is locked by password then require auth before showing hub
-    const locked = !!t.scoringPassword || !!t.password || !!t.isLocked;
-    if (locked && !isTournamentAuthorized(t.id)) {
-        if (authorizeTournamentLocally(t.id)) {
-            // Already authorized from local credentials
-        } else {
-            // Unlocked but unauthorized: show proper login screen
-            currentTournament = t;
-            document.getElementById('login-match-title').textContent = `Tournament: ${t.name}`;
-            document.getElementById('login-password').value = '';
-            showScreen('login');
-            return;
-        }
-    }
-
+    // PASSWORD BYPASSED
     currentTournament = t;
     document.getElementById('tm-title').textContent = currentTournament.name;
     document.getElementById('modal-tournament-matches').style.display = 'flex';
