@@ -246,7 +246,27 @@
 </head>
 
 <body>
-    <!-- Menu removed as per request -->
+    <button id="copy-obs-link" onclick="copyObsLink()" style="position:fixed; top:15px; right:15px; background:rgba(30, 30, 30, 0.9); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; z-index:99999; box-shadow:0 4px 12px rgba(0,0,0,0.5); font-family:'Outfit', sans-serif; transition: opacity 0.3s, transform 0.2s; opacity:0.8;" onmouseenter="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseleave="this.style.opacity='0.8'; this.style.transform='scale(1)'">🔗 Copy OBS URL</button>
+    <script>
+        function copyObsLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.getElementById('copy-obs-link');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                btn.style.background = 'rgba(0, 200, 83, 0.9)';
+                setTimeout(() => { 
+                    btn.innerHTML = originalText; 
+                    btn.style.background = 'rgba(30, 30, 30, 0.9)';
+                }, 2000);
+            });
+        }
+        // Auto-hide if loaded inside OBS browser source
+        document.addEventListener("DOMContentLoaded", () => {
+            if (navigator.userAgent.toLowerCase().includes('obs')) {
+                document.getElementById('copy-obs-link').style.display = 'none';
+            }
+        });
+    </script>
     <div id="side-player-popup" class="side-player-popup"></div>
     <div id="overlay-popup" class="overlay-popup"></div>
     <div id="overlay-container" class="overlay-container">
