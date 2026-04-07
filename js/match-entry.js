@@ -13,6 +13,7 @@ async function onResumeOrStart(matchId, tournamentId, isStart) {
             await window.pullGlobalData();
         }
         
+        closeModal('modal-tournament-matches');
         showModeSelectionModal(match || { id: matchId, team1: 'TBD', team2: 'TBD' });
     } catch (err) {
         console.error('onResumeOrStart', err);
@@ -50,7 +51,15 @@ function showModeSelectionModal(match) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'selection-overlay-dynamic';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.background = 'rgba(0,0,0,0.85)';
     overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
     overlay.style.zIndex = '10000';
     overlay.innerHTML = `
         <div class="modal-box" style="max-width:440px; text-align:center">

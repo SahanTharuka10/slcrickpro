@@ -2854,12 +2854,6 @@ function escapeHTML(str) {
   })[m]);
 }
 
-function forceUpdateTV() {
-    localStorage.setItem('cricpro_force_update', Date.now().toString());
-    saveAndRender(); // Ensures current match is saved to DB and triggers storage update
-    showToast('📺 TV Scoreboard forcefully updated!', 'success');
-}
-
 // ========== BROADCASTS ==========
 function sendBroadcast(cmd, data) {
     if (!currentMatch) return;
@@ -3167,15 +3161,7 @@ function renderBroadcastController(match) {
         <!-- UTILITY TOOLS -->
         <div class="b-card" style="border-color: rgba(245, 158, 11, 0.3);">
             <div class="b-grid">
-                <button class="b-btn b-btn-amber" style="grid-column: span 2;" onclick="forceUpdateTV()">
-                    <div style="display:flex; align-items:center; gap:12px">
-                        <span style="font-size:24px">🔄</span>
-                        <div>
-                            <div class="b-btn-title">FORCE SYNC TV DISPLAY</div>
-                            <div class="b-btn-sub">Refresh all remote graphics instantly</div>
-                        </div>
-                    </div>
-                </button>
+
                 <button class="b-btn b-btn-rose" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
                     <div style="display:flex; justify-content:space-between; width:100%">
                         <div class="b-btn-title">⏹ STOP OVERLAYS</div>
