@@ -131,14 +131,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function pollServerScore() {
-        if (document.hidden) return; // Don't poll when tab is hidden
+        // Removed 'document.hidden' check to ensure OBS always gets the data
         if (matchId) {
             fetch(baseUrl + '/tv/matches/' + matchId + '/light')
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
                     if (!data || !data.score) return;
                     const prevBalls = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.balls : -1;
-                    if (data.score.balls !== prevBalls) {
+                    const containerHidden = document.getElementById('overlay-container').style.display === 'none' || document.getElementById('overlay-container').innerHTML === '';
+                    if (data.score.balls !== prevBalls || containerHidden) {
                         latestSocketScore = data;
                         renderOverlay();
                     }
