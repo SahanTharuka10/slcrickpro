@@ -258,7 +258,10 @@ function renderPlayersAdmin() {
                 <td>${p.playerId}</td>
                 <td><b>${p.name}</b></td>
                 <td>${p.team || '--'}</td>
-                <td><button class="btn btn-red btn-sm" onclick="deletePlayerAdmin('${p.playerId}')">🗑️</button></td>
+                <td>
+                    <button class="btn btn-ghost btn-sm" onclick="editPlayerAdmin('${p.playerId}')">✏️</button>
+                    <button class="btn btn-red btn-sm" onclick="deletePlayerAdmin('${p.playerId}')">🗑️</button>
+                </td>
             </tr>
         `).join('')}</tbody>
     </table>`;
@@ -460,6 +463,48 @@ function saveNewPlayer() {
         renderPlayersAdmin(); // refresh the player list
     } else {
         showToast('❌ Failed to register player', 'error');
+    }
+}
+
+function editPlayerAdmin(id) {
+    const p = DB.getPlayerById(id);
+    if (!p) return;
+    document.getElementById('edit-player-id').value = p.playerId;
+    document.getElementById('edit-player-name').value = p.name;
+    document.getElementById('edit-player-role').value = p.role || 'batsman';
+    document.getElementById('edit-player-photo').value = p.photo || '';
+    
+    const preview = document.getElementById('edit-player-preview');
+    if (p.photo) {
+        preview.src = p.photo;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+    
+    showModal('modal-edit-player');
+}
+
+function savePlayerEditAdmin() {
+    const id = document.getElementById('edit-player-id').value;
+    const name = document.getElementById('edit-player-name').value.trim();
+    const role = document.getElementById('edit-player-role').value;
+    const photo = document.getElementById('edit-player-photo').value;
+
+    if (!name) {
+        showToast('Please enter a name', 'error');
+        return;
+    }
+
+    const p = DB.getPlayerById(id);
+    if (p) {
+        p.name = name;
+        p.role = role;
+        p.photo = photo;
+        DB.updatePlayer(p);
+        showToast('✅ Player updated!', 'success');
+        closeModal('modal-edit-player');
+        renderPlayersAdmin();
     }
 }
 async function renderStoreItems() {

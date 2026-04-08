@@ -430,6 +430,52 @@ body.light-mode .theme-toggle {
   transform: translateY(-1px);
 }
 
+.header-btn-sm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  backdrop-filter: blur(10px);
+}
+
+.admin-btn-glow {
+  background: rgba(124, 77, 255, 0.1);
+  color: #a076ff;
+  border-color: rgba(124, 77, 255, 0.2);
+}
+
+.admin-btn-glow:hover {
+  background: rgba(124, 77, 255, 0.2);
+  box-shadow: 0 0 15px rgba(124, 77, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.posts-btn-glow {
+  background: rgba(233, 30, 99, 0.1);
+  color: #f06292;
+  border-color: rgba(233, 30, 99, 0.2);
+}
+
+.posts-btn-glow:hover {
+  background: rgba(233, 30, 99, 0.2);
+  box-shadow: 0 0 15px rgba(233, 30, 99, 0.3);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 600px) {
+  .header-btn-sm span {
+    display: none;
+  }
+  .header-btn-sm {
+    padding: 8px;
+  }
+}
+
 @media (max-width: 600px) {
   .admin-badge span {
     display: none;

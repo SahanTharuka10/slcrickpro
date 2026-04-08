@@ -10,6 +10,7 @@ const DB_KEYS = {
     PRODUCTS: 'cricpro_products',
     ORDERS: 'cricpro_orders',
     SETTINGS: 'cricpro_settings',
+    POSTS: 'cricpro_posts',
 };
 
 // SLCRICKPRO – Theme Logic (Global)
@@ -586,6 +587,24 @@ const DB = {
         s[key] = val;
         this._secureSet(DB_KEYS.SETTINGS, s);
     },
+
+    // ---------- POSTS ----------
+    getPosts() {
+        return this._secureGet(DB_KEYS.POSTS, []);
+    },
+    savePosts(arr) {
+        this._secureSet(DB_KEYS.POSTS, arr);
+        // Sync to cloud if needed
+        arr.forEach(p => syncToDB('post', p));
+    },
+    addPost(post) {
+        const arr = this.getPosts();
+        post.id = 'POST-' + Date.now();
+        post.createdAt = Date.now();
+        arr.unshift(post); // Newest first
+        this.savePosts(arr);
+        return post;
+    },
 };
 
 // ============================================================
@@ -720,6 +739,7 @@ function syncToDB(type, data) {
     else if (type === 'match') endpoint = '/sync/match';
     else if (type === 'tournament') endpoint = '/sync/tournament';
     else if (type === 'order') endpoint = '/sync/order';
+    else if (type === 'post') endpoint = '/sync/post';
 
     console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
     let token = localStorage.getItem('cricpro_token');

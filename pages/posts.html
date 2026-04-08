@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Posts – SLCRICKPRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .posts-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .post-card {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-sm);
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        .post-card:hover { transform: translateY(-4px); }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .post-author {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: var(--c-amber);
+        }
+        .post-date {
+            font-size: 12px;
+            color: var(--c-muted);
+        }
+        .post-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--c-text);
+            white-space: pre-wrap;
+        }
+        .create-post-card {
+            background: linear-gradient(145deg, rgba(233, 30, 99, 0.1), rgba(156, 39, 176, 0.05));
+            border: 1px dashed rgba(233, 30, 99, 0.3);
+            border-radius: var(--r-sm);
+            padding: 24px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .create-post-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #f06292;
+        }
+    </style>
+</head>
+<body class="page-wrapper">
+    <div class="bg-canvas">
+        <div class="bg-orb orb1"></div>
+        <div class="orb4"></div>
+    </div>
+
+    <div class="sub-header">
+        <a href="/" class="back-btn">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+        </a>
+        <div class="logo">
+            <div class="logo-icon">📝</div>
+            <div class="logo-text-animated">
+                <span class="logo-name-animated">COMMUNITY <span class="pro">POSTS</span></span>
+            </div>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    </div>
+
+    <main class="posts-container">
+        <div class="create-post-card">
+            <h2 class="create-post-title">Share Your Cricket Moment 🏏</h2>
+            <button class="btn btn-primary" onclick="openCreatePost()">✨ New Post</button>
+        </div>
+
+        <div id="posts-list">
+            <!-- Posts will be rendered here -->
+            <div class="empty-state">Loading posts...</div>
+        </div>
+    </main>
+
+    <!-- Create Post Modal -->
+    <div class="modal-overlay" id="modal-create-post" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Create New Post</div>
+            <div class="form-group">
+                <label class="form-label">Your Name</label>
+                <input type="text" id="post-author" class="form-input" placeholder="e.g. Cricket Fan">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Message</label>
+                <textarea id="post-content" class="form-input" rows="5" placeholder="What's on your mind?"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-create-post')">Cancel</button>
+                <button class="btn btn-green" onclick="submitPost()">Post Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="/js/db.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPosts();
+        });
+
+        function renderPosts() {
+            const list = document.getElementById('posts-list');
+            const posts = DB.getPosts();
+
+            if (!posts.length) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div class="empty-state-title">No posts yet</div>
+                        <p>Be the first to share something!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = posts.map(p => `
+                <div class="post-card">
+                    <div class="post-header">
+                        <div class="post-author">👤 ${escapeHTML(p.author)}</div>
+                        <div class="post-date">${timeSince(p.createdAt)}</div>
+                    </div>
+                    <div class="post-content">${escapeHTML(p.content)}</div>
+                </div>
+            `).join('');
+        }
+
+        function openCreatePost() {
+            document.getElementById('post-content').value = '';
+            showModal('modal-create-post');
+        }
+
+        function submitPost() {
+            const author = document.getElementById('post-author').value.trim() || 'Anonymous';
+            const content = document.getElementById('post-content').value.trim();
+
+            if (!content) {
+                showToast('Please enter some content', 'error');
+                return;
+            }
+
+            DB.addPost({ author, content });
+            showToast('✅ Post published!', 'success');
+            closeModal('modal-create-post');
+            renderPosts();
+        }
+    </script>
+</body>
+</html>
