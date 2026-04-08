@@ -519,9 +519,31 @@ function renderOverlay() {
         return renderOverlayFromLightPayload(latestSocketScore);
     }
 
-    // No match found — hide
-    document.getElementById('overlay-container').style.display = 'none';
-    document.getElementById('overlay-container').innerHTML = '';
+    // Default Fallback (No match in progress or innings hasn't started)
+    const container = document.getElementById('overlay-container');
+    if (!container) return;
+    
+    const tourn = tournId ? DB.getTournament(tournId) : null;
+    let title = "LIVE CRICKET BROADCAST";
+    let sub = "Match will begin shortly";
+    
+    if (tourn) {
+        title = tourn.name || title;
+        sub = tourn.ground ? `📍 ${tourn.ground}` : "Match will begin shortly";
+    } else if (matchId) {
+        title = "LIVE MATCH";
+        sub = "Starting Soon";
+    }
+
+    container.style.display = 'flex';
+    container.innerHTML = `
+        <div class="score-center-section" style="width: auto; padding: 10px 40px; margin: 0 auto;">
+            <div class="score-top" style="justify-content: center;">
+                <span class="teams" style="font-size:22px;">${title}</span>
+            </div>
+            <div class="score-bottom" style="font-size: 14px; text-transform:uppercase;">${sub}</div>
+        </div>
+    `;
 }
 
 // ─── Full match renderer ─────────────────────────────────────────────────────

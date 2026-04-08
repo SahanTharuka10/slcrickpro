@@ -2929,10 +2929,19 @@ function broadcastStrikerProfile() {
     const strikerName = getStrikerBatterName(inn);
     if (!strikerName) return;
     
-    const p = resolvePlayerProfileForBatter(inn, strikerName);
+    let p = resolvePlayerProfileForBatter(inn, strikerName);
     const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
-    const age = p ? calculateAge(p.dob) : "";
     
+    // Inject Drag and dropped image if exists
+    if (!p) p = {};
+    if (window.__tempBroadcastPhoto) {
+        p.photo = window.__tempBroadcastPhoto;
+        window.__tempBroadcastPhoto = null;
+        const textDrop = document.getElementById('photo-drop-text');
+        if (textDrop) textDrop.innerHTML = '📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>';
+    }
+    
+    const age = p.dob ? calculateAge(p.dob) : "";
     sendBroadcast('SHOW_STRIKER_PROFILE', { name: strikerName, profile: p, stats, age });
 }
 
@@ -2956,6 +2965,14 @@ function broadcastBowlerProfile() {
                 if (pid) { p = DB.getPlayerById(pid); break; }
             }
         }
+    }
+    
+    if (!p) p = {};
+    if (window.__tempBroadcastPhoto) {
+        p.photo = window.__tempBroadcastPhoto;
+        window.__tempBroadcastPhoto = null;
+        const textDrop = document.getElementById('photo-drop-text');
+        if (textDrop) textDrop.innerHTML = '📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>';
     }
     
     sendBroadcast('SHOW_BOWLER_PROFILE', { 
@@ -3227,6 +3244,29 @@ function renderBroadcastController(match) {
                 <!-- PLAYER & TEAM GRAPHICS -->
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
+                    
+                    <div id="photo-drop-zone" style="background:rgba(255,255,255,0.02); border: 2px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60px; margin-bottom:12px; transition: 0.2s;"
+                        ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.background='rgba(59,130,246,0.1)';"
+                        ondragleave="this.style.borderColor='rgba(255,255,255,0.15)'; this.style.background='rgba(255,255,255,0.02)';"
+                        ondrop="event.preventDefault(); this.style.borderColor='rgba(255,255,255,0.15)'; this.style.background='rgba(255,255,255,0.02)'; 
+                                if(event.dataTransfer.files[0]) {
+                                    const reader = new FileReader();
+                                    reader.onload = e => { window.__tempBroadcastPhoto = e.target.result; document.getElementById('photo-drop-text').innerHTML = '✅ Photo Ready! Click Graphic below'; };
+                                    reader.readAsDataURL(event.dataTransfer.files[0]);
+                                }"
+                        onclick="document.getElementById('hidden-photo-input').click()">
+                        <div id="photo-drop-text" style="font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4);">
+                            📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>
+                        </div>
+                        <input type="file" id="hidden-photo-input" style="display:none" accept="image/*" onchange="
+                            if(this.files[0]) {
+                                const reader = new FileReader();
+                                reader.onload = e => { window.__tempBroadcastPhoto = e.target.result; document.getElementById('photo-drop-text').innerHTML = '✅ Photo Ready! Click Graphic below'; };
+                                reader.readAsDataURL(this.files[0]);
+                            }
+                        ">
+                    </div>
+
                     <div class="b-grid">
                         <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
                             <div style="display:flex; justify-content:space-between; width:100%">
