@@ -3235,6 +3235,30 @@ function renderBroadcastController(match) {
                             onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
                         <div class="b-btn-title">NEXT MATCH</div>
                     </button>
+
+                    <!-- GUEST INTRO -->
+                    <div style="height:1px; background:rgba(255,255,255,0.05); margin:15px 0"></div>
+                    <div style="font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 10px;">Guest Introduction</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="guest-name" placeholder="Guest Name" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 12px;">
+                        <select id="guest-title" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 12px;">
+                            <option value="SPECIAL GUEST">SPECIAL GUEST</option>
+                            <option value="MATCH UMPIRE">MATCH UMPIRE</option>
+                            <option value="OFFICIAL SPONSOR">OFFICIAL SPONSOR</option>
+                            <option value="CHIEF GUEST">CHIEF GUEST</option>
+                            <option value="COMMENTATOR">COMMENTATOR</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:8px">
+                         <button class="b-btn b-btn-slate" style="flex:1; min-height:40px; justify-content:center; align-items:center" onclick="document.getElementById('file_guest').click()">
+                            <span id="preview_guest">📷 PHOTO</span>
+                         </button>
+                         <input type="file" id="file_guest" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_guest']=e.target.result; document.getElementById('preview_guest').innerHTML='✅ READY'; }; r.readAsDataURL(this.files[0]); }">
+                         <button class="b-btn b-btn-purple" style="flex:1; min-height:40px; justify-content:center; align-items:center" 
+                                onclick="const n=document.getElementById('guest-name').value; const t=document.getElementById('guest-title').value; sendBroadcast('SHOW_GUEST', { name: n, title: t, photo: window['__photo_guest'] }); showToast('⭐ Guest Published!', 'success');">
+                            <div class="b-btn-title" style="font-size:11px">PUBLISH</div>
+                         </button>
+                    </div>
                 </div>
                 
             </div>
@@ -3427,7 +3451,14 @@ function renderBroadcastController(match) {
         if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
             const updatedMatch = DB.getMatch(match.id);
-            if (updatedMatch) currentMatch = updatedMatch;
+            if (updatedMatch) {
+                currentMatch = updatedMatch;
+                // Sync to iframe
+                const frame = document.querySelector('iframe');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({ type: 'cricpro_broadcast_cmd', payload: { cmd: 'SYNC_SCORE', data: { match: updatedMatch } } }, '*');
+                }
+            }
         }
     }, 5000);
 

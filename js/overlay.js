@@ -244,17 +244,20 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_BIG_EVENT':
             showBigEventGraphic(data);
             break;
-        case 'SHOW_BOWLER_PROFILE':
-            showBowlerProfileGraphic(data);
-            break;
         case 'SHOW_STRIKER_PROFILE':
             showStrikerProfileLeft(data);
             break;
         case 'SHOW_NON_STRIKER_PROFILE':
             showStrikerProfileLeft(data, 'NON-STRIKER');
             break;
+        case 'SHOW_BOWLER_PROFILE':
+            showBowlerProfileGraphic(data);
+            break;
         case 'SHOW_GUEST':
             showGuestGraphic(data);
+            break;
+        case 'SYNC_SCORE':
+            if (data && data.match) _renderOverlayFromMatch(data.match);
             break;
         case 'SHOW_PARTNERSHIP':
             showPartnershipGraphicCinema(data);
@@ -262,6 +265,8 @@ function handleBroadcastCommand(cmd, data) {
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
             break;
+        default:
+            console.log("ℹ️ Unhandled Broadcast Command:", cmd);
     }
 }
 
@@ -1151,8 +1156,8 @@ function showBatterProfilesCinema(data) {
                         <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
                     </div>
                     <div style="text-align:left">
-                        <div style="font-size:24px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1">${(p1.name||'PLAYER').split(' ')[0]}</div>
-                        <div style="font-size:32px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${(p1.name||'PROFILE').split(' ').slice(1).join(' ')}</div>
+                        <div style="font-size:24px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1">${(name||'PLAYER').split(' ')[0]}</div>
+                        <div style="font-size:32px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${(name||'PROFILE').split(' ').slice(1).join(' ')}</div>
                     </div>
                     <div style="margin-top:20px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px">
                         <div style="text-align:center"><div style="font-size:22px; font-weight:900; color:#fff">${stats.runs || 0}</div><div style="font-size:9px; font-weight:800; color:#aaa; letter-spacing:1px">RUNS</div></div>
@@ -1437,7 +1442,7 @@ function showBigEventGraphic(data) {
 
     const html = `
         <div id="big-event-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; 
-            align-items:center; justify-content:center; background:${bgGradient}; z-index:20000; overflow:hidden; font-family:'Outfit', sans-serif">
+            align-items:center; justify-content:center; background:${bgGradient}; z-index:20000; overflow:hidden; font-family:'Outfit', sans-serif; transform: scale(0.8)">
             
             <!-- Animated Background Particles/Glows -->
             <div id="be-glow-main" style="position:absolute; width:1200px; height:1200px; background:radial-gradient(circle, ${themeColor}15 0%, transparent 70%); 
@@ -1461,12 +1466,12 @@ function showBigEventGraphic(data) {
                 </div>
 
                 <!-- Main Event Text -->
-                <div id="be-main-text" style="font-size:160px; font-weight:900; color:#fff; letter-spacing:20px; 
-                    text-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 50px ${themeColor}33; 
-                    line-height:0.8; margin-bottom:40px">${labelHtml}</div>
+                <div id="be-main-text" style="font-size:130px; font-weight:900; color:#fff; letter-spacing:15px; 
+                    text-shadow: 0 15px 30px rgba(0,0,0,0.4), 0 0 50px ${themeColor}33; 
+                    margin-bottom:20px; text-transform:uppercase; filter: drop-shadow(0 0 10px #fff)">${labelHtml}</div>
 
                 <!-- PLAYER CARD (The "WOW" Component) -->
-                <div id="be-player-card" style="display:flex; align-items:center; gap:25px; padding:20px 40px; 
+                <div id="be-player-card" style="display:flex; align-items:center; gap:25px; padding:15px 30px; 
                     background:rgba(255,255,255,0.03); backdrop-filter:blur(30px); border:2px solid ${themeColor}44; 
                     border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,0.5); opacity:0; transform:translateY(50px);
                     box-shadow: 0 0 50px ${themeColor}22">
