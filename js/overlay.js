@@ -643,34 +643,36 @@ function _renderOverlayFromMatch(m) {
         <div class="batsmen-section">
             <div class="player-row">
                 <div class="player-name">
-                    <span class="striker-mark">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span>
+                    <span class="striker-mark">${siIdx === 0 ? '▶' : '&nbsp;'}</span>
                     ${striker.name}
                 </div>
-                <div class="player-value runs">${striker.runs||0}</div>
-                <div class="player-value balls">${striker.balls||0}</div>
+                <div class="player-value runs">${striker.runs || 0}</div>
+                <div class="player-value balls">${striker.balls || 0}</div>
             </div>
             <div class="player-row">
                 <div class="player-name">
-                    <span class="striker-mark">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span>
+                    <span class="striker-mark">${siIdx === 1 ? '▶' : '&nbsp;'}</span>
                     ${nonStriker.name}
                 </div>
-                <div class="player-value runs">${nonStriker.runs||0}</div>
-                <div class="player-value balls">${nonStriker.balls||0}</div>
+                <div class="player-value runs">${nonStriker.runs || 0}</div>
+                <div class="player-value balls">${nonStriker.balls || 0}</div>
             </div>
         </div>
         <div class="score-center-section">
             <div class="score-top">
                 <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
-                <span class="total">${score}</span>
-                <span class="phase">${phase}</span>
-                <span class="overs">${ov}</span>
+                <div class="score-pill-main">
+                    <span class="total">${score}</span>
+                    <span class="phase">${phase}</span>
+                    <span class="overs">${ov}</span>
+                </div>
             </div>
             <div class="score-bottom">${bottomText}</div>
         </div>
         <div class="bowler-section">
             <div class="player-row" style="margin-bottom: 2px;">
                 <div class="player-name" style="color: #1a1a2e;">${bowler.name}</div>
-                <div class="player-value runs">${bowler.wickets||0}-${bowler.runs||0}</div>
+                <div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div>
                 <div class="player-value balls">${b_overs}</div>
             </div>
             <div class="recent-balls-row">${recentBallsHtml}</div>
@@ -954,11 +956,7 @@ function getBestBowlers(tournId) {
   })).sort((a, b) => b.wickets - a.wickets || parseFloat(a.econ) - parseFloat(b.econ));
 }
 
-function formatOvers(balls, bpo = 6) {
-    const ov = Math.floor(balls / bpo);
-    const b = balls % bpo;
-    return `${ov}.${b}`;
-}
+
 function showTeamRosterGraphic(data) {
     const { teamName, players } = data;
     let html = `
