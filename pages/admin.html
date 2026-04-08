@@ -94,19 +94,22 @@
     </div>
 
     <div id="admin-login-section" class="admin-section" style="max-width:400px;text-align:center;padding-top:80px">
-        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Admin Admin</h2>
-        <p style="color:var(--c-muted);margin-bottom:28px">Enter credentials to access the inbox</p>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Admin Panel</h2>
+        <p style="color:var(--c-muted);margin-bottom:28px">Enter your admin PIN to access the dashboard</p>
 
         <div class="form-group" style="text-align:left">
             <label class="form-label">Username</label>
-            <input type="text" class="form-input" id="admin-username" placeholder="Username" />
+            <input type="text" class="form-input" id="admin-username" placeholder="e.g. STgamage" autocomplete="username" />
         </div>
         <div class="form-group" style="text-align:left">
-            <label class="form-label">Password</label>
-            <input type="password" class="form-input" id="admin-password" placeholder="Password" />
+            <label class="form-label">Admin PIN / Password</label>
+            <input type="password" class="form-input" id="admin-password" placeholder="Enter admin PIN"
+                   autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter') loginAdmin()" />
         </div>
 
         <button class="btn btn-primary btn-full" onclick="loginAdmin()">Login</button>
+        <p id="login-hint" style="margin-top:14px; font-size:12px; color:var(--c-muted); display:none">PIN: slcrickpro@2026</p>
     </div>
 
     <div id="admin-content-section" class="admin-section" style="display:none">

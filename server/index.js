@@ -46,35 +46,35 @@ app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','ad
 app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res.redirect('/admin'));
 
 // ─── Admin Login ─────────────────────────────────────────────────
-// Credentials are hardcoded here so Railway env vars cannot interfere.
-// Change these values here directly if you want to update your password.
-const ADMIN_CREDENTIALS = [
-    { username: 'STgamage',  password: 'ST26gamage@' },
-    { username: 'admin',     password: 'slcrickpro2026' },
-];
+// Simple PIN-based login. Username can be anything. 
+// Only the PIN matters. Change ADMIN_PIN to update your password.
+const ADMIN_PIN = 'slcrickpro@2026';
 
 app.post('/api/admin/login', (req, res) => {
-    const { username, password } = req.body || {};
-    console.log(`[Admin Login] Attempt by: "${username}"`);
+    // Ensure we get body regardless of content-type
+    let body = req.body || {};
+    if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (_) { body = {}; }
+    }
 
-    const match = ADMIN_CREDENTIALS.find(
-        c => c.username === username && c.password === password
-    );
+    const { username, password, pin } = body;
+    const submitted = (pin || password || '').trim();
 
-    if (match) {
-        console.log(`[Admin Login] SUCCESS for: "${username}"`);
+    console.log(`[Admin Login] user="${username}" pin_length=${submitted.length}`);
+
+    if (submitted === ADMIN_PIN) {
+        console.log('[Admin Login] SUCCESS');
         res.json({ success: true, token: 'admin-secret-token-2026' });
     } else {
-        console.warn(`[Admin Login] FAILED for: "${username}"`);
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
+        console.warn(`[Admin Login] FAILED — submitted: "${submitted}"`);
+        res.status(401).json({ success: false, message: 'Wrong PIN. Check your credentials.' });
     }
 });
 
-// Debug route — remove in strict production if needed
+// Debug: verify server is live and see config
 app.get('/api/admin/check', (req, res) => {
-    res.json({ available_users: ADMIN_CREDENTIALS.map(c => c.username) });
+    res.json({ status: 'ok', pin_length: ADMIN_PIN.length, message: 'Server is running' });
 });
-
 
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';

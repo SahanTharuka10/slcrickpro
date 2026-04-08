@@ -15,30 +15,49 @@ function checkAdminAuth() {
     }
 }
 
+let loginAttempts = 0;
+
 async function loginAdmin() {
-    const user = document.getElementById('admin-username').value;
-    const pass = document.getElementById('admin-password').value;
+    const user = (document.getElementById('admin-username').value || '').trim();
+    const pass = (document.getElementById('admin-password').value || '').trim();
+
+    if (!pass) {
+        showToast('❌ Please enter your Admin PIN', 'error');
+        return;
+    }
+
+    const btn = document.querySelector('#admin-login-section .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Logging in…'; }
 
     try {
         const response = await fetch(BACKEND_BASE_URL + '/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass })
+            body: JSON.stringify({ username: user || 'admin', password: pass })
         });
 
         const result = await response.json();
 
         if (result.success) {
+            loginAttempts = 0;
             sessionStorage.setItem('isAdmin', 'true');
             sessionStorage.setItem('adminToken', result.token);
             checkAdminAuth();
             showToast('🔓 Welcome, Admin!', 'success');
         } else {
-            showToast('❌ ' + (result.message || 'Invalid credentials'), 'error');
+            loginAttempts++;
+            showToast('❌ ' + (result.message || 'Wrong PIN'), 'error');
+            // Show PIN hint after 2 failed attempts
+            if (loginAttempts >= 2) {
+                const hint = document.getElementById('login-hint');
+                if (hint) hint.style.display = 'block';
+            }
         }
     } catch (err) {
         console.error('Login failed:', err);
-        showToast('❌ Server error. Try again later.', 'error');
+        showToast('❌ Cannot reach server. Check connection.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Login'; }
     }
 }
 
