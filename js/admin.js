@@ -604,9 +604,10 @@ async function renderPostsAdmin() {
         list.innerHTML = posts.map(p => `
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex; justify-content:space-between">
-                    <strong>Admin Post</strong>
+                    <strong>🛡️ ${p.title || 'Official Update'}</strong>
                     <span style="font-size:12px; color:var(--c-muted)">${new Date(p.createdAt).toLocaleString()}</span>
                 </div>
+                ${p.image ? `<img src="${p.image}" style="width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin:10px 0;" />` : ''}
                 <div style="margin:10px 0; line-height:1.5">${p.content}</div>
                 <button class="btn btn-red btn-sm" onclick="deletePostAdmin('${p.id}')">🗑️ Delete</button>
             </div>
@@ -617,18 +618,63 @@ async function renderPostsAdmin() {
 }
 
 function openAdminCreatePost() {
+    document.getElementById('admin-post-title').value = '';
     document.getElementById('admin-post-content').value = '';
+    document.getElementById('admin-post-image-data').value = '';
+    document.getElementById('admin-post-preview').style.display = 'none';
     showModal('modal-admin-post');
 }
 
+function encodePostImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                document.getElementById('admin-post-image-data').value = dataUrl;
+                
+                const preview = document.getElementById('admin-post-preview');
+                preview.src = dataUrl;
+                preview.style.display = 'block';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 async function submitAdminPost() {
+    const title = document.getElementById('admin-post-title').value.trim();
     const content = document.getElementById('admin-post-content').value.trim();
-    if (!content) return;
+    const image = document.getElementById('admin-post-image-data').value;
+
+    if (!content) {
+        showToast('❌ Please enter a message content', 'error');
+        return;
+    }
 
     const post = {
         id: 'POST-' + Date.now(),
         author: 'Admin',
+        title: title || 'SLCRICKPRO Update',
         content,
+        image: image || null,
         createdAt: Date.now()
     };
 

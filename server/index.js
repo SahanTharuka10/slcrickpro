@@ -166,7 +166,9 @@ const Order = sequelize.define('Order', {
 const Post = sequelize.define('Post', {
   id: { type: DataTypes.STRING, primaryKey: true },
   author: DataTypes.STRING,
+  title: DataTypes.STRING,
   content: DataTypes.TEXT,
+  image: DataTypes.TEXT,
   createdAt: DataTypes.BIGINT,
 }, { timestamps: true, tableName: 'posts' });
 

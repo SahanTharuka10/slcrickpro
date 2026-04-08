@@ -63,10 +63,7 @@
     </style>
 </head>
 <body class="page-wrapper">
-    <div class="bg-canvas">
-        <div class="bg-orb orb1"></div>
-        <div class="orb4"></div>
-    </div>
+    <div class="bg-canvas"></div>
 
     <div class="sub-header">
         <a href="/" class="back-btn">
@@ -117,9 +114,11 @@
                 list.innerHTML = posts.map(p => `
                     <div class="post-card">
                         <div class="post-header">
-                            <div class="post-author">🛡️ ${escapeHTML(p.author || 'Admin')}</div>
+                            <div class="post-author">🛡️ Admin</div>
                             <div class="post-date">${timeSince(p.createdAt)}</div>
                         </div>
+                        <h3 style="margin-bottom:10px; color:var(--c-primary); font-size:18px">${escapeHTML(p.title || 'Official Update')}</h3>
+                        ${p.image ? `<img src="${p.image}" style="width:100%; max-height:400px; object-fit:cover; border-radius:12px; margin-bottom:15px; border:1px solid var(--c-border)" />` : ''}
                         <div class="post-content">${escapeHTML(p.content)}</div>
                     </div>
                 `).join('');
