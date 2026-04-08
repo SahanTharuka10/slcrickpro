@@ -29,6 +29,14 @@ const Broadcast = {
         localStorage.setItem(BROADCAST_KEYS.COMMAND, JSON.stringify(payload));
         console.log(`📡 Broadcast Sent (Local): ${cmd}`, data);
 
+        // PostMessage to embedded IFRAME preview instantly
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(f => {
+            if (f.contentWindow) {
+                f.contentWindow.postMessage({ type: 'cricpro_broadcast_cmd', payload: payload }, '*');
+            }
+        });
+
         // SYNC TO REMOTE SCREEN (Real-Time WebSocket Support)
         if (typeof socket !== 'undefined' && socket) {
             socket.emit('broadcast_command', payload);

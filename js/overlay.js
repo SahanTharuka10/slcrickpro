@@ -189,8 +189,17 @@ document.addEventListener('DOMContentLoaded', () => {
             else renderTournamentStats(currentPopupView);
         }
     });
-});
 
+    // ── Instant postMessage listener for embedded IFRAME previews
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'cricpro_broadcast_cmd') {
+            try {
+                const payload = e.data.payload;
+                handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
+            } catch (err) {}
+        }
+    });
+});
 
 function handleBroadcastCommand(cmd, data) {
     if (data && typeof data === 'object') {
