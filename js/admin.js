@@ -20,7 +20,7 @@ async function loginAdmin() {
     const pass = document.getElementById('admin-password').value;
 
     try {
-        const response = await fetch('/api/admin/login', {
+        const response = await fetch(BACKEND_BASE_URL + '/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })
