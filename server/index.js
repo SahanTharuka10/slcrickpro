@@ -45,24 +45,36 @@ app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res.redirect('/admin'));
 
-// Simple Admin Login API
+// ─── Admin Login ─────────────────────────────────────────────────
+// Credentials are hardcoded here so Railway env vars cannot interfere.
+// Change these values here directly if you want to update your password.
+const ADMIN_CREDENTIALS = [
+    { username: 'STgamage',  password: 'ST26gamage@' },
+    { username: 'admin',     password: 'slcrickpro2026' },
+];
+
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body || {};
-    
-    // Default credentials if not in ENV
-    const expectedUser = process.env.ADMIN_USERNAME || 'STgamage';
-    const expectedPass = process.env.ADMIN_PASSWORD || 'ST26gamage@';
+    console.log(`[Admin Login] Attempt by: "${username}"`);
 
-    console.log('Login attempt for:', username);
+    const match = ADMIN_CREDENTIALS.find(
+        c => c.username === username && c.password === password
+    );
 
-    if (username === expectedUser && password === expectedPass) {
-        console.log('Login successful for:', username);
+    if (match) {
+        console.log(`[Admin Login] SUCCESS for: "${username}"`);
         res.json({ success: true, token: 'admin-secret-token-2026' });
     } else {
-        console.warn('Login failed for:', username);
+        console.warn(`[Admin Login] FAILED for: "${username}"`);
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
+
+// Debug route — remove in strict production if needed
+app.get('/api/admin/check', (req, res) => {
+    res.json({ available_users: ADMIN_CREDENTIALS.map(c => c.username) });
+});
+
 
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
