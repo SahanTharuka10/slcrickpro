@@ -89,10 +89,30 @@
     <div class="toast" id="toast"></div>
 
     <script src="/js/db.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
+        let socket;
+
         document.addEventListener('DOMContentLoaded', () => {
             renderPosts();
+            initRealTime();
         });
+
+        function initRealTime() {
+            try {
+                socket = io(BACKEND_BASE_URL);
+                socket.on('connect', () => console.log('Connected to sync engine'));
+                
+                socket.on('globalUpdate', (data) => {
+                    if (data.type === 'post' || data.type === 'post_deleted') {
+                        console.log('Post update received, refreshing feed...');
+                        renderPosts();
+                    }
+                });
+            } catch (e) {
+                console.warn('Real-time sync unavailable');
+            }
+        }
 
         async function renderPosts() {
             const list = document.getElementById('posts-list');
@@ -123,7 +143,7 @@
                     </div>
                 `).join('');
             } catch (e) {
-                list.innerHTML = '<div class="empty-state">Failed to load posts.</div>';
+                list.innerHTML = '<div class="empty-state">Failed to load posts. Check your connection.</div>';
             }
         }
     </script>
