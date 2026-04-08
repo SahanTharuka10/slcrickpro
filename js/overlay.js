@@ -253,6 +253,9 @@ function handleBroadcastCommand(cmd, data) {
         case 'SHOW_NON_STRIKER_PROFILE':
             showStrikerProfileLeft(data, 'NON-STRIKER');
             break;
+        case 'SHOW_GUEST':
+            showGuestGraphic(data);
+            break;
         case 'SHOW_PARTNERSHIP':
             showPartnershipGraphicCinema(data);
             break;
@@ -1147,8 +1150,8 @@ function showBatterProfilesCinema(data) {
                         <img src="${src}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
                     </div>
                     <div style="text-align:left">
-                        <div style="font-size:24px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1">${name.split(' ')[0]}</div>
-                        <div style="font-size:32px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                        <div style="font-size:24px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1">${(p1.name||'PLAYER').split(' ')[0]}</div>
+                        <div style="font-size:32px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${(p1.name||'PROFILE').split(' ').slice(1).join(' ')}</div>
                     </div>
                     <div style="margin-top:20px; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px">
                         <div style="text-align:center"><div style="font-size:22px; font-weight:900; color:#fff">${stats.runs || 0}</div><div style="font-size:9px; font-weight:800; color:#aaa; letter-spacing:1px">RUNS</div></div>
@@ -1216,8 +1219,8 @@ function showStrikerProfileLeft(data, label = 'STRIKER') {
 
             <!-- NAME & AGE -->
             <div style="text-align:left">
-                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${name.split(' ')[0]}</div>
-                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${(name||'PLAYER').split(' ')[0]}</div>
+                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${(name||'PROFILE').split(' ').slice(1).join(' ')}</div>
                 ${age ? `<div style="font-size:18px; font-weight:800; color:rgba(255,255,255,0.5); letter-spacing:2px">AGE: ${age} YEARS</div>` : ''}
             </div>
 
@@ -1374,8 +1377,8 @@ function showBowlerProfileGraphic(data) {
 
             <!-- NAME & DETAILS -->
             <div style="text-align:left">
-                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${name.split(' ')[0]}</div>
-                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${name.split(' ').slice(1).join(' ')}</div>
+                <div style="font-size:36px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${(name||'PLAYER').split(' ')[0]}</div>
+                <div style="font-size:42px; font-weight:950; color:${accentColor}; text-transform:uppercase; line-height:1.1; margin-bottom:5px">${(name||'PROFILE').split(' ').slice(1).join(' ')}</div>
                 <div style="font-size:18px; font-weight:800; color:rgba(255,255,255,0.5); letter-spacing:1px">
                     ${stats.wickets} WICKETS / ${stats.runs} RUNS
                 </div>
@@ -1580,4 +1583,55 @@ function showPartnershipGraphic(data) {
             card.style.transform = 'none';
         }
     }, 100);
+}
+
+function showGuestGraphic(data) {
+    const { name, title, photo } = data;
+    const accent = '#00e676';
+    const photoSrc = photo || OVERLAY_DEFAULT_PLAYER_PHOTO;
+
+    const html = `
+        <div style="position:absolute; bottom: 120px; left: 80px; width: 680px; display:flex; perspective: 1000px">
+            <div id="bo-guest" style="width: 100%; display: flex; text-transform: uppercase; transform-style: preserve-3d; opacity: 0; transform: translateY(40px) rotateX(-15deg); filter: drop-shadow(0 20px 40px rgba(0,0,0,0.6));">
+                
+                <!-- PHOTO SIDE -->
+                <div style="width: 200px; height: 260px; background: #000; position: relative; border-radius: 12px 0 0 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.15); border-right: none">
+                    <img src="${photoSrc}" style="width: 100%; height: 100%; object-fit: cover" onerror="this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                    <!-- Gradient to blend into stats -->
+                    <div style="position:absolute; top:0; bottom:0; right:0; width:50%; background:linear-gradient(to left, #000, transparent)"></div>
+                </div>
+
+                <!-- INFO SIDE -->
+                <div style="flex:1; background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(5,5,5,0.98)); border: 2px solid rgba(255,255,255,0.15); border-left: none; border-radius: 0 12px 12px 0; padding: 30px; display: flex; flex-direction: column; justify-content: center; position:relative; overflow:hidden">
+                    
+                    <div style="position:absolute; top:-20px; right:-20px; font-size:120px; color:rgba(255,255,255,0.03); font-weight:900; line-height:1">⭐</div>
+
+                    <div style="display:flex; flex-direction:column; align-items:flex-start; position:relative; z-index:2">
+                        <div style="background: ${accent}; color: #000; font-size: 14px; font-weight: 900; padding: 4px 12px; border-radius: 4px; letter-spacing: 2px; margin-bottom: 15px;">
+                            ${title || 'SPECIAL GUEST'}
+                        </div>
+                        
+                        <div style="font-size: 38px; font-weight: 950; color: #fff; line-height: 1.1; letter-spacing: 1px; width: 100%">
+                            ${(name || 'GUEST').split(' ')[0]}
+                        </div>
+                        <div style="font-size: 48px; font-weight: 950; color: ${accent}; line-height: 1.1; margin-bottom: 5px; width: 100%">
+                            ${(name || 'PROFILE').split(' ').slice(1).join(' ')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    renderBroadcastOverlay(html);
+
+    setTimeout(() => {
+        const el = document.getElementById('bo-guest');
+        if (el && typeof gsap !== 'undefined') {
+            gsap.to(el, { opacity: 1, y: 0, rotateX: 0, duration: 1, ease: "expo.out" });
+        } else if (el) {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+        }
+    }, 50);
 }

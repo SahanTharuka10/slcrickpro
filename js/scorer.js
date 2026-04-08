@@ -2913,8 +2913,14 @@ function broadcastCurrentBatters() {
     if (!inn) return;
     const batters = getOnCreaseBatterNames(inn);
     
-    const profiles = batters.map(bName => {
-        const p = resolvePlayerProfileForBatter(inn, bName);
+    const profiles = batters.map((bName, index) => {
+        let p = resolvePlayerProfileForBatter(inn, bName) || {};
+        if (window[`__photo_batter${index+1}`]) {
+            p.photo = window[`__photo_batter${index+1}`];
+            window[`__photo_batter${index+1}`] = null;
+            const el = document.getElementById(`preview_batter${index+1}`);
+            if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
+        }
         const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
         return { name: bName, profile: p, stats };
     });
@@ -2932,13 +2938,12 @@ function broadcastStrikerProfile() {
     let p = resolvePlayerProfileForBatter(inn, strikerName);
     const stats = inn.batsmen.find(x => x.name === strikerName) || { runs:0, balls:0, fours:0, sixes:0 };
     
-    // Inject Drag and dropped image if exists
     if (!p) p = {};
-    if (window.__tempBroadcastPhoto) {
-        p.photo = window.__tempBroadcastPhoto;
-        window.__tempBroadcastPhoto = null;
-        const textDrop = document.getElementById('photo-drop-text');
-        if (textDrop) textDrop.innerHTML = '📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>';
+    if (window.__photo_striker) {
+        p.photo = window.__photo_striker;
+        window.__photo_striker = null;
+        const el = document.getElementById('preview_striker');
+        if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
     }
     
     const age = p.dob ? calculateAge(p.dob) : "";
@@ -2968,11 +2973,11 @@ function broadcastBowlerProfile() {
     }
     
     if (!p) p = {};
-    if (window.__tempBroadcastPhoto) {
-        p.photo = window.__tempBroadcastPhoto;
-        window.__tempBroadcastPhoto = null;
-        const textDrop = document.getElementById('photo-drop-text');
-        if (textDrop) textDrop.innerHTML = '📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>';
+    if (window.__photo_bowler) {
+        p.photo = window.__photo_bowler;
+        window.__photo_bowler = null;
+        const el = document.getElementById('preview_bowler');
+        if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
     }
     
     sendBroadcast('SHOW_BOWLER_PROFILE', { 
@@ -3022,8 +3027,11 @@ function broadcastPartnership() {
 
     const names = getOnCreaseBatterNames(inn);
     const p = inn.currentPartnership || { runs: 0, balls: 0 };
-    const p1Profile = resolvePlayerProfileForBatter(inn, names[0]);
-    const p2Profile = resolvePlayerProfileForBatter(inn, names[1]);
+    let p1Profile = resolvePlayerProfileForBatter(inn, names[0]) || {};
+    let p2Profile = resolvePlayerProfileForBatter(inn, names[1]) || {};
+
+    if (window.__photo_partner1) { p1Profile.photo = window.__photo_partner1; window.__photo_partner1 = null; const el = document.getElementById('preview_partner1'); if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} }
+    if (window.__photo_partner2) { p2Profile.photo = window.__photo_partner2; window.__photo_partner2 = null; const el = document.getElementById('preview_partner2'); if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} }
 
     const wicketLabel = ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH", "9TH", "10TH"];
     const wicketNum = wicketLabel[inn.wickets] || (inn.wickets + 1) + "TH";
@@ -3244,60 +3252,84 @@ function renderBroadcastController(match) {
                 <!-- PLAYER & TEAM GRAPHICS -->
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
-                    
-                    <div id="photo-drop-zone" style="background:rgba(255,255,255,0.02); border: 2px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60px; margin-bottom:12px; transition: 0.2s;"
-                        ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.background='rgba(59,130,246,0.1)';"
-                        ondragleave="this.style.borderColor='rgba(255,255,255,0.15)'; this.style.background='rgba(255,255,255,0.02)';"
-                        ondrop="event.preventDefault(); this.style.borderColor='rgba(255,255,255,0.15)'; this.style.background='rgba(255,255,255,0.02)'; 
-                                if(event.dataTransfer.files[0]) {
-                                    const reader = new FileReader();
-                                    reader.onload = e => { window.__tempBroadcastPhoto = e.target.result; document.getElementById('photo-drop-text').innerHTML = '✅ Photo Ready! Click Graphic below'; };
-                                    reader.readAsDataURL(event.dataTransfer.files[0]);
-                                }"
-                        onclick="document.getElementById('hidden-photo-input').click()">
-                        <div id="photo-drop-text" style="font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4);">
-                            📸 Drag & Drop Photo Here<br><span style="font-size:9px; font-weight:400">to override next cinematic graphic</span>
-                        </div>
-                        <input type="file" id="hidden-photo-input" style="display:none" accept="image/*" onchange="
-                            if(this.files[0]) {
-                                const reader = new FileReader();
-                                reader.onload = e => { window.__tempBroadcastPhoto = e.target.result; document.getElementById('photo-drop-text').innerHTML = '✅ Photo Ready! Click Graphic below'; };
-                                reader.readAsDataURL(this.files[0]);
-                            }
-                        ">
-                    </div>
-
                     <div class="b-grid">
                         <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">⚡ STRIKER PROFILE</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+B</div>
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                    <div class="b-btn-title">⚡ STRIKER PROFILE</div>
+                                    <div class="b-btn-sub">Single batter stats card</div>
+                                </div>
+                                <div style="display:flex; gap:4px; align-items:center">
+                                    <div title="Override Photo for Striker" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
+                                         onclick="event.stopPropagation(); document.getElementById('file_striker').click();" id="preview_striker"
+                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
+                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_striker']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                        📷
+                                    </div>
+                                    <input type="file" id="file_striker" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_striker']=e.target.result; document.getElementById('preview_striker').innerHTML='✅'; document.getElementById('preview_striker').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <div class="b-btn-hotkey" style="margin-left:8px">S+B</div>
+                                </div>
                             </div>
-                            <div class="b-btn-sub">Single batter stats card</div>
-                        </button>
-                        <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🏏 CURRENT BATTERS</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+P</div>
-                            </div>
-                            <div class="b-btn-sub">Comparison on crease</div>
-                        </button>
-                        <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🤝 PARTNERSHIP</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+H</div>
-                            </div>
-                            <div class="b-btn-sub">Current standing pair</div>
-                        </button>
-                        <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🥎 BOWLER PROFILE</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
-                            </div>
-                            <div class="b-btn-sub">Active bowler stats</div>
                         </button>
                         
-                        <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
+                        <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                    <div class="b-btn-title">🏏 CURRENT BATTERS</div>
+                                    <div class="b-btn-sub">Comparison on crease</div>
+                                </div>
+                                <div style="display:flex; gap:4px; align-items:center">
+                                    <div title="Override Photo for Batter 1" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
+                                         onclick="event.stopPropagation(); document.getElementById('file_batter1').click();" id="preview_batter1"
+                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
+                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter1']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                        📷
+                                    </div>
+                                    <input type="file" id="file_batter1" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter1']=e.target.result; document.getElementById('preview_batter1').innerHTML='✅'; document.getElementById('preview_batter1').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <div title="Override Photo for Batter 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
+                                         onclick="event.stopPropagation(); document.getElementById('file_batter2').click();" id="preview_batter2"
+                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
+                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter2']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                        📷
+                                    </div>
+                                    <input type="file" id="file_batter2" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter2']=e.target.result; document.getElementById('preview_batter2').innerHTML='✅'; document.getElementById('preview_batter2').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <div class="b-btn-hotkey" style="margin-left:8px">S+P</div>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                    <div class="b-btn-title">🤝 PARTNERSHIP</div>
+                                    <div class="b-btn-sub">Current standing pair</div>
+                                </div>
+                                <div style="display:flex; gap:4px; align-items:center">
+                                    <div title="Override Photo for Partner 1" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
+                                         onclick="event.stopPropagation(); document.getElementById('file_partner1').click();" id="preview_partner1"
+                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
+                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner1']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                        📷
+                                    </div>
+                                    <input type="file" id="file_partner1" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner1']=e.target.result; document.getElementById('preview_partner1').innerHTML='✅'; document.getElementById('preview_partner1').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <div title="Override Photo for Partner 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
+                                         onclick="event.stopPropagation(); document.getElementById('file_partner2').click();" id="preview_partner2"
+                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
+                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner2']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                        📷
+                                    </div>
+                                    <input type="file" id="file_partner2" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner2']=e.target.result; document.getElementById('preview_partner2').innerHTML='✅'; document.getElementById('preview_partner2').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <div class="b-btn-hotkey" style="margin-left:8px">S+H</div>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <div class="b-btn-title">🛡️ ${match.team1}</div>
                                 <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+1</div>
