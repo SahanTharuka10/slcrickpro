@@ -660,12 +660,12 @@ function encodePostImage(input) {
 }
 
 async function submitAdminPost() {
-    const title = document.getElementById('admin-post-title').value.trim();
+    const title   = document.getElementById('admin-post-title').value.trim();
     const content = document.getElementById('admin-post-content').value.trim();
-    const image = document.getElementById('admin-post-image-data').value;
+    const image   = document.getElementById('admin-post-image-data').value || null;
 
     if (!content) {
-        showToast('❌ Please enter a message content', 'error');
+        showToast('❌ Please write some content first', 'error');
         return;
     }
 
@@ -674,9 +674,13 @@ async function submitAdminPost() {
         author: 'Admin',
         title: title || 'SLCRICKPRO Update',
         content,
-        image: image || null,
+        image,
         createdAt: Date.now()
     };
+
+    // Disable button to prevent double-submit
+    const btn = event && event.target;
+    if (btn) btn.disabled = true;
 
     try {
         const r = await fetch(BACKEND_BASE_URL + '/sync/post', {
@@ -685,13 +689,21 @@ async function submitAdminPost() {
             body: JSON.stringify(post)
         });
 
-        if (r.ok) {
-            showToast('✅ Post published!', 'success');
+        let result = {};
+        try { result = await r.json(); } catch (_) {}
+
+        if (r.ok && result.ok !== false) {
+            showToast('✅ Post published! All users will see it now.', 'success');
             closeModal('modal-admin-post');
             renderPostsAdmin();
+        } else {
+            showToast('❌ Server error: ' + (result.error || r.status), 'error');
         }
     } catch (e) {
-        showToast('❌ Failed to publish post', 'error');
+        console.error('Post publish error:', e);
+        showToast('❌ Could not reach server. Check connection.', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 

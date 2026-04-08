@@ -7,146 +7,354 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/main.css">
     <style>
-        .posts-container {
-            max-width: 800px;
-            margin: 40px auto;
+        :root {
+            --post-gap: 24px;
+        }
+
+        .posts-page-wrap {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .posts-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 32px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .posts-header-left { display: flex; align-items: center; gap: 16px; }
+        .posts-back-btn {
+            display: flex; align-items: center; gap: 6px;
+            color: var(--c-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .posts-back-btn:hover { color: var(--c-text); }
+        .posts-back-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .posts-logo { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+        .posts-logo span { color: var(--c-primary); }
+        .posts-refresh-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--c-text);
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .posts-refresh-btn:hover { background: rgba(255,255,255,0.12); }
+        .posts-refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* ── Live pill ── */
+        .live-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.3);
+            color: #10b981;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .live-dot {
+            width: 7px; height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* ── Feed container ── */
+        .posts-feed {
+            flex: 1;
+            max-width: 720px;
+            width: 100%;
+            margin: 40px auto 60px;
             padding: 0 20px;
         }
+
+        /* ── Post cards ── */
         .post-card {
-            background: var(--c-surface);
-            border: 1px solid var(--c-border);
-            border-radius: var(--r-sm);
-            padding: 24px;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s ease;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: var(--post-gap);
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+            animation: fadeIn 0.4s ease both;
         }
-        .post-card:hover { transform: translateY(-4px); }
-        .post-header {
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .post-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(var(--c-primary-rgb, 99,102,241), 0.35);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .post-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .post-author {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .post-author-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.1));
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 13px;
             font-weight: 700;
-            color: var(--c-amber);
+            color: #a5b4fc;
         }
-        .post-date {
-            font-size: 12px;
-            color: var(--c-muted);
-        }
-        .post-content {
-            font-size: 16px;
-            line-height: 1.6;
-            color: var(--c-text);
-            white-space: pre-wrap;
-        }
-        .create-post-card {
-            background: linear-gradient(145deg, rgba(233, 30, 99, 0.1), rgba(156, 39, 176, 0.05));
-            border: 1px dashed rgba(233, 30, 99, 0.3);
-            border-radius: var(--r-sm);
-            padding: 24px;
-            margin-bottom: 40px;
-            text-align: center;
-        }
-        .create-post-title {
+        .post-date { font-size: 12px; color: var(--c-muted); }
+        .post-title {
             font-size: 20px;
             font-weight: 800;
-            margin-bottom: 16px;
-            color: #f06292;
+            color: var(--c-text);
+            margin-bottom: 14px;
+            line-height: 1.3;
         }
+        .post-image {
+            width: 100%;
+            max-height: 420px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            display: block;
+        }
+        .post-body {
+            font-size: 15px;
+            line-height: 1.75;
+            color: rgba(255,255,255,0.75);
+            white-space: pre-wrap;
+        }
+        .post-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+            margin: 16px 0;
+        }
+
+        /* ── Empty / Loading states ── */
+        .feed-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .feed-state-icon { font-size: 56px; margin-bottom: 20px; }
+        .feed-state-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+        .feed-state-sub { font-size: 14px; color: var(--c-muted); }
+
+        /* ── Loading skeleton ── */
+        .skeleton-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: var(--post-gap);
+        }
+        .skeleton-line {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skel-h1 { height: 14px; width: 120px; }
+        .skel-h2 { height: 22px; width: 70%; margin-top: 4px; }
+        .skel-p1 { height: 14px; width: 100%; }
+        .skel-p2 { height: 14px; width: 85%; }
+        .skel-p3 { height: 14px; width: 60%; }
     </style>
 </head>
-<body class="page-wrapper">
+<body class="page-wrapper posts-page-wrap">
     <div class="bg-canvas"></div>
 
-    <div class="sub-header">
-        <a href="/" class="back-btn">
-            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Back
-        </a>
-        <div class="logo">
-            <div class="logo-icon">📝</div>
-            <div class="logo-text-animated">
-                <span class="logo-name-animated">COMMUNITY <span class="pro">POSTS</span></span>
-            </div>
+    <!-- Header -->
+    <header class="posts-header">
+        <div class="posts-header-left">
+            <a href="/" class="posts-back-btn">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back
+            </a>
+            <div class="posts-logo">SLCRICK<span>PRO</span> News</div>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
-    </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span class="live-pill" id="live-pill" style="display:none">
+                <span class="live-dot"></span> LIVE SYNC
+            </span>
+            <button class="posts-refresh-btn" id="refresh-btn" onclick="loadPosts()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+                Refresh
+            </button>
+            <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+        </div>
+    </header>
 
-    <main class="posts-container">
+    <!-- Feed -->
+    <main class="posts-feed" id="posts-feed">
+        <!-- Loading skeletons shown first -->
         <div id="posts-list">
-            <!-- Posts will be rendered here -->
-            <div class="empty-state">Loading posts...</div>
+            <div class="skeleton-card">
+                <div class="skeleton-line skel-h1"></div>
+                <div class="skeleton-line skel-h2"></div>
+                <div style="margin-top:20px">
+                    <div class="skeleton-line skel-p1"></div>
+                    <div class="skeleton-line skel-p2"></div>
+                    <div class="skeleton-line skel-p3"></div>
+                </div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton-line skel-h1"></div>
+                <div class="skeleton-line skel-h2"></div>
+                <div style="margin-top:20px">
+                    <div class="skeleton-line skel-p1"></div>
+                    <div class="skeleton-line skel-p2"></div>
+                </div>
+            </div>
         </div>
     </main>
 
     <div class="toast" id="toast"></div>
 
+    <!-- Load Socket.io BEFORE db.js so db.js can use it -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/js/db.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            renderPosts();
-            initRealTime();
-        });
+        const POSTS_URL = BACKEND_BASE_URL + '/sync/posts';
+        let retryTimer = null;
 
-        function initRealTime() {
-            // Use the global socket variable from db.js
-            if (typeof socket === 'undefined' || !socket) {
-                console.warn('Socket not initialized by db.js, trying local init');
-                try {
-                    window.socket = io(BACKEND_BASE_URL);
-                } catch (e) {
-                    return;
-                }
-            }
+        /* ─────────────────────────────────────
+           Load posts from DB and render
+        ───────────────────────────────────── */
+        async function loadPosts(silent = false) {
+            const list   = document.getElementById('posts-list');
+            const btn    = document.getElementById('refresh-btn');
 
-            socket.on('globalUpdate', (data) => {
-                if (data.type === 'post' || data.type === 'post_deleted') {
-                    console.log('Post update received, refreshing feed...');
-                    renderPosts();
-                }
-            });
-        }
+            // Spin the refresh icon
+            btn.classList.add('spinning');
 
-        async function renderPosts() {
-            const list = document.getElementById('posts-list');
             try {
-                const r = await fetch(BACKEND_BASE_URL + '/sync/posts');
-                const posts = await r.json();
+                const resp = await fetch(POSTS_URL, { cache: 'no-store' });
 
-                if (!posts || !posts.length) {
+                if (!resp.ok) throw new Error('Server returned ' + resp.status);
+
+                const posts = await resp.json();
+
+                if (!Array.isArray(posts) || posts.length === 0) {
                     list.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
-                            <div class="empty-state-title">No posts yet</div>
-                            <p>Check back later for official updates!</p>
+                        <div class="feed-state">
+                            <div class="feed-state-icon">📭</div>
+                            <div class="feed-state-title">No Posts Yet</div>
+                            <p class="feed-state-sub">Official updates from the admin will appear here. Check back soon!</p>
                         </div>
                     `;
                     return;
                 }
 
-                list.innerHTML = posts.map(p => `
-                    <div class="post-card">
-                        <div class="post-header">
-                            <div class="post-author">🛡️ Admin</div>
-                            <div class="post-date">${timeSince(p.createdAt)}</div>
+                // Sort newest first
+                posts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+                list.innerHTML = posts.map((p, i) => `
+                    <article class="post-card" style="animation-delay:${i * 60}ms">
+                        <div class="post-meta">
+                            <span class="post-author-badge">🛡️ &nbsp;Admin</span>
+                            <span class="post-date">${timeSince(p.createdAt)}</span>
                         </div>
-                        <h3 style="margin-bottom:10px; color:var(--c-primary); font-size:18px">${escapeHTML(p.title || 'Official Update')}</h3>
-                        ${p.image ? `<img src="${p.image}" style="width:100%; max-height:400px; object-fit:cover; border-radius:12px; margin-bottom:15px; border:1px solid var(--c-border)" />` : ''}
-                        <div class="post-content">${escapeHTML(p.content)}</div>
-                    </div>
+                        <div class="post-divider"></div>
+                        <h2 class="post-title">${escapeHTML(p.title || 'Official Update')}</h2>
+                        ${p.image ? `<img class="post-image" src="${p.image}" alt="Post image" loading="lazy" />` : ''}
+                        <p class="post-body">${escapeHTML(p.content || '')}</p>
+                    </article>
                 `).join('');
-            } catch (e) {
-                list.innerHTML = '<div class="empty-state">Failed to load posts. Check your connection.</div>';
+
+                if (!silent) showToast('✅ Feed refreshed', 'success');
+
+            } catch (err) {
+                console.error('Failed to load posts:', err);
+                list.innerHTML = `
+                    <div class="feed-state">
+                        <div class="feed-state-icon">⚠️</div>
+                        <div class="feed-state-title">Could Not Load Posts</div>
+                        <p class="feed-state-sub">Check your internet connection and try again.</p>
+                    </div>
+                `;
+                if (!silent) showToast('⚠️ Could not reach the server', 'error');
+            } finally {
+                btn.classList.remove('spinning');
             }
         }
+
+        /* ─────────────────────────────────────
+           Real-time updates via Socket.io
+        ───────────────────────────────────── */
+        function setupRealTimeSync() {
+            // db.js already creates the global `socket` – just listen on it
+            const sock = window._cricproSocket || window.socket;
+
+            if (!sock) {
+                // db.js did not get a chance to init (e.g. no io loaded yet), retry
+                console.warn('Socket not ready yet, retrying in 1s…');
+                clearTimeout(retryTimer);
+                retryTimer = setTimeout(setupRealTimeSync, 1000);
+                return;
+            }
+
+            sock.on('connect', () => {
+                document.getElementById('live-pill').style.display = 'inline-flex';
+                console.log('📡 [Posts] Real-time sync active');
+            });
+
+            sock.on('disconnect', () => {
+                document.getElementById('live-pill').style.display = 'none';
+            });
+
+            sock.on('globalUpdate', (data) => {
+                if (data && (data.type === 'post' || data.type === 'post_deleted')) {
+                    console.log('📨 Post update received — refreshing feed');
+                    loadPosts(true); // silent refresh (no toast)
+                }
+            });
+
+            // If socket is already connected, show the pill immediately
+            if (sock.connected) {
+                document.getElementById('live-pill').style.display = 'inline-flex';
+            }
+        }
+
+        /* ─────────────────────────────────────
+           Boot
+        ───────────────────────────────────── */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPosts(true);   // initial load (silent)
+            setupRealTimeSync();
+
+            // Periodic fallback polling every 30 seconds
+            setInterval(() => loadPosts(true), 30000);
+        });
     </script>
 </body>
 </html>

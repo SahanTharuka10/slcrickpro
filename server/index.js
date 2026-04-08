@@ -48,9 +48,18 @@ app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res
 // Simple Admin Login API
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body || {};
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    
+    // Default credentials if not in ENV
+    const expectedUser = process.env.ADMIN_USERNAME || 'STgamage';
+    const expectedPass = process.env.ADMIN_PASSWORD || 'ST26gamage@';
+
+    console.log('Login attempt for:', username);
+
+    if (username === expectedUser && password === expectedPass) {
+        console.log('Login successful for:', username);
         res.json({ success: true, token: 'admin-secret-token-2026' });
     } else {
+        console.warn('Login failed for:', username);
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
@@ -92,8 +101,7 @@ async function trySqliteFallback() {
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'STgamage';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ST26gamage@';
+// Note: ADMIN_USERNAME and ADMIN_PASSWORD are now handled inside the login route for reliability
 
 const Player = sequelize.define('Player', {
   id: { type: DataTypes.STRING, primaryKey: true },
