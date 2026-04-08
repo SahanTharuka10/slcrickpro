@@ -4,21 +4,7 @@ let currentTab = 'requests';
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
     checkAdminAuth();
-    
-    // Check URL hash for tab switching or secret direct login
-    const hash = window.location.hash.substring(1);
-    
-    if (hash === 'direct_login_2026_st') {
-        sessionStorage.setItem('isAdmin', 'true');
-        sessionStorage.setItem('adminToken', 'admin-secret-token-2026');
-        checkAdminAuth();
-        switchAdminTab('requests');
-        showToast('🔓 Secret Access Granted', 'success');
-    } else if (hash && ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'].includes(hash)) {
-        switchAdminTab(hash);
-    } else {
-        renderRequests();
-    }
+    renderRequests();
 });
 
 function checkAdminAuth() {
@@ -46,12 +32,6 @@ async function loginAdmin() {
             sessionStorage.setItem('isAdmin', 'true');
             sessionStorage.setItem('adminToken', result.token);
             checkAdminAuth();
-            
-            // Re-check tab after login
-            const hash = window.location.hash.substring(1);
-            if (hash) switchAdminTab(hash);
-            else switchAdminTab('requests');
-
             showToast('🔓 Welcome, Admin!', 'success');
         } else {
             showToast('❌ ' + (result.message || 'Invalid credentials'), 'error');
@@ -69,7 +49,7 @@ function logoutAdmin() {
 
 function switchAdminTab(tab) {
     currentTab = tab;
-    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'];
+    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry', 'management'];
     panels.forEach(p => {
         const el = document.getElementById('tab-' + p);
         const btn = document.getElementById('btn-tab-' + p);
@@ -84,6 +64,7 @@ function switchAdminTab(tab) {
     if (tab === 'tournaments') renderTournamentsAdmin();
     if (tab === 'players') renderPlayersAdmin();
     if (tab === 'store') renderStoreItems();
+    if (tab === 'management') renderManagementInfo();
 }
 
 function renderRequests() {
@@ -559,4 +540,34 @@ async function deleteOrder(id) {
             renderStoreItems();
         }
     } catch(e) { showToast('Delete failed', 'error'); }
+}
+
+function renderManagementInfo() {
+    const timeEl = document.getElementById('sys-time');
+    const envEl = document.getElementById('sys-env');
+    if (timeEl) timeEl.textContent = new Date().toLocaleString();
+    if (envEl) envEl.textContent = window.location.hostname.includes('localhost') ? 'Development' : 'Cloud Production';
+}
+
+function clearSystemCache() {
+    if (!confirm('Clear local system cache? This will reset local data matching and re-fetch from cloud.')) return;
+    localStorage.clear();
+    sessionStorage.clear();
+    showToast('🧹 Cache cleared. Reloading...', 'info');
+    setTimeout(() => location.reload(), 1500);
+}
+
+async function checkDBHealth() {
+    showToast('📡 Checking health...', 'info');
+    try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        if (data.ok) {
+            showToast('✅ System Healthy: Cloud Connection OK', 'success');
+        } else {
+            showToast('⚠️ System Warning: DB check failed', 'error');
+        }
+    } catch (e) {
+        showToast('❌ Server Unreachable', 'error');
+    }
 }

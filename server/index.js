@@ -42,8 +42,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
-app.get(['/admin_2003', '/admin_2003/'], (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get(['/admin-portal', '/admin-portal/'], (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get('/admin_2003', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
 // Simple Admin Login API
 app.post('/api/admin/login', express.json(), (req, res) => {

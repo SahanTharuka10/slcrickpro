@@ -78,12 +78,13 @@
 
     <div class="sub-header" style="justify-content: flex-start; gap: 20px;">
         <a href="/" class="back-btn">
-            ← Home
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
         </a>
         <div class="logo">
-          <div class="logo-icon">📊</div>
+          <div class="logo-icon">🏏</div>
           <div class="logo-text-animated">
-            <span class="logo-name-animated">Admin <span class="pro">Inbox</span></span>
+            <span class="logo-name-animated">SLCRICK<span class="pro">PRO</span></span>
           </div>
         </div>
         <div class="header-info" style="display:flex; align-items:center; gap:10px">
@@ -94,7 +95,7 @@
 
     <div id="admin-login-section" class="admin-section" style="max-width:400px;text-align:center;padding-top:80px">
         <div style="font-size:64px;margin-bottom:16px">🔐</div>
-        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Admin Portal</h2>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Admin Admin</h2>
         <p style="color:var(--c-muted);margin-bottom:28px">Enter credentials to access the inbox</p>
 
         <div class="form-group" style="text-align:left">
@@ -122,6 +123,7 @@
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
                 Data</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry">Match Entry</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('management')" id="btn-tab-management">Admin Management</button>
             <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
         </div>
 
@@ -314,6 +316,63 @@
 
             <div style="margin-top:24px">
                 <button class="btn btn-primary btn-full" onclick="saveOfficialMatchAdmin()">🚀 Save & Update Rankings</button>
+            </div>
+        </div>
+
+        <!-- Management Tab -->
+        <div id="tab-management" class="admin-panel" style="display:none">
+            <h3 class="section-hd" style="margin-bottom:8px">System Management</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">Control system-wide settings and administrative tools.</p>
+
+            <div class="grid-2" style="gap:24px">
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-amber)">Security Settings</div>
+                    <div class="form-group">
+                        <label class="form-label">Current Admin</label>
+                        <p style="background:rgba(255,255,255,0.05); padding:10px; border-radius:4px; font-family:monospace">STgamage</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">System Encryption Key</label>
+                        <p style="font-size:12px; color:var(--c-muted)">Matches and Tournaments are secured via HMAC-SHA256.</p>
+                    </div>
+                    <button class="btn btn-ghost btn-full btn-sm" onclick="showToast('Admin password management is handled via server config.', 'info')">🔑 Change Password Info</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-head" style="color:var(--c-primary)">System Tools</div>
+                    <div class="form-group">
+                        <label class="form-label">Local Cache</label>
+                        <p style="font-size:12px; color:var(--c-muted); margin-bottom:12px">Clear local storage if you experience sync issues.</p>
+                        <button class="btn btn-red btn-full btn-sm" onclick="clearSystemCache()">🧹 Clear Local Cache</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Database Health</label>
+                        <p style="font-size:12px; color:var(--c-muted); margin-bottom:12px">Current status of cloud and local database connection.</p>
+                        <button class="btn btn-primary btn-full btn-sm" onclick="checkDBHealth()">📡 Check Connection</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:24px">
+                <div class="card-head" style="color:var(--c-green)">System Information</div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                    <div>
+                        <label class="form-label" style="opacity:0.6">Platform Version</label>
+                        <div style="font-weight:700">v3.2.0 (Stable)</div>
+                    </div>
+                    <div>
+                        <label class="form-label" style="opacity:0.6">Engine</label>
+                        <div style="font-weight:700">Rocket Sync Engine</div>
+                    </div>
+                    <div>
+                        <label class="form-label" style="opacity:0.6">Environment</label>
+                        <div style="font-weight:700" id="sys-env">Production</div>
+                    </div>
+                    <div>
+                        <label class="form-label" style="opacity:0.6">Server Time</label>
+                        <div style="font-weight:700" id="sys-time">Oct 2026</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

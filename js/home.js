@@ -38,7 +38,7 @@ function initParticles() {
 }
 
 function updateClock() {
-    const el = document.getElementById('live-clock');
+    const el = document.getElementById('current-time');
     if (!el) return;
     const now = new Date();
     el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
