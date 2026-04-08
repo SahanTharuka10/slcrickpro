@@ -1,6 +1,4 @@
 {
-  "rewrites": [
-    { "source": "/admin", "destination": "/pages/admin.html" },
-    { "source": "/api/(.*)", "destination": "/api/[...path]" }
-  ]
+  "buildCommand": "echo \"No build required\"",
+  "outputDirectory": "."
 }
