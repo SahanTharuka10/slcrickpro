@@ -121,6 +121,7 @@
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players">Players</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
                 Data</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('posts')" id="btn-tab-posts">Posts</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry">Match Entry</button>
             <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
         </div>
@@ -466,6 +467,21 @@
             <div class="modal-actions">
                 <button class="btn btn-ghost" onclick="closeModal('modal-edit-player')">Cancel</button>
                 <button class="btn btn-green" onclick="savePlayerEditAdmin()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Post Modal -->
+    <div class="modal-overlay" id="modal-admin-post" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Create Community Post</div>
+            <div class="form-group">
+                <label class="form-label">Message Content</label>
+                <textarea id="admin-post-content" class="form-input" rows="5" placeholder="Write something for the community..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-admin-post')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitAdminPost()">Publish Post</button>
             </div>
         </div>
     </div>

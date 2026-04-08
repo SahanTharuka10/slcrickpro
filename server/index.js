@@ -163,6 +163,13 @@ const Order = sequelize.define('Order', {
   date: DataTypes.BIGINT,
 }, { timestamps: true, tableName: 'orders' });
 
+const Post = sequelize.define('Post', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  author: DataTypes.STRING,
+  content: DataTypes.TEXT,
+  createdAt: DataTypes.BIGINT,
+}, { timestamps: true, tableName: 'posts' });
+
 async function ensureDB() {
   try {
     await sequelize.authenticate();
@@ -364,6 +371,62 @@ app.get('/sync/products', async (req, res) => {
   } catch (e) {
     console.error('/sync/products error', e);
     res.status(500).json({ error: e.message || 'Failed to fetch products' });
+  }
+});
+
+app.get('/sync/orders', async (req, res) => {
+  try {
+    await ensureDB();
+    const orders = await Order.findAll({ order: [['createdAt', 'DESC']] });
+    res.json(orders.map(o => o.dataValues || o));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+app.post('/sync/order', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing order id' });
+  try {
+    await ensureDB();
+    await Order.upsert(data);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to sync order' });
+  }
+});
+
+app.get('/sync/posts', async (req, res) => {
+  try {
+    await ensureDB();
+    const posts = await Post.findAll({ order: [['createdAt', 'DESC']] });
+    res.json(posts.map(p => p.dataValues || p));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+app.post('/sync/post', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing post id' });
+  try {
+    await ensureDB();
+    await Post.upsert(data);
+    emitUpdate('post', data.id, data);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to sync post' });
+  }
+});
+
+app.delete('/sync/posts/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    await Post.destroy({ where: { id: req.params.id } });
+    emitUpdate('post_deleted', req.params.id, null);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete post' });
   }
 });
 

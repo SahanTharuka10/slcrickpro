@@ -83,35 +83,11 @@
     </div>
 
     <main class="posts-container">
-        <div class="create-post-card">
-            <h2 class="create-post-title">Share Your Cricket Moment 🏏</h2>
-            <button class="btn btn-primary" onclick="openCreatePost()">✨ New Post</button>
-        </div>
-
         <div id="posts-list">
             <!-- Posts will be rendered here -->
             <div class="empty-state">Loading posts...</div>
         </div>
     </main>
-
-    <!-- Create Post Modal -->
-    <div class="modal-overlay" id="modal-create-post" style="display:none">
-        <div class="modal-box">
-            <div class="modal-title">Create New Post</div>
-            <div class="form-group">
-                <label class="form-label">Your Name</label>
-                <input type="text" id="post-author" class="form-input" placeholder="e.g. Cricket Fan">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Message</label>
-                <textarea id="post-content" class="form-input" rows="5" placeholder="What's on your mind?"></textarea>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-ghost" onclick="closeModal('modal-create-post')">Cancel</button>
-                <button class="btn btn-green" onclick="submitPost()">Post Now</button>
-            </div>
-        </div>
-    </div>
 
     <div class="toast" id="toast"></div>
 
@@ -121,50 +97,35 @@
             renderPosts();
         });
 
-        function renderPosts() {
+        async function renderPosts() {
             const list = document.getElementById('posts-list');
-            const posts = DB.getPosts();
+            try {
+                const r = await fetch(BACKEND_BASE_URL + '/sync/posts');
+                const posts = await r.json();
 
-            if (!posts.length) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📭</div>
-                        <div class="empty-state-title">No posts yet</div>
-                        <p>Be the first to share something!</p>
+                if (!posts || !posts.length) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">No posts yet</div>
+                            <p>Check back later for official updates!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = posts.map(p => `
+                    <div class="post-card">
+                        <div class="post-header">
+                            <div class="post-author">🛡️ ${escapeHTML(p.author || 'Admin')}</div>
+                            <div class="post-date">${timeSince(p.createdAt)}</div>
+                        </div>
+                        <div class="post-content">${escapeHTML(p.content)}</div>
                     </div>
-                `;
-                return;
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="empty-state">Failed to load posts.</div>';
             }
-
-            list.innerHTML = posts.map(p => `
-                <div class="post-card">
-                    <div class="post-header">
-                        <div class="post-author">👤 ${escapeHTML(p.author)}</div>
-                        <div class="post-date">${timeSince(p.createdAt)}</div>
-                    </div>
-                    <div class="post-content">${escapeHTML(p.content)}</div>
-                </div>
-            `).join('');
-        }
-
-        function openCreatePost() {
-            document.getElementById('post-content').value = '';
-            showModal('modal-create-post');
-        }
-
-        function submitPost() {
-            const author = document.getElementById('post-author').value.trim() || 'Anonymous';
-            const content = document.getElementById('post-content').value.trim();
-
-            if (!content) {
-                showToast('Please enter some content', 'error');
-                return;
-            }
-
-            DB.addPost({ author, content });
-            showToast('✅ Post published!', 'success');
-            closeModal('modal-create-post');
-            renderPosts();
         }
     </script>
 </body>

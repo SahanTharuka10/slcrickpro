@@ -49,7 +49,7 @@ function logoutAdmin() {
 
 function switchAdminTab(tab) {
     currentTab = tab;
-    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'];
+    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'posts', 'match-entry'];
     panels.forEach(p => {
         const el = document.getElementById('tab-' + p);
         const btn = document.getElementById('btn-tab-' + p);
@@ -64,6 +64,7 @@ function switchAdminTab(tab) {
     if (tab === 'tournaments') renderTournamentsAdmin();
     if (tab === 'players') renderPlayersAdmin();
     if (tab === 'store') renderStoreItems();
+    if (tab === 'posts') renderPostsAdmin();
 }
 
 function renderRequests() {
@@ -584,4 +585,79 @@ async function deleteOrder(id) {
             renderStoreItems();
         }
     } catch(e) { showToast('Delete failed', 'error'); }
+}
+
+async function renderPostsAdmin() {
+    const list = document.getElementById('admin-posts-list');
+    if (!list) return;
+    list.innerHTML = '<div>Loading posts...</div>';
+
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/posts');
+        const posts = await r.json();
+        
+        if (!posts || !posts.length) {
+            list.innerHTML = '<div class="empty-state">No posts have been published.</div>';
+            return;
+        }
+
+        list.innerHTML = posts.map(p => `
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex; justify-content:space-between">
+                    <strong>Admin Post</strong>
+                    <span style="font-size:12px; color:var(--c-muted)">${new Date(p.createdAt).toLocaleString()}</span>
+                </div>
+                <div style="margin:10px 0; line-height:1.5">${p.content}</div>
+                <button class="btn btn-red btn-sm" onclick="deletePostAdmin('${p.id}')">🗑️ Delete</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = '<div style="color:var(--c-red)">Failed to load posts from cloud.</div>';
+    }
+}
+
+function openAdminCreatePost() {
+    document.getElementById('admin-post-content').value = '';
+    showModal('modal-admin-post');
+}
+
+async function submitAdminPost() {
+    const content = document.getElementById('admin-post-content').value.trim();
+    if (!content) return;
+
+    const post = {
+        id: 'POST-' + Date.now(),
+        author: 'Admin',
+        content,
+        createdAt: Date.now()
+    };
+
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(post)
+        });
+
+        if (r.ok) {
+            showToast('✅ Post published!', 'success');
+            closeModal('modal-admin-post');
+            renderPostsAdmin();
+        }
+    } catch (e) {
+        showToast('❌ Failed to publish post', 'error');
+    }
+}
+
+async function deletePostAdmin(id) {
+    if (!confirm('Delete this post?')) return;
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/posts/' + id, { method: 'DELETE' });
+        if (r.ok) {
+            showToast('🗑️ Post deleted', 'success');
+            renderPostsAdmin();
+        }
+    } catch (e) {
+        showToast('❌ Delete failed', 'error');
+    }
 }
