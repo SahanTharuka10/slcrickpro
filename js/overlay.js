@@ -8,6 +8,25 @@ if (typeof OVERLAY_DEFAULT_PLAYER_PHOTO === 'undefined') {
     var OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
 }
 
+function getShortName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].substring(0, 3).toUpperCase();
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function formatOvers(balls, bpo = 6) {
+    const ov = Math.floor(balls / bpo);
+    const rem = balls % bpo;
+    return `${ov}.${rem}`;
+}
+
+function formatCRR(runs, balls) {
+    if (!balls) return '0.00';
+    return ( (runs / balls) * 6 ).toFixed(2);
+}
+
 function toggleShortcutMenu() {
     const menu = document.getElementById('shortcut-menu');
     if (menu) {
@@ -618,37 +637,48 @@ function _renderOverlayFromMatch(m) {
     }
 
     container.innerHTML = `
-        <div class="team-logo-box left" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);"><div class="logo-circle" style="border: 2px solid rgba(255,255,255,0.2); font-weight: 900;">${t1Short}</div></div>
-        <div class="batsmen-section" style="background: rgba(10, 15, 30, 0.85); backdrop-filter: blur(15px); border-radius: 0 15px 15px 0; border: 1px solid rgba(255,255,255,0.1); border-left: none;">
-            <div class="player-row" style="margin-bottom: 4px;">
-                <div class="player-name" style="font-weight: 800;"><span class="striker-mark" style="color: #ff1744;">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span> ${striker.name}</div>
-                <div class="player-value runs" style="color: #fff; font-weight: 950;">${striker.runs||0}</div>
-                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${striker.balls||0}</div>
+        <div class="team-logo-box left">
+            <div class="logo-circle">${t1Short}</div>
+        </div>
+        <div class="batsmen-section">
+            <div class="player-row">
+                <div class="player-name">
+                    <span class="striker-mark">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span>
+                    ${striker.name}
+                </div>
+                <div class="player-value runs">${striker.runs||0}</div>
+                <div class="player-value balls">${striker.balls||0}</div>
             </div>
             <div class="player-row">
-                <div class="player-name" style="font-weight: 800;"><span class="striker-mark" style="color: #ff1744;">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span> ${nonStriker.name}</div>
-                <div class="player-value runs" style="color: #fff; font-weight: 950;">${nonStriker.runs||0}</div>
-                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${nonStriker.balls||0}</div>
+                <div class="player-name">
+                    <span class="striker-mark">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span>
+                    ${nonStriker.name}
+                </div>
+                <div class="player-value runs">${nonStriker.runs||0}</div>
+                <div class="player-value balls">${nonStriker.balls||0}</div>
             </div>
         </div>
-        <div class="score-center-section" style="background: linear-gradient(180deg, #1b1642 0%, #0d0a25 100%); border: 1px solid rgba(255,255,255,0.1); border-top: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div class="score-center-section">
             <div class="score-top">
-                <span class="teams" style="letter-spacing: 1px; font-weight: 950;">${t1Short} <span class="v" style="color: #ff1744; font-size: 14px; margin: 0 4px;">VS</span> ${t2Short}</span>
-                <span class="total" style="font-size: 32px; font-weight: 950; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.3);">${score}</span>
-                <span class="phase" style="background: #ff1744; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; margin-left: 8px;">${phase}</span>
-                <span class="overs" style="font-weight: 800; color: #ffc107; margin-left: 10px;">${ov}</span>
+                <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
+                <span class="total">${score}</span>
+                <span class="phase">${phase}</span>
+                <span class="overs">${ov}</span>
             </div>
-            <div class="score-bottom" style="background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); font-weight: 700; font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,0.8);">${bottomText}</div>
+            <div class="score-bottom">${bottomText}</div>
         </div>
-        <div class="bowler-section" style="background: rgba(10, 15, 30, 0.85); backdrop-filter: blur(15px); border-radius: 15px 0 0 15px; border: 1px solid rgba(255,255,255,0.1); border-right: none;">
-            <div class="player-row" style="margin-bottom: 6px;">
-                <div class="player-name" style="font-weight: 800; color: #ffc107;">${bowler.name}</div>
-                <div class="player-value runs" style="color: #fff; font-weight: 950;">${bowler.wickets||0}-${bowler.runs||0}</div>
-                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${b_overs}</div>
+        <div class="bowler-section">
+            <div class="player-row" style="margin-bottom: 2px;">
+                <div class="player-name" style="color: #1a1a2e;">${bowler.name}</div>
+                <div class="player-value runs">${bowler.wickets||0}-${bowler.runs||0}</div>
+                <div class="player-value balls">${b_overs}</div>
             </div>
-            <div class="recent-balls-row" style="gap: 4px;">${recentBallsHtml}</div>
+            <div class="recent-balls-row">${recentBallsHtml}</div>
         </div>
-        <div class="team-logo-box right" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);"><div class="logo-circle" style="border: 2px solid rgba(255,255,255,0.2); font-weight: 900;">${t2Short}</div></div>`;
+        <div class="team-logo-box right">
+            <div class="logo-circle">${t2Short}</div>
+        </div>
+    `;
 }
 
 function renderOverlayFromLightPayload(payload) {
@@ -929,20 +959,6 @@ function formatOvers(balls, bpo = 6) {
     const b = balls % bpo;
     return `${ov}.${b}`;
 }
-
-function formatCRR(runs, balls) {
-    if (!balls) return '0.00';
-    return (runs / (balls / 6)).toFixed(2);
-}
-
-// Helper to get 3-letter short name
-function getShortName(fullName) {
-    if (!fullName) return "TBD";
-    return fullName.substring(0, 3).toUpperCase();
-}
-
-const OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
-
 function showTeamRosterGraphic(data) {
     const { teamName, players } = data;
     let html = `
