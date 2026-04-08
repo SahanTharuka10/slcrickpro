@@ -89,8 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof io !== 'undefined') {
         try {
             const socket = io(baseUrl, { reconnectionAttempts: 5, timeout: 5000 });
-            if (matchId) socket.emit('joinMatch', matchId);
-            if (tournId) socket.emit('joinTournament', tournId);
+            // Emit join_global to join the global broadcast room
+            socket.emit('join_global', {});
+            // Emit join_match to join the specific match room
+            if (matchId) socket.emit('join_match', matchId);
+            if (tournId) socket.emit('join_match', tournId);
 
             socket.on('scoreUpdate', (updatedData) => {
                 if (!updatedData) return;

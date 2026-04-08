@@ -3026,6 +3026,12 @@ function broadcastPartnership() {
 
 // ========== GLOBAL SYNC HANDLERS ==========
 window.renderOngoing = function() {
+    // If scoring a match, ALWAYS pull fresh data into memory to allow multi-device sync
+    if (typeof currentMatch !== 'undefined' && currentMatch && typeof DB !== 'undefined') {
+        const fresh = DB.getMatch(currentMatch.id);
+        if (fresh) currentMatch = fresh;
+    }
+
     if (document.getElementById('screen-scoring') && document.getElementById('screen-scoring').style.display === 'block') {
         renderScoring();
     } else if (document.getElementById('modal-tournament-matches') && document.getElementById('modal-tournament-matches').style.display === 'flex') {
@@ -3146,9 +3152,9 @@ function renderBroadcastController(match) {
     if (!wrapper) return;
     
     wrapper.innerHTML = `
-    <div class="broadcast-controller-content">
+    <div class="broadcast-controller-content" style="max-width:1100px;">
         <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <div>
                 <div style="font-size: 10px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px;">Remote Station</div>
                 <div style="font-size: 24px; font-weight: 950; letter-spacing: -0.5px; color: #fff;">BROADCAST MASTER</div>
@@ -3158,142 +3164,168 @@ function renderBroadcastController(match) {
             </div>
         </div>
 
-        <!-- UTILITY TOOLS -->
-        <div class="b-card" style="border-color: rgba(245, 158, 11, 0.3);">
-            <div class="b-grid">
+        <div style="display: grid; grid-template-columns: 280px 1fr 280px; gap: 24px; align-items: start;">
+            
+            <!-- LEFT COLUMN: INSTANT TRIGGERS & PROMOS -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- INSTANT ACTION TRIGGERS -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
+                        <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
+                        <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
+                    </div>
+                </div>
 
-                <button class="b-btn b-btn-rose" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">⏹ STOP OVERLAYS</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">ESC</div>
-                    </div>
-                    <div class="b-btn-sub">Clear all visual elements</div>
-                </button>
-                <button class="b-btn b-btn-slate" onclick="location.reload()">
-                    <div class="b-btn-title">🔌 RECONNECT</div>
-                    <div class="b-btn-sub">Reload remote controller</div>
-                </button>
-            </div>
-        </div>
+                <!-- UTILITIES -->
+                <div class="b-card" style="margin-bottom:0; display:flex; flex-direction:column; gap:8px">
+                    <button class="b-btn b-btn-rose" style="min-height:60px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
+                        <div style="display:flex; justify-content:space-between; width:100%">
+                            <div class="b-btn-title">⏹ STOP OVERLAYS</div>
+                            <div style="background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; font-size:9px; font-weight:900">ESC</div>
+                        </div>
+                    </button>
+                    <button class="b-btn b-btn-slate" style="min-height:50px" onclick="location.reload()">
+                        <div class="b-btn-title" style="font-size:12px">🔌 RECONNECT</div>
+                    </button>
+                    <!-- OBS COPY BUTTON -->
+                    <button class="b-btn b-btn-emerald" style="min-height:50px" onclick="
+                        const obsUrl = window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?match=' + '${match.id}';
+                        navigator.clipboard.writeText(obsUrl);
+                        showToast('✅ OBS URL Copied!', 'success');
+                    ">
+                        <div class="b-btn-title" style="font-size:12px">🔗 COPY OBS URL</div>
+                    </button>
+                </div>
 
-        <!-- INSTANT ACTION TRIGGERS -->
-        <div class="b-card">
-            <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
-                <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
-                <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
-            </div>
-        </div>
-
-        <!-- PLAYER & TEAM GRAPHICS -->
-        <div class="b-card">
-            <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
-            <div class="b-grid">
-                <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">⚡ STRIKER PROFILE</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+B</div>
+                <!-- PROMOTIONAL -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">🎨 PROMOTIONS</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                        <input type="text" id="next-teama" placeholder="Team A" value="TEAM A" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center; width: 100%; box-sizing: border-box;">
+                        <input type="text" id="next-teamb" placeholder="Team B" value="TEAM B" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center; width: 100%; box-sizing: border-box;">
                     </div>
-                    <div class="b-btn-sub">Single batter stats card</div>
-                </button>
-                <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🏏 CURRENT BATTERS</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+P</div>
-                    </div>
-                    <div class="b-btn-sub">Comparison on crease</div>
-                </button>
-                <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🤝 PARTNERSHIP</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+H</div>
-                    </div>
-                    <div class="b-btn-sub">Current standing pair</div>
-                </button>
-                <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🥎 BOWLER PROFILE</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
-                    </div>
-                    <div class="b-btn-sub">Active bowler stats</div>
-                </button>
+                    <button class="b-btn b-btn-primary" style="width: 100%; align-items: center; justify-content: center; min-height: 50px;"
+                            onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
+                        <div class="b-btn-title">NEXT MATCH</div>
+                    </button>
+                </div>
                 
-                <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🛡️ ${match.team1} CARD</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+1</div>
-                    </div>
-                    <div class="b-btn-sub">Team info & logo</div>
-                </button>
-                <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🟣 ${match.team2} CARD</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+2</div>
-                    </div>
-                    <div class="b-btn-sub">Team info & logo</div>
-                </button>
-                
-                <button class="b-btn b-btn-slate" onclick="broadcastTeamRoster(0)">
-                    <div class="b-btn-title">📋 ${match.team1} ROSTER</div>
-                    <div class="b-btn-sub">Full 11 list</div>
-                </button>
-                <button class="b-btn b-btn-slate" onclick="broadcastTeamRoster(1)">
-                    <div class="b-btn-title">📋 ${match.team2} ROSTER</div>
-                    <div class="b-btn-sub">Full 11 list</div>
-                </button>
             </div>
-        </div>
 
-        <!-- MATCH STATS -->
-        <div class="b-card">
-            <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
-            <div class="b-grid">
-                <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🚀 RUNS NEEDED</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+R</div>
+            <!-- CENTER COLUMN: PREVIEW + PLAYER GRAPHICS -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- LIVE PREVIEW AREA -->
+                <div>
+                    <div style="background:#000; border:2px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
+                        <iframe src="overlay.html?match=${match.id}" style="width:100%; height:100%; border:none; pointer-events:none;" scrolling="no"></iframe>
                     </div>
-                    <div class="b-btn-sub">Chase requirement info</div>
-                </button>
-                <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">📈 RUN RATE</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+C</div>
+                    <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview</div>
+                </div>
+
+                <!-- PLAYER & TEAM GRAPHICS -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
+                    <div class="b-grid">
+                        <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">⚡ STRIKER PROFILE</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+B</div>
+                            </div>
+                            <div class="b-btn-sub">Single batter stats card</div>
+                        </button>
+                        <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🏏 CURRENT BATTERS</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+P</div>
+                            </div>
+                            <div class="b-btn-sub">Comparison on crease</div>
+                        </button>
+                        <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🤝 PARTNERSHIP</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+H</div>
+                            </div>
+                            <div class="b-btn-sub">Current standing pair</div>
+                        </button>
+                        <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🥎 BOWLER PROFILE</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
+                            </div>
+                            <div class="b-btn-sub">Active bowler stats</div>
+                        </button>
+                        
+                        <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🛡️ ${match.team1}</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+1</div>
+                            </div>
+                        </button>
+                        <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🟣 ${match.team2}</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+2</div>
+                            </div>
+                        </button>
                     </div>
-                    <div class="b-btn-sub">Current match RR</div>
-                </button>
-                <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">📄 FULL SCORECARD</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+S</div>
-                    </div>
-                    <div class="b-btn-sub">Auto-hide after display</div>
-                </button>
-                <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
-                    <div style="display:flex; justify-content:space-between; width:100%">
-                        <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
-                        <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+T</div>
-                    </div>
-                    <div class="b-btn-sub">Standings & Results</div>
-                </button>
+                </div>
             </div>
-        </div>
 
-        <!-- PROMOTIONAL -->
-        <div class="b-card">
-            <div class="b-section-title">🎨 PROMOTIONS & NEXT MATCH</div>
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                <input type="text" id="next-teama" placeholder="Team A" value="TEAM A" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-weight: 700; font-size: 14px; text-align: center;">
-                <input type="text" id="next-teamb" placeholder="Team B" value="TEAM B" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-weight: 700; font-size: 14px; text-align: center;">
+            <!-- RIGHT COLUMN: MATCH DATA & TEAMS -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- MATCH STATS -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🚀 RUNS NEEDED</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+R</div>
+                            </div>
+                            <div class="b-btn-sub">Chase requirement info</div>
+                        </button>
+                        <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">📈 RUN RATE</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+C</div>
+                            </div>
+                            <div class="b-btn-sub">Current match RR</div>
+                        </button>
+                        <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">📄 SCORECARD</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+S</div>
+                            </div>
+                            <div class="b-btn-sub">Auto-hide after display</div>
+                        </button>
+                        <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+T</div>
+                            </div>
+                            <div class="b-btn-sub">Standings & Results</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">📋 ROSTERS</div>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="b-btn b-btn-slate" style="min-height:50px" onclick="broadcastTeamRoster(0)">
+                            <div class="b-btn-title">${match.team1} ROSTER</div>
+                        </button>
+                        <button class="b-btn b-btn-slate" style="min-height:50px" onclick="broadcastTeamRoster(1)">
+                            <div class="b-btn-title">${match.team2} ROSTER</div>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="window.close()" style="margin-top:auto; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 16px; border-radius: 16px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Session</button>
             </div>
-            <button class="b-btn b-btn-primary" style="width: 100%; align-items: center; justify-content: center; height: 60px;"
-                    onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
-                <div class="b-btn-title">PUBLISH NEXT MATCH ARTWORK</div>
-            </button>
+            
         </div>
-
-        <button onclick="window.close()" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 16px; border-radius: 16px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Module Session</button>
     </div>
     `;
 

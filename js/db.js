@@ -653,6 +653,18 @@ if (typeof io !== 'undefined') {
     // ── globalUpdate: any change to match or tournament
     socket.on('globalUpdate', (info) => {
         console.log('🌍 globalUpdate received:', info?.type);
+        if (info && info.type === 'match_deleted' && info.id) {
+            let mArr = DB.getMatches().filter(m => m.id !== info.id);
+            DB._secureSet(DB_KEYS.MATCHES, mArr);
+            console.log('🗑️ Match deleted from local cache:', info.id);
+        }
+        if (info && info.type === 'tournament_deleted' && info.id) {
+            let tArr = DB.getTournaments().filter(t => t.id !== info.id);
+            DB._secureSet(DB_KEYS.TOURNAMENTS, tArr);
+            let mArr = DB.getMatches().filter(m => m.tournamentId !== info.id);
+            DB._secureSet(DB_KEYS.MATCHES, mArr);
+            console.log('🗑️ Tournament deleted from local cache:', info.id);
+        }
         if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
     });
 
@@ -1204,7 +1216,9 @@ async function syncCloudData(options = {}) {
             const NOW = Date.now();
             const LOCAL_LOCK_WINDOW = 15000; // Ignore cloud for 15s if we just updated locally
 
-            const mergedMatches = remoteMatches.map(cm => {
+            let mergedMatches = remoteMatches
+            .filter(cm => !cm.deleted && cm.status !== 'deleted')
+            .map(cm => {
                 const lm = localMatches.find(x => x.id === cm.id);
                 // 1. Keep local version if it's newer
                 if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
@@ -1235,13 +1249,15 @@ async function syncCloudData(options = {}) {
 
             if (anyUpdated || options.forceRefresh) {
                 DB.saveMatches(mergedMatches);
+                // ALWAYS trigger UI updates and cross-tab storage triggers if data changed.
+                if (typeof renderOngoing === 'function') renderOngoing();
+                if (typeof updateTicker === 'function') updateTicker();
+                if (typeof renderLive === 'function') renderLive();
+                localStorage.setItem('cricpro_force_update', Date.now().toString());
+
                 if (!options.silent) {
                     if (typeof renderMatches === 'function') renderMatches();
-                    if (typeof renderOngoing === 'function') renderOngoing();
-                    if (typeof updateTicker === 'function') updateTicker();
-                    if (typeof renderLive === 'function') renderLive();
                     if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
-                    localStorage.setItem('cricpro_force_update', Date.now().toString());
                 }
             }
         }
@@ -1256,7 +1272,9 @@ async function syncCloudData(options = {}) {
             const NOW = Date.now();
             const LOCAL_LOCK_WINDOW = 15000; 
 
-            const mergedTournaments = remoteTournaments.map(ct => {
+            let mergedTournaments = remoteTournaments
+            .filter(ct => !ct.deleted && ct.status !== 'deleted')
+            .map(ct => {
                 const lt = localTournaments.find(x => x.id === ct.id);
                 if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) return lt;
                 if (lt && (NOW - (lt.lastUpdated || 0)) < LOCAL_LOCK_WINDOW) return lt;

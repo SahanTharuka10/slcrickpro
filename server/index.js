@@ -220,9 +220,11 @@ app.get('/sync/matches', async (req, res) => {
   try {
     await ensureDB();
     const rows = await Match.findAll();
-    // In our model, 'data' property contains the full match object
-    const matches = rows.map(m => {
-      const d = m.data || m.dataValues?.data || {};
+    let matches = rows.map(m => {
+      let d = m.data || m.dataValues?.data || {};
+      if (typeof d === 'string') {
+        try { d = JSON.parse(d); } catch (e) { d = {}; }
+      }
       d.isLocked = !!m.scoring_password;
       return d;
     });
@@ -238,7 +240,10 @@ app.get('/sync/tournaments', async (req, res) => {
     await ensureDB();
     const rows = await Tournament.findAll();
     const tournaments = rows.map(t => {
-      const d = t.data || t.dataValues?.data || {};
+      let d = t.data || t.dataValues?.data || {};
+      if (typeof d === 'string') {
+        try { d = JSON.parse(d); } catch (e) { d = {}; }
+      }
       d.isLocked = !!t.scoring_password;
       return d;
     });
@@ -257,7 +262,10 @@ app.get('/tv/matches/:matchId/light', async (req, res) => {
     const row = await Match.findByPk(matchId);
     if (!row) return res.status(404).json({ error: 'Match not found' });
     
-    const m = row.data || row.dataValues?.data || {};
+    let m = row.data || row.dataValues?.data || {};
+    if (typeof m === 'string') {
+      try { m = JSON.parse(m); } catch (e) { m = {}; }
+    }
     const inn = m.innings ? m.innings[m.currentInnings || 0] : null;
     
     // Return minimal score data to save bandwidth
@@ -340,6 +348,46 @@ app.get('/sync/products', async (req, res) => {
 });
 
 app.get('/test', (req, res) => res.json({ test: 'ok' }));
+
+app.delete('/sync/matches/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await ensureDB();
+    const m = await Match.findByPk(id);
+    if (m) {
+        let matchData = m.data || m.dataValues?.data || {};
+        if (typeof matchData === 'string') try { matchData = JSON.parse(matchData); } catch(e) { matchData = {}; }
+        matchData.deleted = true;
+        matchData.status = 'deleted';
+        matchData.lastUpdated = Date.now();
+        await Match.upsert({ id, data: matchData, scoring_password: m.scoring_password });
+    }
+    io.emit('globalUpdate', { type: 'match_deleted', id });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/sync/tournaments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await ensureDB();
+    const t = await Tournament.findByPk(id);
+    if (t) {
+        let tData = t.data || t.dataValues?.data || {};
+        if (typeof tData === 'string') try { tData = JSON.parse(tData); } catch(e) { tData = {}; }
+        tData.deleted = true;
+        tData.status = 'deleted';
+        tData.lastUpdated = Date.now();
+        await Tournament.upsert({ id, data: tData, scoring_password: t.scoring_password });
+    }
+    io.emit('globalUpdate', { type: 'tournament_deleted', id });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 console.log('routes defined');
 
@@ -522,7 +570,11 @@ app.post('/match/initialize', async (req, res) => {
 
     const token = generateScoringToken(data.matchId);
 
-    return res.json({ ok: true, match: matchRecord.data || matchRecord.dataValues?.data || {}, sessionToken: token });
+    let matchData = matchRecord.data || matchRecord.dataValues?.data || {};
+    if (typeof matchData === 'string') {
+      try { matchData = JSON.parse(matchData); } catch (e) { matchData = {}; }
+    }
+    return res.json({ ok: true, match: matchData, sessionToken: token });
   } catch (e) {
     console.error('/match/initialize error', e);
     return res.status(500).json({ ok: false, error: e.message || 'Failed to initialize match' });
@@ -538,7 +590,10 @@ app.post('/match/update', async (req, res) => {
     const matchRecord = await Match.findByPk(payload.matchId);
     if (!matchRecord) return res.status(404).json({ ok: false, error: 'Match not found' });
 
-    const matchData = matchRecord.data || matchRecord.dataValues?.data || {};
+    let matchData = matchRecord.data || matchRecord.dataValues?.data || {};
+    if (typeof matchData === 'string') {
+      try { matchData = JSON.parse(matchData); } catch (e) { matchData = {}; }
+    }
     matchData.lastUpdatedAt = Date.now();
     matchData.lastModifiedByDevice = payload.actor || 'hotkey';
 
