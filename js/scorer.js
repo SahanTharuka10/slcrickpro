@@ -2865,6 +2865,15 @@ function sendBroadcast(cmd, data) {
         timestamp: Date.now()
     };
     localStorage.setItem('cricpro_broadcast_cmd', JSON.stringify(payload));
+    
+    // PostMessage to embedded IFRAME preview instantly
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(f => {
+        if (f.contentWindow) {
+            f.contentWindow.postMessage({ type: 'cricpro_broadcast_cmd', payload: payload }, '*');
+        }
+    });
+
     if (typeof socket !== 'undefined' && socket) socket.emit('broadcast_command', payload);
 }
 
@@ -3271,6 +3280,18 @@ function renderBroadcastController(match) {
                         <iframe src="overlay.html?match=${match.id}" style="width:100%; height:100%; border:none; pointer-events:none;" scrolling="no"></iframe>
                     </div>
                     <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview</div>
+                    
+                    <!-- LIVE SCORECARD SUMMARY BELOW PREVIEW -->
+                    <div id="broadcast-score-bar" style="margin-top:12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 18px; font-weight: 950; color: #fff;" id="b-live-score">0-0</div>
+                            <div style="font-size: 12px; font-weight: 800; color: #3b82f6;" id="b-live-overs">0.0 OVERS</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                            <div style="font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5);" id="b-live-crr">CRR: 0.00</div>
+                            <div id="b-live-balls" style="display: flex; gap: 4px;"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- PLAYER & TEAM GRAPHICS -->
@@ -3355,14 +3376,14 @@ function renderBroadcastController(match) {
                         
                         <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
                             <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🛡️ ${match.team1}</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+1</div>
+                                <div class="b-btn-title">🛡️ BOWLER PROFILE</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
                             </div>
                         </button>
                         <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
                             <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🟣 ${match.team2}</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+2</div>
+                                <div class="b-btn-title">🟣 TEAM CARD</div>
+                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+K</div>
                             </div>
                         </button>
                     </div>
@@ -3427,40 +3448,99 @@ function renderBroadcastController(match) {
 
     // Remote Station Keyboard Listeners
     const handleRemoteHotkey = (e) => {
-        if (e.target.tagName === 'INPUT') return;
-        if (e.key === 'Escape') { if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY'); return; }
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+        const key = e.key.toUpperCase();
+        const code = e.code;
+        
+        // Instant Visual Triggers (Direct Keys & Numpad)
+        if (!e.shiftKey && !e.ctrlKey && !e.altKey) {
+            if (key === '4' || code === 'Numpad4' || code === 'Digit4') triggerVisualBigEvent('FOUR');
+            if (key === '6' || code === 'Numpad6' || code === 'Digit6') triggerVisualBigEvent('SIX');
+            if (key === 'W' || code === 'KeyW') triggerVisualBigEvent('WICKET');
+            if (key === '0' || code === 'Numpad0' || code === 'Digit0') sendBroadcast('STOP_OVERLAY');
+        }
+
+        if (e.key === 'Escape' || code === 'Escape') { 
+            if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); 
+            else sendBroadcast('STOP_OVERLAY'); 
+            return; 
+        }
+        
         if (e.shiftKey) {
-            switch(e.key.toUpperCase()) {
-                case '1': broadcastTeamCard(0); break;
-                case '2': broadcastTeamCard(1); break;
+            const hotkeyUsed = true;
+            switch(key) {
                 case 'B': broadcastStrikerProfile(); break;
                 case 'P': broadcastCurrentBatters(); break;
                 case 'H': broadcastPartnership(); break;
                 case 'L': broadcastBowlerProfile(); break;
+                case 'K': broadcastTeamCard(1); break;
                 case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
                 case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
                 case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;
                 case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
+                default: return; // Don't prevent default if not matched
             }
+            e.preventDefault();
         }
     };
     document.addEventListener('keydown', handleRemoteHotkey);
 
-    // Auto-sync state
+    // Dynamic Live Bar Update Function
+    const updateLiveBar = (m) => {
+        const inn = m.innings[m.currentInnings];
+        if (!inn) return;
+        
+        const scoreEl = document.getElementById('b-live-score');
+        const oversEl = document.getElementById('b-live-overs');
+        const crrEl = document.getElementById('b-live-crr');
+        const ballsEl = document.getElementById('b-live-balls');
+        
+        if (scoreEl) scoreEl.innerText = `${inn.runs}-${inn.wickets}`;
+        if (oversEl) oversEl.innerText = `${formatOvers(inn.balls, m.ballsPerOver)} OVERS`;
+        if (crrEl) crrEl.innerText = `CRR: ${formatCRR(inn.runs, inn.balls)}`;
+        
+        if (ballsEl) {
+            const ballsToShow = (inn.currentOver || []).slice(-6);
+            ballsEl.innerHTML = ballsToShow.map(b => {
+                let color = '#475569'; // dot/default
+                if (b.wicket) color = '#f43f5e';
+                else if (b.runs === 4) color = '#3b82f6';
+                else if (b.runs === 6) color = '#8b5cf6';
+                else if (b.runs > 0) color = '#10b981';
+                return `<div style="width:18px; height:18px; border-radius:50%; background:${color}; color:#fff; font-size:9px; font-weight:950; display:flex; align-items:center; justify-content:center;">${b.wicket?'W':(b.runs||0)}</div>`;
+            }).join('');
+        }
+
+        // Sync to iframe preview
+        const frame = document.querySelector('iframe');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.postMessage({ type: 'cricpro_broadcast_cmd', payload: { cmd: 'SYNC_SCORE', data: { match: m } } }, '*');
+        }
+    };
+
+    // Initial bar render
+    updateLiveBar(match);
+
+    // Auto-sync state (Real-Time Socket + Polling Fallback)
+    if (typeof socket !== 'undefined' && socket) {
+        socket.on('scoreUpdate', (updatedData) => {
+            if (updatedData.id === match.id) {
+                currentMatch = updatedData;
+                updateLiveBar(updatedData);
+            }
+        });
+    }
+
     setInterval(async () => {
         if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
             const updatedMatch = DB.getMatch(match.id);
             if (updatedMatch) {
                 currentMatch = updatedMatch;
-                // Sync to iframe
-                const frame = document.querySelector('iframe');
-                if (frame && frame.contentWindow) {
-                    frame.contentWindow.postMessage({ type: 'cricpro_broadcast_cmd', payload: { cmd: 'SYNC_SCORE', data: { match: updatedMatch } } }, '*');
-                }
+                updateLiveBar(updatedMatch);
             }
         }
-    }, 5000);
+    }, 4000);
 
     // JOIN REAL-TIME ROOM
     if (typeof socket !== 'undefined' && socket) {

@@ -4,6 +4,9 @@ let refreshInterval;
 let currentPopupView = null;
 let latestSocketScore = null;
 let latestSocketScoreTime = 0; // track when socket data was received
+if (typeof OVERLAY_DEFAULT_PLAYER_PHOTO === 'undefined') {
+    var OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
+}
 
 function toggleShortcutMenu() {
     const menu = document.getElementById('shortcut-menu');
@@ -174,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pollServerScore();   // Fetch latest from server (cross-device)
             renderOverlay();     // Also re-render from localStorage (same device)
         }
-    }, 3000);
+    }, 1500); // Speed up for better real-time feel
 
     // ── Storage events: instant cross-tab updates on the same machine
     window.addEventListener('storage', (e) => {
@@ -615,37 +618,37 @@ function _renderOverlayFromMatch(m) {
     }
 
     container.innerHTML = `
-        <div class="team-logo-box left"><div class="logo-circle">${t1Short}</div></div>
-        <div class="batsmen-section">
-            <div class="player-row">
-                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span> ${striker.name}</div>
-                <div class="player-value runs">${striker.runs||0}</div>
-                <div class="player-value balls">${striker.balls||0}</div>
+        <div class="team-logo-box left" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);"><div class="logo-circle" style="border: 2px solid rgba(255,255,255,0.2); font-weight: 900;">${t1Short}</div></div>
+        <div class="batsmen-section" style="background: rgba(10, 15, 30, 0.85); backdrop-filter: blur(15px); border-radius: 0 15px 15px 0; border: 1px solid rgba(255,255,255,0.1); border-left: none;">
+            <div class="player-row" style="margin-bottom: 4px;">
+                <div class="player-name" style="font-weight: 800;"><span class="striker-mark" style="color: #ff1744;">${curInn.strikerIdx===0?'▶':'&nbsp;'}</span> ${striker.name}</div>
+                <div class="player-value runs" style="color: #fff; font-weight: 950;">${striker.runs||0}</div>
+                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${striker.balls||0}</div>
             </div>
             <div class="player-row">
-                <div class="player-name"><span class="striker-mark">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span> ${nonStriker.name}</div>
-                <div class="player-value runs">${nonStriker.runs||0}</div>
-                <div class="player-value balls">${nonStriker.balls||0}</div>
+                <div class="player-name" style="font-weight: 800;"><span class="striker-mark" style="color: #ff1744;">${curInn.strikerIdx===1?'▶':'&nbsp;'}</span> ${nonStriker.name}</div>
+                <div class="player-value runs" style="color: #fff; font-weight: 950;">${nonStriker.runs||0}</div>
+                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${nonStriker.balls||0}</div>
             </div>
         </div>
-        <div class="score-center-section">
+        <div class="score-center-section" style="background: linear-gradient(180deg, #1b1642 0%, #0d0a25 100%); border: 1px solid rgba(255,255,255,0.1); border-top: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <div class="score-top">
-                <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
-                <span class="total">${score}</span>
-                <span class="phase">${phase}</span>
-                <span class="overs">${ov}</span>
+                <span class="teams" style="letter-spacing: 1px; font-weight: 950;">${t1Short} <span class="v" style="color: #ff1744; font-size: 14px; margin: 0 4px;">VS</span> ${t2Short}</span>
+                <span class="total" style="font-size: 32px; font-weight: 950; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.3);">${score}</span>
+                <span class="phase" style="background: #ff1744; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; margin-left: 8px;">${phase}</span>
+                <span class="overs" style="font-weight: 800; color: #ffc107; margin-left: 10px;">${ov}</span>
             </div>
-            <div class="score-bottom">${bottomText}</div>
+            <div class="score-bottom" style="background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); font-weight: 700; font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,0.8);">${bottomText}</div>
         </div>
-        <div class="bowler-section">
-            <div class="player-row">
-                <div class="player-name">${bowler.name}</div>
-                <div class="player-value runs">${bowler.wickets||0}-${bowler.runs||0}</div>
-                <div class="player-value balls">${b_overs}</div>
+        <div class="bowler-section" style="background: rgba(10, 15, 30, 0.85); backdrop-filter: blur(15px); border-radius: 15px 0 0 15px; border: 1px solid rgba(255,255,255,0.1); border-right: none;">
+            <div class="player-row" style="margin-bottom: 6px;">
+                <div class="player-name" style="font-weight: 800; color: #ffc107;">${bowler.name}</div>
+                <div class="player-value runs" style="color: #fff; font-weight: 950;">${bowler.wickets||0}-${bowler.runs||0}</div>
+                <div class="player-value balls" style="opacity: 0.6; font-size: 11px;">${b_overs}</div>
             </div>
-            <div class="recent-balls-row">${recentBallsHtml}</div>
+            <div class="recent-balls-row" style="gap: 4px;">${recentBallsHtml}</div>
         </div>
-        <div class="team-logo-box right"><div class="logo-circle">${t2Short}</div></div>`;
+        <div class="team-logo-box right" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);"><div class="logo-circle" style="border: 2px solid rgba(255,255,255,0.2); font-weight: 900;">${t2Short}</div></div>`;
 }
 
 function renderOverlayFromLightPayload(payload) {
@@ -1580,66 +1583,66 @@ function showPartnershipGraphic(data) {
         const card = document.querySelector('.partnership-card');
         if (card && typeof gsap !== 'undefined') {
             gsap.to(card, {
-                opacity: 1,
-                rotateX: 0,
                 y: 0,
+                rotateX: 0,
                 duration: 1,
                 ease: "expo.out"
             });
-        } else if (card) {
-            card.style.opacity = '1';
-            card.style.transform = 'none';
         }
-    }, 100);
+    }, 50);
 }
 
 function showGuestGraphic(data) {
     const { name, title, photo } = data;
-    const accent = '#00e676';
+    const accent = '#FFD700'; // Golden for guests
     const photoSrc = photo || OVERLAY_DEFAULT_PLAYER_PHOTO;
 
+    // Remove existing
+    document.querySelectorAll('.guest-intro-left').forEach(el => el.remove());
+
     const html = `
-        <div style="position:absolute; bottom: 120px; left: 80px; width: 680px; display:flex; perspective: 1000px">
-            <div id="bo-guest" style="width: 100%; display: flex; text-transform: uppercase; transform-style: preserve-3d; opacity: 0; transform: translateY(40px) rotateX(-15deg); filter: drop-shadow(0 20px 40px rgba(0,0,0,0.6));">
-                
-                <!-- PHOTO SIDE -->
-                <div style="width: 200px; height: 260px; background: #000; position: relative; border-radius: 12px 0 0 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.15); border-right: none">
-                    <img src="${photoSrc}" style="width: 100%; height: 100%; object-fit: cover" onerror="this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
-                    <!-- Gradient to blend into stats -->
-                    <div style="position:absolute; top:0; bottom:0; right:0; width:50%; background:linear-gradient(to left, #000, transparent)"></div>
+    <div id="guest-intro-cinema" class="guest-intro-left" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); display:flex; z-index:15500; font-family:'Outfit', sans-serif">
+        <div style="width:300px; background:linear-gradient(135deg, rgba(20, 20, 20, 0.98) 0%, rgba(0,0,0,1) 100%); border-left:10px solid ${accent}; border-radius:0 30px 30px 0; overflow:hidden; box-shadow:0 30px 60px rgba(0,0,0,0.8)">
+            <div style="height:6px; background:${accent}; opacity:0.3"></div>
+            <div style="padding:30px 25px">
+                <div style="color:${accent}; font-weight:900; letter-spacing:4px; font-size:11px; text-transform:uppercase; margin-bottom:20px; text-shadow:0 0 10px ${accent}44">
+                    ${title || 'SPECIAL GUEST'}
                 </div>
-
-                <!-- INFO SIDE -->
-                <div style="flex:1; background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(5,5,5,0.98)); border: 2px solid rgba(255,255,255,0.15); border-left: none; border-radius: 0 12px 12px 0; padding: 30px; display: flex; flex-direction: column; justify-content: center; position:relative; overflow:hidden">
-                    
-                    <div style="position:absolute; top:-20px; right:-20px; font-size:120px; color:rgba(255,255,255,0.03); font-weight:900; line-height:1">⭐</div>
-
-                    <div style="display:flex; flex-direction:column; align-items:flex-start; position:relative; z-index:2">
-                        <div style="background: ${accent}; color: #000; font-size: 14px; font-weight: 900; padding: 4px 12px; border-radius: 4px; letter-spacing: 2px; margin-bottom: 15px;">
-                            ${title || 'SPECIAL GUEST'}
-                        </div>
-                        
-                        <div style="font-size: 38px; font-weight: 950; color: #fff; line-height: 1.1; letter-spacing: 1px; width: 100%">
-                            ${(name || 'GUEST').split(' ')[0]}
-                        </div>
-                        <div style="font-size: 48px; font-weight: 950; color: ${accent}; line-height: 1.1; margin-bottom: 5px; width: 100%">
-                            ${(name || 'PROFILE').split(' ').slice(1).join(' ')}
-                        </div>
-                    </div>
+                <div style="width:100%; height:280px; background:rgba(255,255,255,0.05); border-radius:20px; overflow:hidden; margin-bottom:25px; border:1px solid rgba(255,255,255,0.1)">
+                    <img src="${photoSrc}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                </div>
+                <div style="text-align:left">
+                    <div style="font-size:26px; font-weight:950; color:#fff; text-transform:uppercase; line-height:1; letter-spacing:1px">${(name||'SPECIAL').split(' ')[0]}</div>
+                    <div style="font-size:38px; font-weight:950; color:${accent}; text-transform:uppercase; line-height:1.1; margin-bottom:5px; letter-spacing:1px">${(name||'GUEST').split(' ').slice(1).join(' ')}</div>
+                </div>
+                <div style="margin-top:25px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px; display:flex; align-items:center; gap:10px">
+                    <div style="width:8px; height:8px; background:${accent}; border-radius:50%; box-shadow:0 0 10px ${accent}"></div>
+                    <div style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.4); letter-spacing:2px">LIVE BROADCAST GUEST</div>
                 </div>
             </div>
         </div>
+    </div>
     `;
 
-    renderBroadcastOverlay(html);
+    const wrapper = document.createElement('div');
+    wrapper.id = 'active-broadcast-wrapper';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
 
-    setTimeout(() => {
-        const el = document.getElementById('bo-guest');
-        if (el && typeof gsap !== 'undefined') {
-            gsap.to(el, { opacity: 1, y: 0, rotateX: 0, duration: 1, ease: "expo.out" });
-        } else if (el) {
+    if (typeof gsap !== 'undefined') {
+        gsap.from('.guest-intro-left', { x: -600, opacity: 0, duration: 1.2, ease: 'expo.out' });
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+            gsap.to('.guest-intro-left', { x: -600, opacity: 0, duration: 1, ease: 'expo.in', onComplete: () => {
+                document.querySelectorAll('.guest-intro-left').forEach(el => el.remove());
+            }});
+        }, 15000);
+    } else {
+        const el = document.querySelector('.guest-intro-left');
+        if(el) {
             el.style.opacity = '1';
-            el.style.transform = 'none';
+            el.style.transform = 'translateY(-50%)';
+            setTimeout(() => el.remove(), 15000);
         }
-    }, 50);
+    }
 }
