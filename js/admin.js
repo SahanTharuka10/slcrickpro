@@ -49,7 +49,7 @@ function logoutAdmin() {
 
 function switchAdminTab(tab) {
     currentTab = tab;
-    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry', 'management'];
+    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'];
     panels.forEach(p => {
         const el = document.getElementById('tab-' + p);
         const btn = document.getElementById('btn-tab-' + p);
@@ -64,7 +64,6 @@ function switchAdminTab(tab) {
     if (tab === 'tournaments') renderTournamentsAdmin();
     if (tab === 'players') renderPlayersAdmin();
     if (tab === 'store') renderStoreItems();
-    if (tab === 'management') renderManagementInfo();
 }
 
 function renderRequests() {
@@ -540,34 +539,4 @@ async function deleteOrder(id) {
             renderStoreItems();
         }
     } catch(e) { showToast('Delete failed', 'error'); }
-}
-
-function renderManagementInfo() {
-    const timeEl = document.getElementById('sys-time');
-    const envEl = document.getElementById('sys-env');
-    if (timeEl) timeEl.textContent = new Date().toLocaleString();
-    if (envEl) envEl.textContent = window.location.hostname.includes('localhost') ? 'Development' : 'Cloud Production';
-}
-
-function clearSystemCache() {
-    if (!confirm('Clear local system cache? This will reset local data matching and re-fetch from cloud.')) return;
-    localStorage.clear();
-    sessionStorage.clear();
-    showToast('🧹 Cache cleared. Reloading...', 'info');
-    setTimeout(() => location.reload(), 1500);
-}
-
-async function checkDBHealth() {
-    showToast('📡 Checking health...', 'info');
-    try {
-        const response = await fetch('/health');
-        const data = await response.json();
-        if (data.ok) {
-            showToast('✅ System Healthy: Cloud Connection OK', 'success');
-        } else {
-            showToast('⚠️ System Warning: DB check failed', 'error');
-        }
-    } catch (e) {
-        showToast('❌ Server Unreachable', 'error');
-    }
 }

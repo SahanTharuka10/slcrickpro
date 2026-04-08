@@ -43,19 +43,17 @@ app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get('/admin_2003', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res.redirect('/admin'));
 
 // Simple Admin Login API
-app.post('/api/admin/login', express.json(), (req, res) => {
-    const { username, password } = req.body;
-    if (username === 'STgamage' && password === 'ST26gamage@') {
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body || {};
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         res.json({ success: true, token: 'admin-secret-token-2026' });
     } else {
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
-app.get('/admin/match-entry', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
@@ -94,6 +92,8 @@ async function trySqliteFallback() {
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'STgamage';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ST26gamage@';
 
 const Player = sequelize.define('Player', {
   id: { type: DataTypes.STRING, primaryKey: true },
