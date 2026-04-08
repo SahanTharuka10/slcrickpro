@@ -45,7 +45,8 @@ app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get('/admin/', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get('/admin/match-entry', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html'))); // Placeholder if they expect deep paths
+app.get('/admin_2003', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get('/admin/match-entry', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
