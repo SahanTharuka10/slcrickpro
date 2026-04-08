@@ -88,6 +88,10 @@
         </div>
       </div>
       <div class="header-info">
+        <a href="/admin_2003" class="admin-header-link" title="Admin Portal" style="font-size: 13px; font-weight: 700; color: var(--c-muted); transition: color 0.2s; display: flex; align-items: center; gap: 6px; margin-right: 8px;">
+          <span style="font-size: 16px;">🔐</span>
+          <span>Admin</span>
+        </a>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Switch Day/Dark Mode" style="width:36px;height:36px">
           <svg class="svg-theme-icon moon-icon"><use href="#icon-moon"></use></svg>
           <svg class="svg-theme-icon sun-icon"><use href="#icon-sun"></use></svg>
@@ -229,6 +233,28 @@
         </div>
       </a>
 
+      <!-- 6. Admin Portal (Secret URL) -->
+      <a href="/admin_2003" class="nav-card card-admin">
+        <div class="card-glow"></div>
+        <div class="card-number">06</div>
+        <div class="card-icon-wrap">
+          <div class="card-icon">
+             <div style="font-size: 28px;">🔐</div>
+          </div>
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Admin Portal</h2>
+          <p class="card-desc">Manage system matches, tournament requests, store and rankings</p>
+        </div>
+        <div class="card-footer">
+          <span class="card-tag" style="background: rgba(255,23,68,0.1); color: #ff1744;">Secure Login Required</span>
+          <span class="card-arrow">→</span>
+        </div>
+        <div class="card-bg-emoji">
+           <div style="font-size: 80px; opacity: 0.1; filter: grayscale(1);">🔐</div>
+        </div>
+      </a>
+
     </div>
   </main>
 
@@ -245,7 +271,7 @@
   <!-- Footer -->
   <footer class="main-footer" style="padding: 20px; opacity: 0.8; text-align: center;">
     <p style="font-size: 11px; color: var(--c-muted);">© 2026 SLCRICKPRO · Official Cricket Management System</p>
-    <a href="/admin_2003" style="font-size: 9px; color: rgba(255,255,255,0.05); text-decoration: none; margin-top: 10px; display: inline-block;">Admin Management</a>
+    <a href="/admin_2003" style="font-size: 9px; color: rgba(255,255,255,0.3); text-decoration: none; margin-top: 10px; display: inline-block; transition: color 0.2s;" onmouseover="this.style.color='var(--c-primary)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">Admin Management</a>
   </footer>
 
   <div class="toast" id="toast"></div>

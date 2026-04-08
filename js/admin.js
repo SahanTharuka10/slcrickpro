@@ -4,7 +4,14 @@ let currentTab = 'requests';
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.pullGlobalData === 'function') window.pullGlobalData();
     checkAdminAuth();
-    renderRequests();
+    
+    // Check URL hash for tab switching
+    const hash = window.location.hash.substring(1);
+    if (hash && ['requests', 'matches', 'tournaments', 'players', 'store', 'match-entry'].includes(hash)) {
+        switchAdminTab(hash);
+    } else {
+        renderRequests();
+    }
 });
 
 function checkAdminAuth() {
@@ -32,6 +39,12 @@ async function loginAdmin() {
             sessionStorage.setItem('isAdmin', 'true');
             sessionStorage.setItem('adminToken', result.token);
             checkAdminAuth();
+            
+            // Re-check tab after login
+            const hash = window.location.hash.substring(1);
+            if (hash) switchAdminTab(hash);
+            else switchAdminTab('requests');
+
             showToast('🔓 Welcome, Admin!', 'success');
         } else {
             showToast('❌ ' + (result.message || 'Invalid credentials'), 'error');

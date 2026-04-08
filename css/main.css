@@ -430,6 +430,11 @@ body.light-mode .theme-toggle {
   transform: translateY(-1px);
 }
 
+.admin-header-link:hover {
+  color: var(--c-primary) !important;
+  opacity: 1 !important;
+}
+
 @media (max-width: 600px) {
   .admin-badge span {
     display: none;
@@ -788,6 +793,19 @@ body.light-mode .back-btn {
 
 .card-register .card-title {
   color: #00bcd4;
+}
+
+.card-admin {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.14), rgba(127, 29, 29, 0.09));
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.22), var(--shadow);
+}
+
+.card-admin .card-glow {
+  background: radial-gradient(circle at top left, rgba(239, 68, 68, 0.18), transparent 70%);
+}
+
+.card-admin .card-title {
+  color: #fca5a5;
 }
 
 /* ========== TICKER ========== */
