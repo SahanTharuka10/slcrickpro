@@ -254,6 +254,32 @@ app.get('/sync/tournaments', async (req, res) => {
   }
 });
 
+// DELETE Routes to allow removing matches and tournaments from the platform
+app.delete('/sync/matches/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    const result = await Match.destroy({ where: { id: req.params.id } });
+    if (result) emitUpdate('match', req.params.id, null); // broadcast deletion
+    res.json({ success: true, deleted: result });
+  } catch (e) {
+    console.error('/sync/matches DELETE error', e);
+    res.status(500).json({ error: 'Failed to delete match' });
+  }
+});
+
+app.delete('/sync/tournaments/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    const result = await Tournament.destroy({ where: { id: req.params.id } });
+    // Also delete associated matches if desired, or let client cascade
+    if (result) emitUpdate('tournament', req.params.id, null);
+    res.json({ success: true, deleted: result });
+  } catch (e) {
+    console.error('/sync/tournaments DELETE error', e);
+    res.status(500).json({ error: 'Failed to delete tournament' });
+  }
+});
+
 // TV Overlay Specific Endpoint (Lightweight for frequent polling)
 app.get('/tv/matches/:matchId/light', async (req, res) => {
   const { matchId } = req.params;
