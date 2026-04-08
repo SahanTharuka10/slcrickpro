@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Backend URL Discovery ─────────────────────────────────
-    const baseUrl = window.BACKEND_BASE_URL || ('http/' + (window.location.protocol === 'https:' ? 's' : '') + '://' + window.location.hostname + ':3000');
+    const baseUrl = window.BACKEND_BASE_URL || ('http' + (window.location.protocol === 'https:' ? 's' : '') + '://' + window.location.hostname + ':3000');
 
     // ── Socket.io: Instant push-based updates from the server
     // Reuse existing socket if db.js initialized it, otherwise create new

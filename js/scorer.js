@@ -3490,6 +3490,17 @@ function renderBroadcastController(match) {
         }
     };
 
+    // Listen for Sync Requests from remote TV/OBS
+    if (typeof socket !== 'undefined' && socket) {
+        socket.on('request_sync', (data) => {
+            const m = currentMatch;
+            if (data && m && (data.matchId === m.id || (data.tournId && data.tournId === m.tournamentId))) {
+                console.log('📡 Received Sync Request from TV/OBS, responding...');
+                sendBroadcast('SYNC_SCORE', { match: m });
+            }
+        });
+    }
+
     // Auto-sync state (Real-Time Socket + Polling Fallback)
     if (typeof socket !== 'undefined' && socket) {
         socket.on('scoreUpdate', (updatedData) => {
