@@ -540,11 +540,11 @@ function renderOverlay() {
     let sub = "Match will begin shortly";
     
     if (tourn) {
-        title = tourn.name || title;
-        sub = tourn.ground ? `📍 ${tourn.ground}` : "Match will begin shortly";
+        title = tourn.name?.toUpperCase() || title;
+        sub = tourn.ground ? `🏟️ ${tourn.ground.toUpperCase()}` : "PREPARING FOR NEXT MATCH";
     } else if (matchId) {
         title = "LIVE MATCH";
-        sub = "Starting Soon";
+        sub = "MATCH STARTING SOON";
     }
 
     container.style.display = 'flex';
@@ -644,7 +644,8 @@ function _renderOverlayFromMatch(m) {
 }
 
 function renderOverlayFromLightPayload(payload) {
-    const cur = payload.score;
+    if (payload && payload.fullMatch) return _renderOverlayFromMatch(payload.fullMatch);
+    const cur = payload ? payload.score : null;
     if (!cur) return;
     document.getElementById('overlay-container').style.display = 'flex';
     const t1Name = cur.battingTeam || payload.team1 || "T1";
@@ -1416,6 +1417,7 @@ function showBowlerProfileGraphic(data) {
     }, 12000);
 }
 function showBigEventGraphic(data) {
+    if (!data) return;
     const { type, playerName, playerPhoto, playerRuns, playerBalls, bowlerName, teamName, matchScore } = data;
     
     let themeColor = '#FFD700'; // Gold
@@ -1536,6 +1538,7 @@ function showBigEventGraphic(data) {
 }
 
 function showPartnershipGraphic(data) {
+    if (!data) return;
     const { player1, player2, runs, balls, teamName } = data;
     const html = `
         <div class="overlay-container show" id="overlay-partnership" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 80%);">

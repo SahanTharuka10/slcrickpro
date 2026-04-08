@@ -1132,6 +1132,8 @@ function showErrorInsideProgram(msg, url, lineNo) {
         } else {
             window.addEventListener('DOMContentLoaded', () => document.body.appendChild(errBox));
         }
+        // Auto-hide after 15 seconds to keep broadcast clean
+        setTimeout(() => { if(errBox) errBox.remove(); }, 15000);
     }
     const txt = document.getElementById('cricpro-error-text');
     if(txt) txt.innerHTML += `<div style="margin-top:5px;border-top:1px solid rgba(255,255,255,0.2);padding-top:5px">↳ ${msg} at line ${lineNo||'?'}</div>`;
