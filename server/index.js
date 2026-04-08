@@ -325,6 +325,7 @@ app.get('/players', async (req, res) => {
 
 app.post('/players', async (req, res) => {
   const data = parseBody(req);
+  if (data && !data.id && data.playerId) data.id = data.playerId;
   if (!data || !data.id) return res.status(400).json({ error: 'Missing player id' });
   try {
     await ensureDB();

@@ -689,6 +689,10 @@ function syncToDB(type, data) {
     let endpoint = '';
     if (type === 'player') {
         endpoint = '/players';
+        // Map playerId to id for backend compatibility
+        if (data && !data.id && data.playerId) {
+            data.id = data.playerId;
+        }
     }
     else if (type === 'team') endpoint = '/teams';
     else if (type === 'match') endpoint = '/sync/match';
