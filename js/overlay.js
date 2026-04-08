@@ -1,4 +1,4 @@
-let matchId = new URLSearchParams(window.location.search).get('match');
+let matchId = new URLSearchParams(window.location.search).get('match') || new URLSearchParams(window.location.search).get('matchId');
 let tournId = new URLSearchParams(window.location.search).get('tournament');
 let refreshInterval;
 let currentPopupView = null;
@@ -105,12 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Backend URL Discovery ─────────────────────────────────
-    const baseUrl = window.BACKEND_BASE_URL || ('http://' + window.location.hostname + ':3000');
+    const baseUrl = window.BACKEND_BASE_URL || ('http/' + (window.location.protocol === 'https:' ? 's' : '') + '://' + window.location.hostname + ':3000');
 
     // ── Socket.io: Instant push-based updates from the server
-    if (typeof io !== 'undefined') {
+    // Reuse existing socket if db.js initialized it, otherwise create new
+    const socket = window._cricproSocket || (typeof io !== 'undefined' ? io(baseUrl, { reconnectionAttempts: 10, timeout: 5000 }) : null);
+    
+    if (socket) {
         try {
-            const socket = io(baseUrl, { reconnectionAttempts: 5, timeout: 5000 });
             // Emit join_global to join the global broadcast room
             socket.emit('join_global', {});
             // Emit join_match to join the specific match room
@@ -122,14 +124,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isOurs = (matchId && updatedData.id === matchId)
                              || (tournId && updatedData.tournamentId === tournId);
                 if (!isOurs) return;
-                console.log('⚡ Socket scoreUpdate:', updatedData.id);
+                
+                console.log('⚡ Socket scoreUpdate received for', updatedData.id);
+                // If it's a full match object (no .score wrapper), wrap it or handle it
                 if (updatedData.score) {
                     latestSocketScore = updatedData;
-                } else {
-                    const matches = DB.getMatches();
-                    const idx = matches.findIndex(m => m.id === updatedData.id);
-                    if (idx !== -1) { matches[idx] = updatedData; DB.saveMatches(matches); }
+                } else if (updatedData.innings) {
+                    // It's a full match object
+                    latestSocketScore = { id: updatedData.id, fullMatch: updatedData, score: updatedData.innings[updatedData.currentInnings] };
                 }
+                
+                // Force immediate render
                 renderOverlay();
             });
 
@@ -139,9 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleBroadcastCommand(payload.cmd, { ...(payload.data || {}), tournamentId: payload.tournamentId || null, matchId: payload.matchId || null });
             });
 
-            socket.on('connect', () => console.log('🟢 TV: Socket connected to ' + baseUrl));
+            socket.on('connect', () => {
+                console.log('🟢 TV: Socket connected to ' + (socket.io ? socket.io.uri : baseUrl));
+                if (matchId) {
+                    socket.emit('join_match', matchId);
+                    socket.emit('request_sync', { matchId });
+                }
+                if (tournId) {
+                    socket.emit('request_sync', { tournId });
+                }
+            });
 
-            socket.on('disconnect', () => console.log('🔴 TV: Socket disconnected — API polling continues'));
+            socket.on('disconnect', () => console.warn('🔴 TV: Socket disconnected — API polling continues'));
         } catch (e) { console.warn('Socket.io init failed:', e.message); }
     } else {
         console.warn('Socket.io not loaded — using API polling only.');
@@ -155,36 +169,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // (baseUrl is already defined above)
 
 
+    let pollFailCount = 0;
     function pollServerScore() {
-        // Removed 'document.hidden' check to ensure OBS always gets the data
-        if (matchId) {
-            fetch(baseUrl + '/tv/matches/' + matchId + '/light')
-                .then(r => r.ok ? r.json() : null)
-                .then(data => {
-                    if (!data || !data.score) return;
-                    const prevBalls = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.balls : -1;
-                    const containerHidden = document.getElementById('overlay-container').style.display === 'none' || document.getElementById('overlay-container').innerHTML === '';
-                    if (data.score.balls !== prevBalls || containerHidden) {
-                        latestSocketScore = data;
-                        renderOverlay();
+        if (!matchId && !tournId) return;
+
+        const targetUrl = matchId 
+            ? (baseUrl + '/tv/matches/' + matchId + '/light')
+            : (baseUrl + '/sync/matches');
+
+        fetch(targetUrl)
+            .then(r => {
+                if (r.status === 404) {
+                    if (pollFailCount % 10 === 0) console.log('📡 TV: Match not yet synced to server, waiting...');
+                    pollFailCount++;
+                    return null;
+                }
+                pollFailCount = 0;
+                return r.ok ? r.json() : null;
+            })
+            .then(data => {
+                if (!data) return;
+                
+                // Handle tournament list vs light score payload
+                let scoreItem = data.score ? data : null;
+                if (!scoreItem && data.matches) {
+                    scoreItem = data.matches.find(m => m.id === matchId || (m.tournamentId === tournId && (m.status === 'live' || m.status === 'paused')));
+                    if (scoreItem && !scoreItem.score) {
+                        // If it's a full match object, wrap it
+                        scoreItem = { score: scoreItem.innings[scoreItem.currentInnings], fullMatch: scoreItem };
                     }
-                }).catch(() => {});
-        } else if (tournId) {
-            fetch(baseUrl + '/sync/matches')
-                .then(r => r.ok ? r.json() : [])
-                .then(matches => {
-                    if (!Array.isArray(matches)) return null;
-                    const live = matches.find(m => m && m.tournamentId === tournId && (m.status === 'live' || m.status === 'paused'));
-                    if (!live) return null;
-                    if (matchId !== live.id) { matchId = live.id; }
-                    return fetch(baseUrl + '/tv/matches/' + live.id + '/light').then(r => r.ok ? r.json() : null);
-                })
-                .then(data => {
-                    if (!data || !data.score) return;
-                    latestSocketScore = data;
+                }
+
+                if (!scoreItem || !scoreItem.score) return;
+
+                const prevBalls = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.balls : -1;
+                const containerHidden = document.getElementById('overlay-container').style.display === 'none' || document.getElementById('overlay-container').innerHTML === '';
+                
+                if (scoreItem.score.balls !== prevBalls || containerHidden) {
+                    latestSocketScore = scoreItem;
                     renderOverlay();
-                }).catch(() => {});
-        }
+                }
+            }).catch(err => {
+                // Silently handle network errors
+            });
     }
 
     // Poll immediately then every 3 seconds
@@ -553,9 +580,12 @@ function renderOverlay() {
         return _renderOverlayFromMatch(freshMatch);
     }
 
-    // No local data — try socket light payload as fallback
-    if (latestSocketScore && latestSocketScore.score) {
-        return renderOverlayFromLightPayload(latestSocketScore);
+    // No local data — try socket light payload or full match from socket as fallback
+    if (latestSocketScore) {
+        if (latestSocketScore.fullMatch) return _renderOverlayFromMatch(latestSocketScore.fullMatch);
+        if (latestSocketScore.score) return renderOverlayFromLightPayload(latestSocketScore);
+        // If it's the match object itself
+        if (latestSocketScore.innings) return _renderOverlayFromMatch(latestSocketScore);
     }
 
     // Default Fallback (No match in progress or innings hasn't started)
@@ -1155,7 +1185,8 @@ function showBatterProfilesCinema(data) {
     const html = `
     <div id="batter-cinema-dual" style="position:fixed; left:40px; top:50%; transform:translateY(-50%); display:flex; gap:20px; z-index:15500; font-family:'Outfit', sans-serif">
         ${profiles.map((item, idx) => {
-            const { name, profile: p, stats, age } = item;
+            const { name, profile: p, stats: s, age } = item;
+            const stats = s || { runs: 0, balls: 0, sixes: 0 };
             const src = (p && p.photo) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
             const accent = (idx === 0) ? '#00e676' : '#3b82f6';
             const bg = (idx === 0) 
@@ -1206,7 +1237,9 @@ function showBatterProfilesCinema(data) {
 
 
 function showStrikerProfileLeft(data, label = 'STRIKER') {
-    const { name, profile: p, stats, age } = data;
+    if (!data) return;
+    const { name, profile: p, stats: s, age } = data;
+    const stats = s || { runs: 0, balls: 0, sixes: 0 };
     const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
     
     // UI Artifact removal if exists
@@ -1372,7 +1405,9 @@ function hideBroadcastOverlay() {
 }
 
 function showBowlerProfileGraphic(data) {
-    const { name, profile: p, stats } = data;
+    if (!data || !data.name) return;
+    const { name, profile: p, stats: s } = data;
+    const stats = s || { wickets: 0, runs: 0, balls: 0, overs: '0.0', econ: '0.00' };
     const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
 
     // Premium Color Palette for Bowler: Deep Purple Accent

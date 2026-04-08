@@ -632,9 +632,9 @@ if (typeof io !== 'undefined') {
         console.log('📡 Real-time Socket: CONNECTED to', BACKEND_BASE_URL);
         // Join the global broadcast room immediately
         socket.emit('join_global', {});
-        // Also join any active match room (for scorer page)
+        // Also join any active match room (for both scorer page and TV overlay)
         const urlParams = new URLSearchParams(window.location.search);
-        const activeMatchId = urlParams.get('matchId');
+        const activeMatchId = urlParams.get('matchId') || urlParams.get('match');
         if (activeMatchId) {
             socket.emit('join_match', activeMatchId);
             console.log('🏏 Joined match room:', activeMatchId);
@@ -1247,8 +1247,16 @@ async function syncCloudData(options = {}) {
                         anyUpdated = true;
                     }
                     // Self-healing: if cloud lost the data (e.g. server restart on Railway), restore it from local device!
-                    if (lm.publishLive) {
-                        try { syncToDB('match', lm); } catch(err) { console.error('Auto-reupload failed', err); }
+                    // Only background sync if the local version is markedly newer or missing from cloud
+                    const cloudMatch = remoteMatches.find(x => x.id === lm.id);
+                    const cloudTime = cloudMatch ? (cloudMatch.lastUpdated || 0) : 0;
+                    const localTime = lm.lastUpdated || 0;
+
+                    if (lm.publishLive && localTime > (cloudTime + 5000)) {
+                        try { 
+                            console.log(`☁️ Background Sync [${lm.id}]: Local is ahead by ${Math.round((localTime-cloudTime)/1000)}s`);
+                            syncToDB('match', lm); 
+                        } catch(err) { console.error('Auto-reupload failed', err); }
                     }
                 }
             });
@@ -1322,7 +1330,9 @@ window.pullLiveUpdates = () => syncCloudData({ silent: true });
 setTimeout(() => syncCloudData({ forceRefresh: true }), 600);
 
 // Dynamic Polling — ongoing-matches gets 5s, overlay gets 4s, scorer gets 15s
+// Dynamic Polling — ongoing-matches gets 5s, overlay gets 4s, scorer/admin gets 4s, others get 15s
 const _isOverlayTab = window.location.pathname.includes('overlay.html');
 const _isPublicTab  = window.location.pathname.includes('ongoing-matches.html');
-const _pollIntervalMs = _isOverlayTab ? 4000 : (_isPublicTab ? 5000 : 15000);
+const _isContributor = window.location.pathname.includes('score-match.html') || window.location.pathname.includes('admin.html');
+const _pollIntervalMs = _isOverlayTab ? 4000 : (_isPublicTab ? 5000 : (_isContributor ? 4000 : 15000));
 setInterval(() => syncCloudData({ silent: true }), _pollIntervalMs);
