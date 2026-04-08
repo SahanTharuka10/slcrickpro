@@ -15,17 +15,30 @@ function checkAdminAuth() {
     }
 }
 
-function loginAdmin() {
+async function loginAdmin() {
     const user = document.getElementById('admin-username').value;
     const pass = document.getElementById('admin-password').value;
 
-    // Secure authentication placeholder - in production use server-side auth
-    if (user === 'STgamage' && pass === 'ST26gamage@') {
-        sessionStorage.setItem('isAdmin', 'true');
-        checkAdminAuth();
-        showToast('🔓 Welcome, Admin!', 'success');
-    } else {
-        showToast('❌ Invalid credentials', 'error');
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            sessionStorage.setItem('isAdmin', 'true');
+            sessionStorage.setItem('adminToken', result.token);
+            checkAdminAuth();
+            showToast('🔓 Welcome, Admin!', 'success');
+        } else {
+            showToast('❌ ' + (result.message || 'Invalid credentials'), 'error');
+        }
+    } catch (err) {
+        console.error('Login failed:', err);
+        showToast('❌ Server error. Try again later.', 'error');
     }
 }
 

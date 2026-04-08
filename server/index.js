@@ -42,10 +42,18 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
-app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
-app.get('/admin/', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get('/admin_2003', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+app.get('/admin-portal', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
+
+// Simple Admin Login API
+app.post('/api/admin/login', express.json(), (req, res) => {
+    const { username, password } = req.body;
+    if (username === 'STgamage' && password === 'ST26gamage@') {
+        res.json({ success: true, token: 'admin-secret-token-2026' });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+});
 app.get('/admin/match-entry', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
