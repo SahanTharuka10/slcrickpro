@@ -88,30 +88,31 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="/js/db.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="/js/db.js"></script>
     <script>
-        let socket;
-
         document.addEventListener('DOMContentLoaded', () => {
             renderPosts();
             initRealTime();
         });
 
         function initRealTime() {
-            try {
-                socket = io(BACKEND_BASE_URL);
-                socket.on('connect', () => console.log('Connected to sync engine'));
-                
-                socket.on('globalUpdate', (data) => {
-                    if (data.type === 'post' || data.type === 'post_deleted') {
-                        console.log('Post update received, refreshing feed...');
-                        renderPosts();
-                    }
-                });
-            } catch (e) {
-                console.warn('Real-time sync unavailable');
+            // Use the global socket variable from db.js
+            if (typeof socket === 'undefined' || !socket) {
+                console.warn('Socket not initialized by db.js, trying local init');
+                try {
+                    window.socket = io(BACKEND_BASE_URL);
+                } catch (e) {
+                    return;
+                }
             }
+
+            socket.on('globalUpdate', (data) => {
+                if (data.type === 'post' || data.type === 'post_deleted') {
+                    console.log('Post update received, refreshing feed...');
+                    renderPosts();
+                }
+            });
         }
 
         async function renderPosts() {
