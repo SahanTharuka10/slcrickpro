@@ -706,47 +706,77 @@
 
 @media (max-width: 480px) {
     .match-vs-row {
-        gap: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
     }
     
     .match-team-name {
-        font-size: 14px;
-        max-width: 100px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        font-size: 15px;
+        max-width: 140px;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.2;
     }
     
     .match-score-val {
-        font-size: 18px;
+        font-size: 20px;
     }
 
     .tourn-sub-tabs {
         padding: 4px;
         border-radius: 10px;
+        gap: 4px;
     }
     
     .tourn-sub-tab {
-        padding: 10px 14px;
-        font-size: 12px;
+        padding: 8px 12px;
+        font-size: 11px;
+        flex: 1;
+        text-align: center;
     }
     
+    .leader-card {
+        padding: 10px;
+        gap: 10px;
+    }
+
     .leader-avatar {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .leader-info {
+        flex: 1;
+    }
+
+    .leader-name {
+        font-size: 14px;
+    }
+
+    .leader-stat-val {
         font-size: 16px;
     }
 
     .match-card-header {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
 
     .match-meta {
-        margin-top: 16px;
-        padding-top: 16px;
+        margin-top: 12px;
+        padding-top: 12px;
+        font-size: 11px;
     }
 
     .sc-total {
-        font-size: 28px;
+        font-size: 24px;
     }
-}
+
+    .match-card-actions button {
+        height: 40px !important;
+        font-size: 12px !important;
+    }
+}

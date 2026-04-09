@@ -109,7 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Socket.io: Instant push-based updates from the server
     // Reuse existing socket if db.js initialized it, otherwise create new
-    const socket = window._cricproSocket || (typeof io !== 'undefined' ? io(baseUrl, { reconnectionAttempts: 10, timeout: 5000 }) : null);
+    const socket = window._cricproSocket || (typeof io !== 'undefined' ? io(baseUrl, { 
+        transports: ['polling', 'websocket'],
+        reconnectionAttempts: 10, 
+        timeout: 5000 
+    }) : null);
+
     
     if (socket) {
         try {

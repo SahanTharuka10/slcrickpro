@@ -838,7 +838,7 @@ window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 let socket = null;
 if (typeof io !== 'undefined') {
     socket = io(BACKEND_BASE_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
     });

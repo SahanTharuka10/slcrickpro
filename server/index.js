@@ -748,6 +748,126 @@ app.get('/team-stats', async (req, res) => {
   }
 });
 
+// ─── Tournament Advanced Stats ──────────────────────────────────────────
+// Calculates standings (Points, NRR) and player rankings for a tournament
+app.get('/api/tournaments/:id/stats', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await ensureDB();
+    const tRow = await Tournament.findByPk(id);
+    if (!tRow) return res.status(404).json({ error: 'Tournament not found' });
+
+    let tData = tRow.data || tRow.dataValues?.data || {};
+    if (typeof tData === 'string') try { tData = JSON.parse(tData); } catch(e) { tData = {}; }
+
+    // Fetch all matches for this tournament
+    const allMatchesRows = await Match.findAll();
+    const matches = allMatchesRows.map(m => {
+        let d = m.data || m.dataValues?.data || {};
+        if (typeof d === 'string') try { d = JSON.parse(d); } catch(e) { d = {}; }
+        return d;
+    }).filter(m => m.tournamentId === id && (m.status === 'completed' || m.status === 'live' || m.status === 'paused'));
+
+    // 1. Calculate Standings (NRR)
+    const standings = {};
+    (tData.teams || []).forEach(team => {
+        standings[team] = { 
+            name: team, played: 0, won: 0, lost: 0, tied: 0, points: 0, 
+            runsScored: 0, ballsFaced: 0, runsConceded: 0, ballsBowled: 0, nrr: 0 
+        };
+    });
+
+    // 2. Calculate Player Stats
+    const battingStats = {};
+    const bowlingStats = {};
+
+    matches.forEach(m => {
+        const isCompleted = m.status === 'completed';
+        
+        // Standings calculation
+        if (isCompleted && m.resultType !== 'abandoned') {
+            const t1 = m.team1;
+            const t2 = m.team2;
+            if (standings[t1]) standings[t1].played++;
+            if (standings[t2]) standings[t2].played++;
+
+            if (m.winner) {
+                if (standings[m.winner]) {
+                    standings[m.winner].won++;
+                    standings[m.winner].points += 2;
+                }
+                const loser = m.winner === t1 ? t2 : t1;
+                if (standings[loser]) standings[loser].lost++;
+            } else if (m.resultType === 'tied') {
+                if (standings[t1]) { standings[t1].tied++; standings[t1].points += 1; }
+                if (standings[t2]) { standings[t2].tied++; standings[t2].points += 1; }
+            }
+        }
+
+        // NRR & Player Stats from Innings
+        (m.innings || []).forEach((inn, idx) => {
+            if (!inn) return;
+            const batTeam = inn.battingTeam;
+            const bowlTeam = inn.bowlingTeam;
+
+            // NRR Components
+            if (standings[batTeam]) {
+                standings[batTeam].runsScored += (inn.runs || 0);
+                // If all out, use full quota of overs
+                const maxBalls = (m.overs || 0) * (m.ballsPerOver || 6);
+                standings[batTeam].ballsFaced += (inn.wickets >= (m.playersPerSide || 11) - 1) ? maxBalls : (inn.balls || 0);
+            }
+            if (standings[bowlTeam]) {
+                standings[bowlTeam].runsConceded += (inn.runs || 0);
+                const maxBalls = (m.overs || 0) * (m.ballsPerOver || 6);
+                standings[bowlTeam].ballsBowled += (inn.wickets >= (m.playersPerSide || 11) - 1) ? maxBalls : (inn.balls || 0);
+            }
+
+            // Batting Stats
+            (inn.batsmen || []).forEach(b => {
+                if (!battingStats[b.name]) battingStats[b.name] = { name: b.name, team: batTeam, runs: 0, balls: 0, fours: 0, sixes: 0, innings: 0, high: 0 };
+                battingStats[b.name].runs += (b.runs || 0);
+                battingStats[b.name].balls += (b.balls || 0);
+                battingStats[b.name].fours += (b.fours || 0);
+                battingStats[b.name].sixes += (b.sixes || 0);
+                battingStats[b.name].innings++;
+                battingStats[b.name].high = Math.max(battingStats[b.name].high, (b.runs || 0));
+            });
+
+            // Bowling Stats
+            (inn.bowlers || []).forEach(b => {
+                if (!bowlingStats[b.name]) bowlingStats[b.name] = { name: b.name, team: bowlTeam, wickets: 0, runs: 0, balls: 0, maidens: 0, innings: 0 };
+                bowlingStats[b.name].wickets += (b.wickets || 0);
+                bowlingStats[b.name].runs += (b.runs || 0);
+                bowlingStats[b.name].balls += (b.balls || 0);
+                bowlingStats[b.name].maidens += (b.maidens || 0);
+                bowlingStats[b.name].innings++;
+            });
+        });
+    });
+
+    // Final NRR Calculation
+    Object.values(standings).forEach(s => {
+        const forRate = s.ballsFaced > 0 ? (s.runsScored / (s.ballsFaced / 6)) : 0;
+        const againstRate = s.ballsBowled > 0 ? (s.runsConceded / (s.ballsBowled / 6)) : 0;
+        s.nrr = forRate - againstRate;
+    });
+
+    res.json({
+        success: true,
+        tournamentId: id,
+        standings: Object.values(standings).sort((a,b) => b.points - a.points || b.nrr - a.nrr),
+        batting: Object.values(battingStats).sort((a,b) => b.runs - a.runs).slice(0, 20),
+        bowling: Object.values(bowlingStats).sort((a,b) => b.wickets - a.wickets || a.runs - b.runs).slice(0, 20)
+    });
+
+  } catch (e) {
+    console.error('Tournament stats error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+
 app.post('/sync/broadcast', (req, res) => {
     const data = parseBody(req);
     if (data && data.matchId) {

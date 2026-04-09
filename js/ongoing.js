@@ -138,17 +138,20 @@ function buildMatchCard(m, isLive) {
             <span class="match-crr">${m.overs} ov · ${subText}</span>
         </div>
         ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
-        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:center">
-            <button class="btn btn-primary" style="width:100%; font-weight:900; border-radius:12px; height:44px; display:flex; align-items:center; justify-content:center; gap:8px" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
-                 ${m.status === 'live' ? '⚡ CONTINUE SCORING' : (m.status === 'paused' ? '🔑 RESUME MATCH' : (m.status === 'scheduled' ? '🏏 START MATCH' : 'OPEN'))}
+        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:space-between; gap:10px">
+            <button class="btn btn-primary" style="flex:2; font-weight:900; border-radius:12px; height:44px; display:flex; align-items:center; justify-content:center; gap:8px" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
+                 ${m.status === 'live' ? '⚡ SCORE' : (m.status === 'paused' ? '🔑 RESUME' : '🏏 START')}
+            </button>
+            <button class="btn btn-ghost" style="flex:1; font-weight:800; border-radius:12px; height:44px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1)" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
+                📄 PDF
             </button>
         </div>` : (m.status === 'completed' ? `
         <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:space-between; gap:8px">
-            <button class="btn btn-sm" style="flex:1; font-weight:800; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); height:40px; border-radius:10px" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
+            <button class="btn btn-sm" style="flex:1; font-weight:800; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); height:44px; border-radius:12px" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
                 📄 PDF
             </button>
-            <button class="btn btn-primary btn-sm" style="flex:1.5; font-weight:900; height:40px; border-radius:10px" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
-                📊 SCORECARD
+            <button class="btn btn-primary btn-sm" style="flex:1.5; font-weight:900; height:44px; border-radius:12px" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
+                📊 STATS
             </button>
         </div>` : '')}
     </div>`;
@@ -492,12 +495,12 @@ function renderFullSchedule(id) {
 }
 
 function getBestBatsmen(tournId) {
-    const matches = DB.getMatches().filter(m => m.tournamentId === tournId && m.status === 'completed');
+    const matches = DB.getMatches().filter(m => m.tournamentId === tournId && (m.status === 'completed' || m.status === 'live' || m.status === 'paused'));
     const stats = {};
     matches.forEach(m => {
-        m.innings.forEach(inn => {
+        (m.innings || []).forEach(inn => {
             if (!inn) return;
-            inn.batsmen.forEach(b => {
+            (inn.batsmen || []).forEach(b => {
                 if (!stats[b.name]) stats[b.name] = { name: b.name, team: b.team || inn.battingTeam || '', runs: 0, balls: 0 };
                 stats[b.name].runs += (b.runs || 0);
                 stats[b.name].balls += (b.balls || 0);
@@ -508,12 +511,12 @@ function getBestBatsmen(tournId) {
 }
 
 function getBestBowlers(tournId) {
-    const matches = DB.getMatches().filter(m => m.tournamentId === tournId && m.status === 'completed');
+    const matches = DB.getMatches().filter(m => m.tournamentId === tournId && (m.status === 'completed' || m.status === 'live' || m.status === 'paused'));
     const stats = {};
     matches.forEach(m => {
-        m.innings.forEach(inn => {
+        (m.innings || []).forEach(inn => {
             if (!inn) return;
-            inn.bowlers.forEach(b => {
+            (inn.bowlers || []).forEach(b => {
                 if (!stats[b.name]) stats[b.name] = { name: b.name, team: b.team || inn.bowlingTeam || '', wickets: 0, runs: 0, balls: 0 };
                 stats[b.name].wickets += (b.wickets || 0);
                 stats[b.name].runs += (b.runs || 0);
@@ -548,8 +551,32 @@ function computeTournamentStandings(t) {
     t.teams.forEach(team => {
         t.standings[team] = { played: 0, won: 0, lost: 0, tied: 0, points: 0, runsScored: 0, ballsFaced: 0, runsConceded: 0, ballsBowled: 0, nrr: 0 };
     });
-    const matches = DB.getMatches().filter(m => m.tournamentId === t.id && m.status === 'completed' && m.publishLive);
+    const matches = DB.getMatches().filter(m => m.tournamentId === t.id && (m.status === 'completed' || m.status === 'live' || m.status === 'paused') && m.publishLive);
+    
     matches.forEach(m => {
+        // Point components (Only for completed matches)
+        if (m.status === 'completed') {
+            const team1 = m.team1;
+            const team2 = m.team2;
+            if (t.standings[team1]) t.standings[team1].played++;
+            if (t.standings[team2]) t.standings[team2].played++;
+
+            if (m.winner) {
+                if (t.standings[m.winner]) {
+                    t.standings[m.winner].won++;
+                    t.standings[m.winner].points += 2;
+                }
+                const loser = m.winner === team1 ? team2 : team1;
+                if (t.standings[loser]) t.standings[loser].lost++;
+            } else if (m.resultType === 'tied') {
+                if (t.standings[team1]) { t.standings[team1].tied++; t.standings[team1].points += 1; }
+                if (t.standings[team2]) { t.standings[team2].tied++; t.standings[team2].points += 1; }
+            } else if (m.resultType === 'abandoned') {
+                if (t.standings[team1]) { t.standings[team1].points += 1; }
+                if (t.standings[team2]) { t.standings[team2].points += 1; }
+            }
+        }
+
         const inn0 = m.innings ? m.innings[0] : null;
         const inn1 = m.innings ? m.innings[1] : null;
         if (!inn0 || !inn1) return;
@@ -867,7 +894,7 @@ async function generateMatchPDF(matchId) {
             </div>
 
             <div style="background:#f1f8e9; border:2px solid #43a047; padding:20px; border-radius:12px; text-align:center; font-weight:950; color:#1b5e20; font-size:18px; margin-bottom:40px; box-shadow: 0 4px 12px rgba(0,0,0,0.05)">
-                🏆 ${m.result || 'MATCH COMPLETED'}
+                🏆 ${m.status === 'live' ? 'MATCH IN PROGRESS (LIVE)' : (m.status === 'paused' ? 'MATCH PAUSED' : (m.result || 'MATCH COMPLETED'))}
             </div>
 
             ${renderInningsTablePDF(inn0, m.battingFirst || m.team1)}
@@ -1130,9 +1157,23 @@ async function generateTournamentPDF(tournId) {
     `;
 
     if (t.format === 'points-table' || t.format === 'league') {
-        computeTournamentStandings(t);
-        const standings = Object.keys(t.standings || {}).map(name => ({ name, ...t.standings[name] }))
-            .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
+        let standings = [];
+        try {
+            // Attempt to get official backend stats first
+            const resp = await fetch(`${DB.getCloudURL()}/api/tournaments/${t.id}/stats`);
+            const remoteStats = await resp.json();
+            if (remoteStats && remoteStats.standings) {
+                standings = remoteStats.standings;
+                console.log("Using official backend standings for report");
+            } else {
+                throw new Error("Invalid remote stats");
+            }
+        } catch (e) {
+            console.warn("Falling back to local standings calculation", e);
+            computeTournamentStandings(t);
+            standings = Object.keys(t.standings || {}).map(name => ({ name, ...t.standings[name] }))
+                .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
+        }
 
         html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Points Table</h2>
             <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
