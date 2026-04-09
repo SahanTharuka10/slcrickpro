@@ -718,22 +718,37 @@
     /* ─── Main Tab Bar ─── */
     .tab-bar {
         max-width: 100% !important;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 2px !important;
-        padding: 4px !important;
+        margin: 0 auto 24px !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px !important;
+        padding: 5px !important;
         display: flex !important;
+        gap: 4px !important;
+        overflow: hidden !important; /* Force fit */
     }
-    .tab-bar::-webkit-scrollbar { display: none; }
     
     .tab-btn {
         flex: 1 !important;
-        padding: 10px 8px !important;
-        font-size: 13px !important;
-        min-width: 0;
-        text-align: center;
-        white-space: nowrap;
+        flex-shrink: 1 !important;
+        padding: 12px 4px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-radius: 14px !important;
+        color: rgba(255,255,255,0.6) !important;
+        background: transparent !important;
+        min-width: 0 !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .tab-btn.active {
+        background: linear-gradient(135deg, var(--c-primary) 0%, #7b1fa2 100%) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 15px rgba(var(--c-primary-rgb), 0.4) !important;
+        transform: scale(1.02);
     }
 
     /* ─── Match cards ─── */
@@ -805,15 +820,29 @@
 
     /* ─── Sub-tabs ─── */
     .tourn-sub-tabs {
-        gap: 3px;
-        padding: 3px;
-        border-radius: 10px;
+        gap: 6px !important;
+        padding: 6px !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 12px !important;
+        margin-bottom: 20px !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
     }
+    .tourn-sub-tabs::-webkit-scrollbar { display: none; }
 
     .tourn-sub-tab {
-        padding: 8px 10px;
-        font-size: 11px;
-        border-radius: 8px;
+        padding: 10px 14px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+        white-space: nowrap !important;
+        flex: 0 0 auto !important; /* Allow scroll for 5 tabs */
+        background: rgba(255, 255, 255, 0.03) !important;
+    }
+    .tourn-sub-tab.active {
+        background: var(--c-primary) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 10px rgba(var(--c-primary-rgb), 0.3) !important;
     }
 
     /* ─── Leader cards ─── */

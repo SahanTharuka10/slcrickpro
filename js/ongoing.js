@@ -19,6 +19,16 @@ window.renderAll = window.renderOngoing;
 window.renderLive = renderLive;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Mobile Label Optimization
+    if (window.innerWidth < 480) {
+        const tabLive = document.getElementById('tab-live');
+        const tabTourn = document.getElementById('tab-tournament');
+        const tabRecent = document.getElementById('tab-recent');
+        if (tabLive) tabLive.innerHTML = 'Live';
+        if (tabTourn) tabTourn.innerHTML = 'Tourn';
+        if (tabRecent) tabRecent.innerHTML = 'Done';
+    }
+
     // Stage 1: Render Local Cache Immediately (Fast Load)
     renderLive();
     
@@ -367,11 +377,11 @@ function renderTournDetails(id) {
             </div>
         </div>
         <div class="tourn-sub-tabs">
-            ${isKO ? `<button class="tourn-sub-tab active" id="subtab-bracket" onclick="switchTournSubTab('bracket')">🌳 Bracket</button>` : `<button class="tourn-sub-tab active" id="subtab-standings" onclick="switchTournSubTab('standings')">📊 Standings</button>`}
-            <button class="tourn-sub-tab" onclick="switchTournSubTab('batting')">🏏 Batsmen</button>
-            <button class="tourn-sub-tab" onclick="switchTournSubTab('bowling')">🎳 Bowlers</button>
+            ${isKO ? `<button class="tourn-sub-tab active" id="subtab-bracket" onclick="switchTournSubTab('bracket')">🌳 ${window.innerWidth < 480 ? 'Brkt' : 'Bracket'}</button>` : `<button class="tourn-sub-tab active" id="subtab-standings" onclick="switchTournSubTab('standings')">📊 ${window.innerWidth < 480 ? 'Table' : 'Standings'}</button>`}
+            <button class="tourn-sub-tab" onclick="switchTournSubTab('batting')">🏏 ${window.innerWidth < 480 ? 'Bat' : 'Batsmen'}</button>
+            <button class="tourn-sub-tab" onclick="switchTournSubTab('bowling')">🎳 ${window.innerWidth < 480 ? 'Bowl' : 'Bowlers'}</button>
             ${!isKO ? `<button class="tourn-sub-tab" onclick="switchTournSubTab('nrr')">📈 NRR</button>` : ''}
-            <button class="tourn-sub-tab" onclick="switchTournSubTab('fixtures')">📅 Fixtures</button>
+            <button class="tourn-sub-tab" onclick="switchTournSubTab('fixtures')">📅 ${window.innerWidth < 480 ? 'Fix' : 'Fixtures'}</button>
         </div>
         <div id="tourn-sub-content"></div>
     `;
