@@ -122,35 +122,34 @@ function buildMatchCard(m, isLive) {
                 <span class="match-team-name">${m.team2}</span>
             </div>
             <div class="match-score-row" style="margin-top:14px">
-                <div class="match-team-score">
-                    <div class="match-score-val">${score0}</div>
-                    <div class="match-score-overs">${ov0}</div>
+                <div class="match-team-score" style="flex:1">
+                    <div class="match-score-val" style="${m.currentInnings === 0 ? 'color:#00e676' : 'opacity:0.6'}">${score0}</div>
+                    <div class="match-score-overs" style="opacity:0.6">${ov0}</div>
                 </div>
-                <div class="match-team-score">
-                    <div class="match-score-val" style="color:${m.currentInnings === 1 ? '#fff' : 'rgba(255,255,255,0.4)'}">${score1}</div>
-                    <div class="match-score-overs">${ov1}</div>
+                <div class="match-team-score" style="flex:1">
+                    <div class="match-score-val" style="${m.currentInnings === 1 ? 'color:#00e676' : 'opacity:0.6'}">${score1}</div>
+                    <div class="match-score-overs" style="opacity:0.6">${ov1}</div>
                 </div>
             </div>
         </div>
-        <div class="match-meta">
+        <div class="match-meta" style="border-top-style: dashed; opacity: 0.8">
             <span class="match-crr">CRR: ${crr}</span>
             <span class="match-target-info" style="color:#ffc107">${targetInfo}</span>
             <span class="match-crr">${m.overs} ov · ${subText}</span>
         </div>
         ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
-        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end">
-            <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
-                ${m.status === 'live' ? '▶ Continue Scoring' : (m.status === 'paused' ? '🔑 Resume Scoring' : (m.status === 'scheduled' ? '🏏 Start Scoring' : 'Open'))}
+        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:center">
+            <button class="btn btn-primary" style="width:100%; font-weight:900; border-radius:12px; height:44px; display:flex; align-items:center; justify-content:center; gap:8px" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
+                 ${m.status === 'live' ? '⚡ CONTINUE SCORING' : (m.status === 'paused' ? '🔑 RESUME MATCH' : (m.status === 'scheduled' ? '🏏 START MATCH' : 'OPEN'))}
             </button>
         </div>` : (m.status === 'completed' ? `
-        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:flex-end; gap:8px">
-            <button class="btn btn-sm" style="font-weight:800; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1)" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
-                📄 PDF Summary
+        <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:space-between; gap:8px">
+            <button class="btn btn-sm" style="flex:1; font-weight:800; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); height:40px; border-radius:10px" onclick="event.stopPropagation(); generateMatchPDF('${m.id}')">
+                📄 PDF
             </button>
-            <button class="btn btn-primary btn-sm" style="font-weight:800" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
-                📊 Scorecard
+            <button class="btn btn-primary btn-sm" style="flex:1.5; font-weight:900; height:40px; border-radius:10px" onclick="event.stopPropagation(); openMatchDetail('${m.id}')">
+                📊 SCORECARD
             </button>
-            ${m.tournamentId ? `<button class="btn btn-amber btn-sm" style="font-weight:800; color:#000; font-size:10px; border-radius:4px" onclick="event.stopPropagation(); goToTournament('${m.tournamentId}')">🏆 TOURNAMENT</button>` : ''}
         </div>` : '')}
     </div>`;
 }
