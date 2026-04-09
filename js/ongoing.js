@@ -547,19 +547,29 @@ function leaderCard(rank, name, team, statVal, statLbl, sub, tournId, tournName)
 
 function computeTournamentStandings(t) {
     if (!t || t.format === 'knockout') return;
-    t.standings = t.standings || {};
+    t.standings = {};
     t.teams.forEach(team => {
         t.standings[team] = { played: 0, won: 0, lost: 0, tied: 0, points: 0, runsScored: 0, ballsFaced: 0, runsConceded: 0, ballsBowled: 0, nrr: 0 };
     });
-    const matches = DB.getMatches().filter(m => m.tournamentId === t.id && (m.status === 'completed' || m.status === 'live' || m.status === 'paused') && m.publishLive);
+    
+    // Filter matches for this tournament that are live, paused, or completed
+    const matches = DB.getMatches().filter(m => 
+        m.tournamentId === t.id && 
+        (m.status === 'completed' || m.status === 'live' || m.status === 'paused') && 
+        m.publishLive
+    );
     
     matches.forEach(m => {
-        // Point components (Only for completed matches)
+        const team1 = m.team1;
+        const team2 = m.team2;
+        const s1 = t.standings[team1];
+        const s2 = t.standings[team2];
+        if (!s1 || !s2) return;
+
+        // 1. Points & Win/Loss - ONLY for completed matches
         if (m.status === 'completed') {
-            const team1 = m.team1;
-            const team2 = m.team2;
-            if (t.standings[team1]) t.standings[team1].played++;
-            if (t.standings[team2]) t.standings[team2].played++;
+            s1.played++;
+            s2.played++;
 
             if (m.winner) {
                 if (t.standings[m.winner]) {
@@ -569,46 +579,44 @@ function computeTournamentStandings(t) {
                 const loser = m.winner === team1 ? team2 : team1;
                 if (t.standings[loser]) t.standings[loser].lost++;
             } else if (m.resultType === 'tied') {
-                if (t.standings[team1]) { t.standings[team1].tied++; t.standings[team1].points += 1; }
-                if (t.standings[team2]) { t.standings[team2].tied++; t.standings[team2].points += 1; }
+                s1.tied++; s1.points += 1;
+                s2.tied++; s2.points += 1;
             } else if (m.resultType === 'abandoned') {
-                if (t.standings[team1]) { t.standings[team1].points += 1; }
-                if (t.standings[team2]) { t.standings[team2].points += 1; }
+                s1.points += 1;
+                s2.points += 1;
             }
         }
 
-        const inn0 = m.innings ? m.innings[0] : null;
-        const inn1 = m.innings ? m.innings[1] : null;
+        // 2. NRR Components - Includes Live data for real-time standings
+        const inn0 = m.innings && m.innings[0];
+        const inn1 = m.innings && m.innings[1];
         if (!inn0 || !inn1) return;
-        
-        const battingFirst = m.battingFirst || m.team1;
-        const fieldingFirst = m.fieldingFirst || m.team2;
-        
-        const s1 = t.standings[battingFirst];
-        const s2 = t.standings[fieldingFirst];
-        if (!s1 || !s2) return;
-        
+
+        const battingFirst = m.battingFirst || team1;
         const bpo = m.ballsPerOver || 6;
-        const maxBalls = m.overs * bpo;
+        const maxBalls = (m.overs || 0) * bpo;
         const pps = m.playersPerSide || 11;
-        
-        s1.played++; s2.played++;
-        
-        // If all out, full overs are counted for NRR
-        const b0 = (inn0.wickets >= pps - 1) ? maxBalls : inn0.balls;
-        const b1 = (inn1.wickets >= pps - 1) ? maxBalls : inn1.balls;
-        
-        s1.runsScored += inn0.runs; s1.ballsFaced += b0;
-        s1.runsConceded += inn1.runs; s1.ballsBowled += b1;
-        
-        s2.runsScored += inn1.runs; s2.ballsFaced += b1;
-        s2.runsConceded += inn0.runs; s2.ballsBowled += b0;
-        
-        if (inn1.runs > inn0.runs) { s2.won++; s2.points += 2; s1.lost++; }
-        else if (inn1.runs < inn0.runs) { s1.won++; s1.points += 2; s2.lost++; }
-        else { s1.tied++; s2.tied++; s1.points++; s2.points++; }
+
+        // All out rule: if all wickets down, use full quota of balls
+        const b0 = (inn0.wickets >= pps - 1) ? maxBalls : (inn0.balls || 0);
+        const b1 = (inn1.wickets >= pps - 1) ? maxBalls : (inn1.balls || 0);
+
+        if (battingFirst === team1) {
+            // Team 1 batted first
+            s1.runsScored += (inn0.runs || 0); s1.ballsFaced += b0;
+            s2.runsConceded += (inn0.runs || 0); s2.ballsBowled += b0;
+            s2.runsScored += (inn1.runs || 0); s2.ballsFaced += b1;
+            s1.runsConceded += (inn1.runs || 0); s1.ballsBowled += b1;
+        } else {
+            // Team 2 batted first
+            s2.runsScored += (inn0.runs || 0); s2.ballsFaced += b0;
+            s1.runsConceded += (inn0.runs || 0); s1.ballsBowled += b0;
+            s1.runsScored += (inn1.runs || 0); s1.ballsFaced += b1;
+            s2.runsConceded += (inn1.runs || 0); s2.ballsBowled += b1;
+        }
     });
-    
+
+    // 3. Final NRR Calculation
     t.teams.forEach(team => {
         const s = t.standings[team];
         const bpo = t.ballsPerOver || 6;
@@ -807,7 +815,20 @@ async function generateMatchPDF(matchId) {
     const inn1 = m.innings ? m.innings[1] : null;
 
     const renderInningsTablePDF = (inn, teamName) => {
-        if (!inn || !inn.batsmen || inn.batsmen.length === 0) return `<div style="padding:20px; text-align:center; color:#888; font-style:italic">No score data for ${teamName}</div>`;
+        const hasBatsmen = inn && inn.batsmen && inn.batsmen.length > 0;
+        const runs = (inn && inn.runs) || 0;
+        const wkts = (inn && inn.wickets) || 0;
+        const balls = (inn && inn.balls) || 0;
+
+        if (!hasBatsmen) {
+            return `<div style="margin-bottom:30px; border:1px solid #eee; border-radius:12px; overflow:hidden">
+                <div style="background:#1a237e; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; color:#fff">
+                    <span style="font-size:20px; font-weight:900; letter-spacing:0.5px">${teamName.toUpperCase()}</span>
+                    <span style="font-size:22px; font-weight:900">${runs}/${wkts} <span style="font-size:14px; font-weight:400; opacity:0.8">(${formatOvers(balls, m.ballsPerOver)} ov)</span></span>
+                </div>
+                <div style="padding:20px; text-align:center; color:#888; font-style:italic">Detailed player statistics not yet recorded for this innings.</div>
+            </div>`;
+        }
         const extras = inn.extras || { total: 0, wd: 0, nb: 0, b: 0, lb: 0 };
         return `
             <div style="margin-bottom:30px; border:1px solid #eee; border-radius:12px; overflow:hidden">

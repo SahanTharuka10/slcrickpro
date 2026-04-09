@@ -61,6 +61,9 @@ window.showToast = function(msg, type = 'default') {
 };
 
 const DB = {
+    getCloudURL() {
+        return window.BACKEND_BASE_URL || "https://slcrickpro-production.up.railway.app";
+    },
 
     // ---------- SECURE STORAGE ----------
     _secureSet(key, val) {
