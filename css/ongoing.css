@@ -715,6 +715,27 @@
 =========================== */
 @media (max-width: 480px) {
 
+    /* ─── Main Tab Bar ─── */
+    .tab-bar {
+        max-width: 100% !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 2px !important;
+        padding: 4px !important;
+        display: flex !important;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    
+    .tab-btn {
+        flex: 1 !important;
+        padding: 10px 8px !important;
+        font-size: 13px !important;
+        min-width: 0;
+        text-align: center;
+        white-space: nowrap;
+    }
+
     /* ─── Match cards ─── */
     .match-card {
         padding: 14px 12px;
