@@ -3179,7 +3179,7 @@ function renderBroadcastController(match) {
             
             .v-trigger:active { transform: scale(0.95); opacity: 0.7; }
 
-            /* Mobile Fixes for Broadcast Controller */
+            /* Mobile Fixes for Broadcast Controller (Super Compact Mode) */
             @media (max-width: 900px) {
                 .broadcast-controller-content {
                     padding: 12px;
@@ -3193,43 +3193,49 @@ function renderBroadcastController(match) {
                     gap: 8px !important;
                 }
                 .b-btn {
-                    min-height: 50px;
-                    padding: 8px 12px;
+                    min-height: 54px !important; /* Narrower buttons */
+                    padding: 8px 12px !important;
+                    border-radius: 12px !important;
                 }
                 .b-btn-title {
-                    font-size: 11px;
+                    font-size: 11px !important;
+                }
+                .b-btn-sub {
+                    font-size: 8px !important;
+                    display: none; /* Hide subtext on small screens to save space */
+                }
+                .b-btn-hotkey {
+                    display: none; /* Hide hotkey guide on small mobile */
                 }
                 .v-trigger {
-                    padding: 12px 8px !important;
+                    height: 50px !important;
+                    font-size: 20px !important;
                 }
-                .v-trigger span {
-                    font-size: 22px !important;
+                .b-card {
+                    padding: 12px !important;
+                    margin-bottom: 0 !important;
                 }
-                .broadcast-header h1, .broadcast-header div:last-child {
-                    font-size: 18px !important;
+                .b-section-title {
+                    font-size: 10px !important;
+                    margin-bottom: 8px !important;
                 }
                 .broadcast-header {
-                   margin-bottom: 12px !important;
-                }
-                .b-panel {
-                    padding: 16px !important;
-                }
-                .b-group-label {
                     margin-bottom: 12px !important;
                 }
             }
 
             @media (max-width: 600px) {
                 .broadcast-header {
-                    flex-direction: row;
-                    flex-wrap: wrap;
-                    justify-content: space-between;
+                    flex-direction: row !important;
+                    justify-content: space-between !important;
                     align-items: center !important;
                     gap: 8px;
                 }
-                /* Keep 2 columns for better button density on mobile */
+                .broadcast-header h2, .broadcast-header .logo-text-animated {
+                    display: none; /* Save space in header */
+                }
                 .b-grid {
-                    grid-template-columns: 1fr 1fr !important;
+                    grid-template-columns: 1fr 1fr !important; /* Keep 2 columns on mobile */
                 }
             }
         `;
