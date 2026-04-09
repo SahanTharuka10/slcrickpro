@@ -234,12 +234,20 @@ function selectMatchType(type) {
 
     if (type === 'tournament') {
         onTournamentSelect('new');
+        showTossConfig(false);
     } else if (type === 'instant-nrr') {
         showScreen('instant-nrr');
     } else {
         toggleMatchConfig(true);
+        // For single matches, we DO want toss by default, but user said "mewa ain krnn" (remove these) 
+        // to return to "kalin widiyata". 
+        // If kalin widiyata means NO TOSS on setup at all, I should keep it false.
+        // Let's keep it false for tournament but check if single match needs it.
+        // User specifically mentioned "tournament shedule krddi".
+        showTossConfig(false); 
     }
 }
+
 
 function toggleOfficialSettings(val) {
     const el = document.getElementById('official-settings');
@@ -255,14 +263,23 @@ function toggleMatchConfig(show) {
     const teams = document.getElementById('teams-grid');
     const toss = document.getElementById('toss-grid');
     const btn = document.getElementById('start-btn');
+    const schedBtn = document.getElementById('schedule-btn');
     const head = document.getElementById('match-config-head');
 
     if (teams) teams.style.display = show ? '' : 'none';
-    if (toss) toss.style.display = show ? '' : 'none';
+    if (toss) toss.style.display = 'none'; // ALWAYS HIDE ON INITIAL LOAD/TOGGLE
+    if (schedBtn) schedBtn.style.display = show ? '' : 'none';
 
     if (head) head.textContent = show ? 'Match Configuration' : 'Tournament Base Settings';
     if (btn) btn.innerHTML = show ? 'Start Match' : 'Create Tournament';
 }
+
+
+function showTossConfig(show) {
+    const toss = document.getElementById('toss-grid');
+    if (toss) toss.style.display = show ? '' : 'none';
+}
+
 
 function renderResumeMatchesImpl() {
     const container = document.getElementById('resume-matches-list');
@@ -849,23 +866,55 @@ async function scheduleNewMatch() {
     const t2 = document.getElementById('team2-name').value.trim();
     if (!t1 || !t2) { showToast('Please enter both team names!', 'error'); return; }
 
+    const overs = parseInt(document.getElementById('setup-overs').value) || 20;
+    const bpo = parseInt(document.getElementById('setup-bpo').value) || 6;
+    const pps = parseInt(document.getElementById('setup-pps').value) || 11;
+    const venue = document.getElementById('setup-venue').value.trim();
+    const scorer = document.getElementById('setup-scorer').value.trim();
+
+    // Check if we have a tournament selected or latest one
+    let tournamentId = null, tournamentName = null;
+    if (currentMatchType === 'tournament') {
+        const allTourns = DB.getTournaments();
+        if (allTourns.length) {
+            const lastT = allTourns[allTourns.length - 1];
+            tournamentId = lastT.id;
+            tournamentName = lastT.name;
+        }
+    }
+
     const match = DB.createMatch({
+        type: currentMatchType,
+        tournamentId,
+        tournamentName,
         team1: t1,
         team2: t2,
-        overs: parseInt(document.getElementById('setup-overs').value),
-        ballsPerOver: parseInt(document.getElementById('setup-bpo').value),
-        playersPerSide: parseInt(document.getElementById('setup-pps').value),
-        venue: document.getElementById('setup-venue').value.trim(),
-        scorer: document.getElementById('setup-scorer').value.trim(),
+        overs: overs,
+        ballsPerOver: bpo,
+        playersPerSide: pps,
+        venue: venue,
+        scorer: scorer,
         scoringPassword: document.getElementById('match-scoring-password').value.trim()
     });
     match.status = 'scheduled';
     DB.saveMatch(match);
+    
+    if (tournamentId) {
+        const t = DB.getTournament(tournamentId);
+        if (t) {
+            if (!t.matches) t.matches = [];
+            t.matches.push(match.id);
+            DB.saveTournament(t);
+        }
+    }
+
     showToast('Match scheduled successfully!', 'success');
+    renderResumeMatches();
     setTimeout(() => {
         location.href = '../index.html';
     }, 1500);
 }
+
 
 async function startNewMatch() {
     let existingOfficialTournamentId = null;
@@ -962,6 +1011,15 @@ async function startNewMatch() {
     const t1 = document.getElementById('team1-name').value.trim();
     const t2 = document.getElementById('team2-name').value.trim();
     if (!t1 || !t2) { showToast('Enter both team names', 'error'); return; }
+
+    // If toss is hidden, show it and ask user to fill it before starting
+    const tossGrid = document.getElementById('toss-grid');
+    if (tossGrid && tossGrid.style.display === 'none' && currentMatchType === 'single') {
+        showTossConfig(true);
+        showToast('🎯 Please confirm Toss details to Start Match', 'default');
+        tossGrid.scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
 
     const pps = parseInt(document.getElementById('setup-pps').value) || 11;
     const venue = document.getElementById('setup-venue').value.trim();
@@ -2600,11 +2658,12 @@ function onRosterPhotoFileSelected(e) {
 
         // If we found an existing player, update their photo
         if (player) {
-            player.photo = imageData;
+            // Use a shallow copy to update, preventing reference mutation in the same UI cycle
+            let updatePayload = { ...player, photo: imageData };
             if (DB.updatePlayer) {
-                player = DB.updatePlayer(player);
+                player = DB.updatePlayer(updatePayload);
             } else {
-                player = DB.addPlayer(player);
+                player = DB.addPlayer(updatePayload);
             }
             assignRosterSlot(pendingRosterSlotToRegister, player);
         }
@@ -2619,6 +2678,7 @@ function openRosterEditor(teamName) {
     const t = currentTournament;
     if (!t) return;
     
+    window._isEditingRoster = true; // Block intrusive refreshes
     editingTeamName = teamName || (t.teams && t.teams.length ? t.teams[0] : null);
     if (!editingTeamName) return;
 
@@ -2655,7 +2715,7 @@ function openRosterEditor(teamName) {
                            oninput="onRosterInputChanged(${i}, this.value)"
                            onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
                            onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
-                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" autocomplete="off" />
+                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0; color:#fff" autocomplete="off" />
                     <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">Edit Name</button>
                 </div>
                 <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:80px; text-align:right; font-weight:600">${player ? '✔ Profile' : ''}</div>
@@ -2672,7 +2732,7 @@ function openRosterEditor(teamName) {
                 <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.5; margin-bottom:2px">Editing Roster</div>
                 <div style="font-weight:950; color:var(--c-amber); font-size:18px; letter-spacing:-0.5px">${editingTeamName}</div>
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1)">← Back to List</button>
+            <button class="btn btn-sm btn-ghost" onclick="window._isEditingRoster=false; renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1)">← Back to List</button>
         </div>
 
         <div class="roster-container" style="padding-bottom:10px">
@@ -2697,10 +2757,17 @@ function addRosterSlot() {
 }
 
 window.onRosterInputChanged = function(idx, val) {
-    const cleanVal = val.toLowerCase().trim();
+    const cleanVal = val.trim();
     const infoEl = document.getElementById(`roster-info-${idx}`);
     const imgEl = document.getElementById(`roster-photo-${idx}`);
     
+    // Immediate state persistence
+    if (currentTournament && editingTeamName) {
+        if (!currentTournament.rosters) currentTournament.rosters = {};
+        if (!currentTournament.rosters[editingTeamName]) currentTournament.rosters[editingTeamName] = [];
+        currentTournament.rosters[editingTeamName][idx] = cleanVal;
+    }
+
     if (!cleanVal) {
         if (infoEl) infoEl.textContent = '';
         if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
@@ -2753,9 +2820,11 @@ function saveRoster(teamName, silent = false) {
     
     if (!t.rosters) t.rosters = {};
     t.rosters[teamName] = newRoster;
+    t.lastUpdated = Date.now(); // Ensure sync prioritizes local edits
     
     DB.saveTournament(t);
     if (!silent) {
+        window._isEditingRoster = false;
         showToast('Roster saved for ' + teamName, 'success');
         renderTournamentTeams();
     }

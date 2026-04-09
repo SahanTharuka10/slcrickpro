@@ -1210,6 +1210,7 @@ async function syncCloudData(options = {}) {
     if (!BACKEND_BASE_URL) return;
     if (_isSyncingCloud) return; 
     if (document.hidden && !options.forceRefresh) return; 
+    if (window._isEditingRoster && !options.forceRefresh) return; 
 
     _isSyncingCloud = true;
     const NOW = Date.now();
