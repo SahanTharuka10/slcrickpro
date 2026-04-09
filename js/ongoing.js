@@ -501,9 +501,12 @@ function getBestBatsmen(tournId) {
         (m.innings || []).forEach(inn => {
             if (!inn) return;
             (inn.batsmen || []).forEach(b => {
-                if (!stats[b.name]) stats[b.name] = { name: b.name, team: b.team || inn.battingTeam || '', runs: 0, balls: 0 };
-                stats[b.name].runs += (b.runs || 0);
-                stats[b.name].balls += (b.balls || 0);
+                const key = b.name;
+                if (!stats[key]) stats[key] = { name: b.name, team: b.team || inn.battingTeam || '', runs: 0, balls: 0, fours: 0, sixes: 0 };
+                stats[key].runs  += (b.runs  || 0);
+                stats[key].balls += (b.balls || 0);
+                stats[key].fours += (b.fours || 0);
+                stats[key].sixes += (b.sixes || 0);
             });
         });
     });
@@ -1160,114 +1163,274 @@ async function generateTournamentPDF(tournId) {
     const t = DB.getTournament(tournId);
     if (!t) return showToast('Tournament not found', 'error');
 
-    showToast('📊 Generating Comprehensive Report...', 'default');
-    
-    const container = document.createElement('div');
-    container.style = `position:fixed; top:0; left:-10000px; width:900px; background:#fff; color:#000; padding:40px; font-family:'Outfit', sans-serif; z-index:9999; opacity:1; pointer-events:none;`;
-    
-    let html = `
-        <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:20px; margin-bottom:30px">
-            <h1 style="font-size:32px; margin:0; text-transform:uppercase">${t.name}</h1>
-            <p style="font-size:14px; margin:5px 0; color:#444">TOURNAMENT SUMMARY REPORT · ${new Date().toLocaleDateString()}</p>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:30px; background:#f9f9f9; padding:15px; border-radius:8px">
-            <div><b>Format:</b> ${capitalize(t.format)}</div>
-            <div><b>Overs:</b> ${t.overs}</div>
-            <div><b>Teams:</b> ${t.teams.length}</div>
-        </div>
+    showToast('📊 Building Comprehensive Report…', 'default');
+
+    // ── Compute all stats locally (no backend required) ──────────────────────
+    computeTournamentStandings(t);
+
+    const sortedStandings = t.teams
+        .map(name => ({ name, ...(t.standings[name] || {}) }))
+        .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
+
+    const allTournMatches = (t.matches || []).map(mId => DB.getMatch(mId)).filter(m => m);
+    const completedMatches = allTournMatches.filter(m => m.status === 'completed');
+    const liveMatches = allTournMatches.filter(m => m.status === 'live' || m.status === 'paused');
+
+    const batsmen = getBestBatsmen(t.id);
+    const bowlers = getBestBowlers(t.id);
+
+    const generatedAt = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+
+    // ── PDF styles ─────────────────────────────────────────────────────────────
+    const style = `
+        body { font-family: 'Outfit', Arial, sans-serif; margin:0; color:#111; }
+        .page-break { page-break-before: always; }
+        table { width:100%; border-collapse:collapse; margin-bottom:22px; font-size:13px; }
+        th { background:#1a237e; color:#fff; padding:9px 10px; text-align:left; font-size:12px; font-weight:700; letter-spacing:0.04em; }
+        td { padding:8px 10px; border-bottom:1px solid #f0f0f0; }
+        tr:nth-child(even) td { background:#f9f9fb; }
+        .section-title { font-size:17px; font-weight:900; color:#1a237e; border-left:4px solid #ffc107; padding-left:10px; margin:30px 0 14px; text-transform:uppercase; letter-spacing:0.06em; }
+        .result-banner { background:#e8f5e9; border:2px solid #43a047; padding:12px 18px; border-radius:10px; text-align:center; font-weight:800; color:#1b5e20; font-size:15px; margin:16px 0; }
+        .live-banner { background:#fff3e0; border:2px solid #f57c00; padding:12px 18px; border-radius:10px; text-align:center; font-weight:800; color:#e65100; font-size:13px; margin:16px 0; }
+        .nrr-pos { color:#1b5e20; font-weight:700; }
+        .nrr-neg { color:#c62828; font-weight:700; }
+        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+        .badge-live { background:#ff6d00; color:#fff; }
+        .badge-done { background:#2e7d32; color:#fff; }
+        .badge-sched { background:#0277bd; color:#fff; }
+        .rank1 td:first-child { font-weight:900; color:#f9a825; }
+        .rank2 td:first-child { font-weight:800; color:#9e9e9e; }
+        .rank3 td:first-child { font-weight:800; color:#bf360c; }
+        .inn-header { background:#1a237e; color:#fff; padding:12px 15px; display:flex; justify-content:space-between; align-items:center; border-radius:8px 8px 0 0; }
+        .inn-team { font-size:16px; font-weight:900; }
+        .inn-score { font-size:20px; font-weight:900; }
+        .inn-ov { font-size:12px; font-weight:400; opacity:0.8; margin-left:6px; }
     `;
 
-    if (t.format === 'points-table' || t.format === 'league') {
-        let standings = [];
-        try {
-            // Attempt to get official backend stats first
-            const resp = await fetch(`${DB.getCloudURL()}/api/tournaments/${t.id}/stats`);
-            const remoteStats = await resp.json();
-            if (remoteStats && remoteStats.standings) {
-                standings = remoteStats.standings;
-                console.log("Using official backend standings for report");
-            } else {
-                throw new Error("Invalid remote stats");
-            }
-        } catch (e) {
-            console.warn("Falling back to local standings calculation", e);
-            computeTournamentStandings(t);
-            standings = Object.keys(t.standings || {}).map(name => ({ name, ...t.standings[name] }))
-                .sort((a, b) => (b.points || 0) - (a.points || 0) || (b.nrr || 0) - (a.nrr || 0));
-        }
+    // ── Header ─────────────────────────────────────────────────────────────────
+    let html = `<!DOCTYPE html><html><head><style>${style}</style></head><body>
+    <div style="background:linear-gradient(135deg,#1a237e,#283593); color:#fff; padding:36px 40px; border-radius:0 0 16px 16px; margin-bottom:30px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div style="font-size:13px; font-weight:700; letter-spacing:4px; opacity:0.7; margin-bottom:6px;">TOURNAMENT SUMMARY REPORT</div>
+                <div style="font-size:34px; font-weight:950; letter-spacing:-1px; line-height:1.1;">${t.name}</div>
+                <div style="margin-top:8px; font-size:14px; opacity:0.75;">
+                    ${capitalize(t.format)} &nbsp;·&nbsp; ${t.overs || '—'} Overs &nbsp;·&nbsp; ${t.teams.length} Teams
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:40px; font-weight:900; color:#ffc107;">${completedMatches.length}</div>
+                <div style="font-size:12px; opacity:0.7; font-weight:700;">MATCHES PLAYED</div>
+                ${liveMatches.length ? `<div style="margin-top:6px; font-size:12px; background:#ff6d00; padding:3px 10px; border-radius:20px; font-weight:700; display:inline-block;">${liveMatches.length} LIVE</div>` : ''}
+            </div>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:30px; flex-wrap:wrap;">
+            <div><span style="opacity:0.6; font-size:12px;">GENERATED</span><br><b>${generatedAt}</b></div>
+            <div><span style="opacity:0.6; font-size:12px;">TEAMS</span><br><b>${t.teams.join(', ')}</b></div>
+            <div><span style="opacity:0.6; font-size:12px;">TOTAL MATCHES</span><br><b>${allTournMatches.length}</b></div>
+        </div>
+    </div>`;
 
-        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Points Table</h2>
-            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
-                <thead style="background:#eee">
-                    <tr><th style="padding:8px; text-align:left">Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th><th>NRR</th></tr>
-                </thead>
-                <tbody>
-                    ${standings.map(s => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${s.name}</td><td align="center">${s.played || 0}</td><td align="center">${s.won || 0}</td><td align="center">${s.lost || 0}</td><td align="center"><b>${s.points || 0}</b></td><td align="center">${(s.nrr || 0).toFixed(3)}</td></tr>`).join('')}
-                </tbody>
-            </table>`;
+    // ── Points Table ────────────────────────────────────────────────────────────
+    if (t.format !== 'knockout') {
+        html += `<div style="padding:0 40px;">
+        <div class="section-title">📊 Points Table &amp; NRR</div>
+        <table>
+            <thead><tr>
+                <th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>T</th><th>Pts</th>
+                <th>Runs For</th><th>Ov Faced</th><th>Runs Ag.</th><th>Ov Bowled</th><th>NRR</th>
+            </tr></thead>
+            <tbody>`;
+        sortedStandings.forEach((s, i) => {
+            const nrr = (s.nrr || 0).toFixed(3);
+            const nrrClass = (s.nrr || 0) >= 0 ? 'nrr-pos' : 'nrr-neg';
+            const rowClass = i === 0 ? 'rank1' : i === 1 ? 'rank2' : i === 2 ? 'rank3' : '';
+            html += `<tr class="${rowClass}">
+                <td>${i+1}</td><td><b>${s.name}</b></td>
+                <td>${s.played||0}</td><td>${s.won||0}</td><td>${s.lost||0}</td><td>${s.tied||0}</td>
+                <td align="center"><b>${s.points||0}</b></td>
+                <td>${s.runsScored||0}</td><td>${formatOvers(s.ballsFaced||0)}</td>
+                <td>${s.runsConceded||0}</td><td>${formatOvers(s.ballsBowled||0)}</td>
+                <td class="${nrrClass}">${nrrClass === 'nrr-pos' ? '+' : ''}${nrr}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
     }
 
-    const batsmen = getBestBatsmen(t.id).slice(0, 5);
+    // ── Batting Stats ───────────────────────────────────────────────────────────
     if (batsmen.length) {
-        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Top Performers - Batting</h2>
-            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
-                <thead style="background:#eee">
-                    <tr><th style="padding:8px; text-align:left">Player</th><th>Team</th><th>Runs</th><th>SR</th></tr>
-                </thead>
-                <tbody>
-                    ${batsmen.map(b => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${b.name}</td><td align="center">${b.team}</td><td align="center"><b>${b.runs}</b></td><td align="center">${b.sr}</td></tr>`).join('')}
-                </tbody>
-            </table>`;
+        html += `<div style="padding:0 40px;">
+        <div class="section-title">🏏 Tournament Batting Rankings</div>
+        <table>
+            <thead><tr><th>#</th><th>Player</th><th>Team</th><th>Runs</th><th>Balls</th><th>SR</th><th>4s</th><th>6s</th></tr></thead>
+            <tbody>`;
+        batsmen.slice(0, 10).forEach((b, i) => {
+            const rowClass = i === 0 ? 'rank1' : i === 1 ? 'rank2' : i === 2 ? 'rank3' : '';
+            html += `<tr class="${rowClass}">
+                <td>${i+1}</td><td><b>${b.name}</b></td><td>${b.team}</td>
+                <td><b>${b.runs}</b></td><td>${b.balls}</td><td>${b.sr}</td>
+                <td>${b.fours||0}</td><td>${b.sixes||0}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
     }
 
-    const bowlers = getBestBowlers(t.id).slice(0, 5);
+    // ── Bowling Stats ───────────────────────────────────────────────────────────
     if (bowlers.length) {
-        html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px">Top Performers - Bowling</h2>
-            <table style="width:100%; border-collapse:collapse; margin-bottom:30px">
-                <thead style="background:#eee">
-                    <tr><th style="padding:8px; text-align:left">Player</th><th>Team</th><th>Wkts</th><th>Econ</th></tr>
-                </thead>
-                <tbody>
-                    ${bowlers.map(b => `<tr><td style="padding:8px; border-bottom:1px solid #eee">${b.name}</td><td align="center">${b.team}</td><td align="center"><b>${b.wickets}</b></td><td align="center">${b.econ}</td></tr>`).join('')}
-                </tbody>
-            </table>`;
+        html += `<div style="padding:0 40px;">
+        <div class="section-title">🎳 Tournament Bowling Rankings</div>
+        <table>
+            <thead><tr><th>#</th><th>Player</th><th>Team</th><th>Wkts</th><th>Runs</th><th>Overs</th><th>Econ</th></tr></thead>
+            <tbody>`;
+        bowlers.slice(0, 10).forEach((b, i) => {
+            const rowClass = i === 0 ? 'rank1' : i === 1 ? 'rank2' : i === 2 ? 'rank3' : '';
+            html += `<tr class="${rowClass}">
+                <td>${i+1}</td><td><b>${b.name}</b></td><td>${b.team}</td>
+                <td><b>${b.wickets}</b></td><td>${b.runs}</td><td>${b.overs}</td><td>${b.econ}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
     }
 
-    const allMatches = t.matches.map(mId => DB.getMatch(mId)).filter(m => m);
-    html += `<h2 style="border-bottom:1px solid #ccc; padding-bottom:5px; page-break-before: always;">Fixtures & Results</h2>
-        <table style="width:100%; border-collapse:collapse">
-            <thead style="background:#eee">
-                <tr><th style="padding:8px; text-align:left">Match</th><th>Status</th><th>Result</th></tr>
-            </thead>
-            <tbody>
-                ${allMatches.map(m => {
-                    const statusLbl = m.status === 'completed' ? 'Finished' : m.status === 'live' ? 'LIVE' : 'Scheduled';
-                    const resultLbl = m.status === 'completed' ? m.result || m.resultSummary || 'Match Ended' : '-';
-                    return `<tr><td style="padding:8px; border-bottom:1px solid #eee"><b>${m.team1}</b> vs <b>${m.team2}</b></td><td align="center">${statusLbl}</td><td style="font-size:12px; color:#444">${resultLbl}</td></tr>`;
-                }).join('')}
-            </tbody>
-        </table>
-        <div style="margin-top:50px; text-align:center; font-size:12px; color:#888; border-top:1px solid #eee; padding-top:10px">Generated by SLCRICKPRO Performance Suite</div>
-    `;
+    // ── Match Scorecards ────────────────────────────────────────────────────────
+    const scorecardMatches = [...completedMatches, ...liveMatches];
+    if (scorecardMatches.length) {
+        html += `<div class="page-break" style="padding:0 40px;">
+        <div class="section-title">📋 Match Scorecards</div>`;
 
+        scorecardMatches.forEach(m => {
+            const inn0 = m.innings && m.innings[0];
+            const inn1 = m.innings && m.innings[1];
+            const isLive = m.status === 'live' || m.status === 'paused';
+
+            html += `<div style="margin-bottom:36px; border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
+                <div style="background:#1a237e; color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <span style="font-size:18px; font-weight:900;">${m.team1} vs ${m.team2}</span>
+                        <span style="font-size:12px; opacity:0.7; margin-left:10px;">${m.overs} ov · ${m.venue || 'Neutral'}</span>
+                    </div>
+                    <span style="font-size:11px; background:${isLive ? '#ff6d00' : '#2e7d32'}; padding:4px 10px; border-radius:20px; font-weight:700;">
+                        ${isLive ? (m.status === 'paused' ? 'PAUSED' : 'LIVE') : 'COMPLETED'}
+                    </span>
+                </div>`;
+
+            if (m.result) {
+                html += `<div class="${isLive ? 'live-banner' : 'result-banner'}">${isLive ? '⏸ ' : '🏆 '}${m.result}</div>`;
+            }
+
+            const renderInningsPDF = (inn, teamName) => {
+                if (!inn) return '';
+                const hasBat = inn.batsmen && inn.batsmen.length > 0;
+                const hasBowl = inn.bowlers && inn.bowlers.length > 0;
+
+                let s = `<div style="padding:16px 18px;">
+                    <div style="font-size:14px; font-weight:900; color:#1a237e; margin-bottom:10px;">
+                        ${teamName.toUpperCase()} — ${inn.runs||0}/${inn.wickets||0} (${formatOvers(inn.balls||0, m.ballsPerOver)} ov)
+                    </div>`;
+
+                if (hasBat) {
+                    s += `<table style="margin-bottom:10px;">
+                        <thead><tr><th>Batsman</th><th>Dismissal</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
+                        <tbody>`;
+                    inn.batsmen.forEach(b => {
+                        s += `<tr>
+                            <td><b>${b.name}</b></td>
+                            <td style="font-size:11px; color:#555;">${b.dismissal || (b.notOut ? 'not out' : 'dnb')}</td>
+                            <td><b>${b.runs||0}</b></td><td>${b.balls||0}</td>
+                            <td>${b.fours||0}</td><td>${b.sixes||0}</td>
+                            <td>${formatSR(b.runs||0, b.balls||0)}</td>
+                        </tr>`;
+                    });
+                    // Extras
+                    const ex = inn.extras || {};
+                    const exTotal = (ex.wides||0)+(ex.noBalls||0)+(ex.byes||0)+(ex.legByes||0);
+                    s += `<tr style="background:#f5f5f5;">
+                        <td colspan="2" style="color:#555;"><i>Extras (${exTotal}): Wd:${ex.wides||0} Nb:${ex.noBalls||0} By:${ex.byes||0} Lb:${ex.legByes||0}</i></td>
+                        <td colspan="5"></td>
+                    </tr></tbody></table>`;
+                } else {
+                    s += `<p style="color:#888; font-style:italic; font-size:12px;">Batting details not recorded.</p>`;
+                }
+
+                if (hasBowl) {
+                    s += `<table><thead><tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr></thead><tbody>`;
+                    inn.bowlers.forEach(b => {
+                        s += `<tr>
+                            <td><b>${b.name}</b></td>
+                            <td>${formatOvers(b.balls||0, m.ballsPerOver)}</td>
+                            <td>${b.maidens||0}</td>
+                            <td>${b.runs||0}</td>
+                            <td><b style="color:#c62828;">${b.wickets||0}</b></td>
+                            <td>${formatEcon(b.runs||0, b.balls||0, m.ballsPerOver)}</td>
+                        </tr>`;
+                    });
+                    s += `</tbody></table>`;
+                }
+
+                // Fall of Wickets
+                if (inn.fallOfWickets && inn.fallOfWickets.length) {
+                    s += `<div style="font-size:11px; color:#666; margin-top:6px;"><b>FOW:</b> ${
+                        inn.fallOfWickets.map((fw,j) => `${j+1}-${fw.runs} (${fw.batsmanName}, ${formatOvers(fw.balls, m.ballsPerOver)} ov)`).join(', ')
+                    }</div>`;
+                }
+
+                s += `</div>`;
+                return s;
+            };
+
+            if (inn0) html += renderInningsPDF(inn0, m.battingFirst || m.team1);
+            if (inn1) html += `<div style="border-top:2px dashed #e8eaf6;"></div>` + renderInningsPDF(inn1, m.fieldingFirst || m.team2);
+            html += `</div>`;
+        });
+        html += `</div>`;
+    }
+
+    // ── Fixtures Summary ────────────────────────────────────────────────────────
+    html += `<div style="padding:0 40px;">
+    <div class="section-title">📅 Fixtures &amp; Results</div>
+    <table>
+        <thead><tr><th>#</th><th>Match</th><th>Status</th><th>Result</th></tr></thead>
+        <tbody>`;
+    allTournMatches.forEach((m, i) => {
+        const st = m.status === 'completed' ? '<span class="badge badge-done">DONE</span>' 
+                 : (m.status === 'live' ? '<span class="badge badge-live">LIVE</span>' 
+                 : `<span class="badge badge-sched">${m.status.toUpperCase()}</span>`);
+        const result = m.status === 'completed' ? (m.result || 'Completed') : 
+                       (m.status === 'live' || m.status === 'paused') ? '(In progress)' : 'Scheduled';
+        html += `<tr>
+            <td>${i+1}</td>
+            <td><b>${m.team1}</b> vs <b>${m.team2}</b></td>
+            <td>${st}</td>
+            <td style="font-size:12px; color:#444;">${result}</td>
+        </tr>`;
+    });
+    html += `</tbody></table>
+    <div style="margin-top:40px; padding-top:16px; border-top:2px solid #f0f0f0; text-align:center; font-size:11px; color:#aaa; letter-spacing:2px; font-weight:700;">
+        GENERATED BY SLCRICKPRO PERFORMANCE MANAGEMENT SUITE · ${generatedAt}
+    </div>
+    </div></body></html>`;
+
+    // ── Render & Export ─────────────────────────────────────────────────────────
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed; top:0; left:-9999px; width:960px; background:#fff; z-index:9999; opacity:1; pointer-events:none;';
     container.innerHTML = html;
     document.body.appendChild(container);
-    
+
     const opt = {
-        margin: [10, 10],
-        filename: `Report_${t.name.replace(/\s+/g, '_')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        margin: [8, 0],
+        filename: `SLCRICKPRO_${t.name.replace(/\s+/g,'_')}_Report.pdf`,
+        image: { type: 'jpeg', quality: 0.97 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 800));
         await html2pdf().set(opt).from(container).save();
         showToast('🔥 Report Generated Successfully!', 'success');
     } catch (err) {
-        console.error(err);
-        showToast('❌ Failed to produce PDF', 'error');
+        console.error('PDF Error:', err);
+        showToast('❌ Failed to generate PDF', 'error');
     } finally {
         container.remove();
     }
