@@ -267,20 +267,32 @@
 @media (max-width: 1000px) {
     .scorer-layout {
         grid-template-columns: 1fr;
-        padding: 16px;
-        gap: 16px;
+        padding: 12px;
+        gap: 12px;
+        display: flex;
+        flex-direction: column;
     }
     
-    .input-column {
-        order: -1; /* Move controls to top for easier access or keep below score? User said 'lesi widiyata' */
-        /* Actually, keeping score on top and balls below is standard. But on mobile, we might want balls even higher. */
+    .input-column, .stats-column {
+        display: contents; /* Allows children cards to be reordered by parent flex/grid */
     }
-}
 
-@media (max-width: 1000px) {
-    .scorer-layout {
-        grid-template-columns: 1fr;
-    }
+    /* PRIORITIZE SCORING & STATS FOR MOBILE */
+    #card-striker { order: 1; }
+    #card-buttons { order: 2; margin-bottom: 8px !important; }
+    #card-history { order: 3; margin-bottom: 8px !important; } 
+    #card-batting { order: 4; }
+    #card-bowling { order: 5; }
+    #card-partnership { order: 6; }
+    #card-fow { order: 7; }
+    #card-controls { order: 8; }
+    #card-broadcast { order: 9; margin-top: 10px !important; }
+
+    /* Compact scroll banner on small mobile */
+    .sb-score { font-size: 32px !important; }
+    .sb-team-name { font-size: 11px !important; }
+    .sb-team { min-width: 110px !important; }
+    .score-banner { padding: 10px 12px 6px !important; }
 }
 
 /* Scorer Columns */

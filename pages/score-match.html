@@ -261,7 +261,7 @@
             <div class="stats-column">
 
                 <!-- Batting -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-batting" style="margin-bottom:16px">
                     <div class="card-head">⚾ Batting</div>
                     <table class="data-table">
                         <thead>
@@ -296,7 +296,7 @@
                 </div>
 
                 <!-- Bowling -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-bowling" style="margin-bottom:16px">
                     <div class="card-head">
                         <svg class="svg-icon" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff1744"><use href="#icon-leather-bowler"></use></svg>
                         Bowling
@@ -326,7 +326,7 @@
                 </div>
 
                 <!-- Partnership & FoW -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-partnership" style="margin-bottom:16px">
                     <div class="card-head">🤝 Partnership</div>
                     <div style="display:flex;gap:24px;padding:8px 0">
                         <div class="stat-box" style="flex:1">
@@ -345,7 +345,7 @@
                 </div>
 
                 <!-- Fall of Wickets -->
-                <div class="card">
+                <div class="card" id="card-fow">
                     <div class="card-head">💥 Fall of Wickets</div>
                     <div id="fow-list" style="font-size:12px;color:var(--c-muted)">No wickets yet</div>
                 </div>
@@ -355,7 +355,7 @@
             <div class="input-column">
 
                 <!-- Striker toggle -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-striker" style="margin-bottom:16px">
                     <div class="card-head">On Strike</div>
                     <div class="striker-toggle" id="striker-toggle">
                         <button class="striker-opt active" id="striker-opt-0" onclick="setStriker(0)">
@@ -369,7 +369,7 @@
                 </div>
 
                 <!-- Ball buttons -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-buttons" style="margin-bottom:16px">
                     <div class="card-head">Record Ball</div>
                     <div class="ball-grid">
                         <button class="ball-btn b-dot" onclick="recordBall({type:'dot',runs:0})">
@@ -412,7 +412,7 @@
                 </div>
 
                 <!-- Undo / Redo -->
-                <div class="card" style="margin-bottom:16px">
+                <div class="card" id="card-history" style="margin-bottom:16px">
                     <div class="card-head">History</div>
                     <div style="display:flex;gap:10px">
                         <button class="btn btn-ghost btn-full" onclick="undoAction()" id="undo-btn">↩ Undo</button>
@@ -423,7 +423,7 @@
                 </div>
 
                 <!-- Publish & Controls -->
-                <div class="card">
+                <div class="card" id="card-controls">
                     <div class="card-head">Match Controls</div>
                     <div style="display:flex;flex-direction:column;gap:10px">
                         <label class="toggle-row" id="publish-toggle-row">
@@ -443,7 +443,7 @@
                 </div>
 
                 <!-- BROADCAST CONTROL PANEL (Master UI) -->
-                <div class="card" style="margin-top:20px; border: 2px solid #7c4dff; background: rgba(124,77,255,0.03); box-shadow: 0 10px 30px rgba(124,77,255,0.1)">
+                <div class="card" id="card-broadcast" style="margin-top:20px; border: 2px solid #7c4dff; background: rgba(124,77,255,0.03); box-shadow: 0 10px 30px rgba(124,77,255,0.1)">
                     <div class="card-head" style="color:#7c4dff; font-weight:950; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(124,77,255,0.2)">
                         <span>📡 BROADCAST MASTER CONTROL</span>
                         <span style="font-size:10px; background:#7c4dff; color:#fff; padding:2px 8px; border-radius:10px; letter-spacing:1px">PRO V4.0</span>
