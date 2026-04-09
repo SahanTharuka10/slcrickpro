@@ -139,7 +139,22 @@ function handleHotkeyKeydown(evt) {
 
 function updateHotkeyDashboard(match) {
     const scoreEl = document.getElementById('hotkeyScore');
-    if (scoreEl) scoreEl.innerText = `${match.runs}/${match.wickets} (Overs ${match.overs}.${match.ballsInOver})`;
+    if (scoreEl) {
+        const inn = (match.innings && match.innings[match.currentInnings || 0]) || {};
+        const runs = inn.runs || 0;
+        const wickets = inn.wickets || 0;
+        const balls = inn.balls || 0;
+        const bpo = match.ballsPerOver || 6;
+        
+        // Use generic format if formatOvers is missing, but it should be there via db.js
+        const oversStr = (typeof formatOvers === 'function') 
+            ? formatOvers(balls, bpo) 
+            : `${Math.floor(balls / bpo)}.${balls % bpo}`;
+
+        scoreEl.innerText = `${runs}/${wickets} (${oversStr})`;
+    }
     const lastEl = document.getElementById('hotkeyLast');
-    if (lastEl) lastEl.innerText = `Last modified: ${match.lastModifiedByDevice} @ ${new Date(match.lastUpdatedAt).toLocaleTimeString()}`;
+    if (lastEl && match.lastUpdatedAt) {
+        lastEl.innerText = `Last mod: ${match.lastModifiedByDevice || 'Remote'} @ ${new Date(match.lastUpdatedAt).toLocaleTimeString()}`;
+    }
 }

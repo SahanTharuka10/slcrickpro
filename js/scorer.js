@@ -3178,6 +3178,38 @@ function renderBroadcastController(match) {
             .v-w { border: 2px solid #f43f5e; color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
             
             .v-trigger:active { transform: scale(0.95); opacity: 0.7; }
+
+            /* Mobile Fixes for Broadcast Controller */
+            @media (max-width: 900px) {
+                .broadcast-controller-content {
+                    padding: 16px;
+                }
+                .broadcast-main-grid {
+                    grid-template-columns: 1fr !important;
+                    gap: 20px !important;
+                }
+                .b-grid {
+                    grid-template-columns: 1fr 1fr !important;
+                }
+                .b-btn {
+                    min-height: 70px;
+                    padding: 12px;
+                }
+                .b-btn-title {
+                    font-size: 12px;
+                }
+            }
+
+            @media (max-width: 600px) {
+                .broadcast-header {
+                    flex-direction: column;
+                    align-items: flex-start !important;
+                    gap: 12px;
+                }
+                .b-grid {
+                    grid-template-columns: 1fr !important;
+                }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -3189,20 +3221,29 @@ function renderBroadcastController(match) {
     if (window._broadcastSyncInterval) clearInterval(window._broadcastSyncInterval);
     if (window._handleRemoteHotkey) document.removeEventListener('keydown', window._handleRemoteHotkey);
 
-    wrapper.innerHTML = `
+        // Resolve current score for header
+        const inn = (match.innings && match.innings[match.currentInnings || 0]) || { runs:0, wickets:0, balls:0 };
+        const scoreStr = `${inn.runs}/${inn.wickets} (${typeof formatOvers === 'function' ? formatOvers(inn.balls, match.ballsPerOver || 6) : inn.balls})`;
+
+        wrapper.innerHTML = `
     <div class="broadcast-controller-content" style="max-width:1100px;">
         <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div class="broadcast-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <div>
                 <div style="font-size: 10px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px;">Remote Station</div>
                 <div style="font-size: 24px; font-weight: 950; letter-spacing: -0.5px; color: #fff;">BROADCAST MASTER</div>
             </div>
-            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px;">
-                CONNECTED • ${match.team1} vs ${match.team2}
+            <div style="display:flex; align-items:center; gap:12px">
+                <div id="hotkeyScore" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px;">
+                    ${scoreStr}
+                </div>
+                <div style="background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.2); padding: 8px 16px; border-radius: 12px; color: #00e676; font-weight: 900; font-size: 11px;">
+                    LIVE • ${match.team1} vs ${match.team2}
+                </div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 280px 1fr 280px; gap: 24px; align-items: start;">
+        <div class="broadcast-main-grid" style="display: grid; grid-template-columns: 280px 1fr 280px; gap: 24px; align-items: start;">
             
             <!-- LEFT COLUMN: INSTANT TRIGGERS & PROMOS -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -3480,6 +3521,13 @@ function renderBroadcastController(match) {
 
     // Dynamic Live Sync Function
     const updatePreviewSync = (m) => {
+        // Update local score if available
+        const scoreEl = document.getElementById('hotkeyScore');
+        if (scoreEl && m.innings) {
+            const inn = m.innings[m.currentInnings || 0] || { runs:0, wickets:0, balls:0 };
+            scoreEl.innerText = `${inn.runs}/${inn.wickets} (${typeof formatOvers === 'function' ? formatOvers(inn.balls, m.ballsPerOver || 6) : inn.balls})`;
+        }
+        
         // Sync to iframe preview
         const frame = document.getElementById('broadcast-preview-frame');
         if (frame && frame.contentWindow) {
