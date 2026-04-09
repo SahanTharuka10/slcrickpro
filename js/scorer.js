@@ -1928,6 +1928,17 @@ function showMatchResult() {
     }
 
     m.result = resultText;
+    
+    // Auto-cleanup tournament rosters on match end as requested
+    if (m.tournamentId) {
+        const t = DB.getTournament(m.tournamentId);
+        if (t && t.rosters) {
+            delete t.rosters[m.team1];
+            delete t.rosters[m.team2];
+            DB.saveTournament(t);
+            console.log(`🧹 Cleaned up rosters for ${m.team1} and ${m.team2} on match completion.`);
+        }
+    }
     DB.saveMatch(m);
 
     // Update tournament
@@ -2523,41 +2534,23 @@ function onRosterSlotClick(idx) {
     openRosterEditor(editingTeamName);
 }
 
-function onRosterPhotoClick(idx) {
+window.onRosterPhotoClick = function(idx) {
+    pendingRosterSlotToRegister = idx;
+    const input = document.getElementById(`roster-name-${idx}`);
+    pendingRosterName = input ? input.value : '';
+    document.getElementById('roster-photo-file-input').click();
+};
+
+function assignRosterSlot(idx, playerOrId) {
     const t = currentTournament;
     if (!t || !editingTeamName) return;
-
-    const roster = t.rosters?.[editingTeamName] || [];
-    const currentValue = roster[idx] || '';
-    const player = resolveRosterPlayer(currentValue);
-
-    pendingRosterSlotToRegister = idx;
-    pendingRosterName = player ? player.name : currentValue;
-    if (!pendingRosterName) {
-        const namePrompt = prompt(`Enter name for player slot ${idx + 1}:`);
-        if (!namePrompt) return;
-        pendingRosterName = namePrompt.trim();
-    }
-
-    const fileInput = document.getElementById('roster-photo-file-input');
-    if (fileInput) {
-        fileInput.value = '';
-        fileInput.click();
-    }
-}
-
-function assignRosterSlot(idx, player) {
-    const t = currentTournament;
-    if (!t || !editingTeamName || !player) return;
-
     if (!t.rosters) t.rosters = {};
-    const roster = t.rosters[editingTeamName] || [];
-    roster[idx] = player.playerId || player.name;
-    t.rosters[editingTeamName] = roster;
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    t.rosters[editingTeamName][idx] = typeof playerOrId === 'string' ? playerOrId : playerOrId.playerId;
     DB.saveTournament(t);
-
     openRosterEditor(editingTeamName);
 }
+
 
 function onRosterPhotoFileSelected(e) {
     const file = e.target.files && e.target.files[0];
@@ -2581,6 +2574,8 @@ function onRosterPhotoFileSelected(e) {
         // If the input contains a name but not a player object, create on first upload
         if (!player && pendingRosterName) {
             player = DB.addPlayer({ name: pendingRosterName, photo: imageData, role: 'Player' });
+        } else if (!player && existingValue) {
+             player = DB.addPlayer({ name: existingValue, photo: imageData, role: 'Player' });
         }
 
         // If we found an existing player, update their photo
@@ -2608,17 +2603,20 @@ function openRosterEditor(teamName) {
     if (!editingTeamName) return;
 
     if (!t.rosters) t.rosters = {};
-    const roster = t.rosters[editingTeamName] || [];
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    
+    const roster = t.rosters[editingTeamName];
+    // Ensure at least 11 slots are shown
+    const slotCount = Math.max(11, roster.length);
     
     const listEl = document.getElementById('tm-teams-list');
     if (!listEl) return;
 
     let inputsHtml = '';
-
     const allPlayers = DB.getPlayers();
     let datalistOptions = allPlayers.map(p => `<option value="${escapeHTML(p.name)}">`).join('');
 
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < slotCount; i++) {
         const slotValue = roster[i] || '';
         const player = resolveRosterPlayer(slotValue);
         const displayName = player ? player.name : slotValue;
@@ -2627,15 +2625,20 @@ function openRosterEditor(teamName) {
         inputsHtml += `
             <div class="roster-slot" style="display:flex;align-items:center;gap:12px;margin-bottom:12px; background:rgba(255,255,255,0.03); padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
                 <div style="width:20px;font-size:10px;opacity:0.3;font-weight:900;text-align:center">${i + 1}</div>
+                <div style="position:relative; width:40px; height:40px; flex-shrink:0; cursor:pointer;" onclick="onRosterPhotoClick(${i})">
+                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,0.1)" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'">
+                    <div style="position:absolute; bottom:-2px; right:-2px; background:var(--c-primary); width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white; border:1px solid #000">📷</div>
+                </div>
                 <div style="flex:1;display:flex;align-items:center;gap:8px">
                     <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
                            value="${escapeHTML(displayName)}" placeholder="Type player name..." 
                            oninput="onRosterInputChanged(${i}, this.value)"
-                           onkeydown="if(event.key==='Enter'){event.preventDefault(); onRosterSlotClick(${i});}"
+                           onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
                            style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0" autocomplete="off" />
                     <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">Edit Name</button>
                 </div>
-                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:120px; text-align:right; font-weight:600">${player ? '✔ Profile' : ''}</div>
+                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:80px; text-align:right; font-weight:600">${player ? '✔ Profile' : ''}</div>
             </div>
         `;
     }
@@ -2654,6 +2657,7 @@ function openRosterEditor(teamName) {
 
         <div class="roster-container" style="padding-bottom:10px">
             ${inputsHtml}
+            <button class="btn btn-sm btn-ghost" style="width:100%; border:1px dashed rgba(255,255,255,0.1); border-radius:12px; height:44px; margin-top:4px" onclick="addRosterSlot()">➕ Add More Player Out of 11</button>
         </div>
 
         <div style="margin-top:20px; position:sticky; bottom:0; padding-top:10px; background:var(--c-bg)">
@@ -2661,6 +2665,15 @@ function openRosterEditor(teamName) {
             <input id="roster-photo-file-input" type="file" accept="image/*" style="display:none" onchange="onRosterPhotoFileSelected(event)">
         </div>
     `;
+}
+
+function addRosterSlot() {
+    const t = currentTournament;
+    if (!t || !editingTeamName) return;
+    if (!t.rosters) t.rosters = {};
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    t.rosters[editingTeamName].push('');
+    openRosterEditor(editingTeamName);
 }
 
 window.onRosterInputChanged = function(idx, val) {
@@ -2684,7 +2697,7 @@ window.onRosterInputChanged = function(idx, val) {
     }
 };
 
-function saveRoster(teamName) {
+function saveRoster(teamName, silent = false) {
     const t = currentTournament;
     if (!t) return;
     
@@ -2709,7 +2722,7 @@ function saveRoster(teamName) {
             return;
         }
 
-        // Create unregistered player entry with fallback photo
+        // Create/Update player entry
         const created = DB.addPlayer({
             name: nameOrId,
             photo: DEFAULT_PLAYER_PHOTO,
@@ -2722,8 +2735,10 @@ function saveRoster(teamName) {
     t.rosters[teamName] = newRoster;
     
     DB.saveTournament(t);
-    showToast('Roster saved for ' + teamName, 'success');
-    renderTournamentTeams();
+    if (!silent) {
+        showToast('Roster saved for ' + teamName, 'success');
+        renderTournamentTeams();
+    }
 }
 
 
@@ -3262,7 +3277,7 @@ function renderBroadcastController(match) {
                 <div style="font-size: 24px; font-weight: 950; letter-spacing: -0.5px; color: #fff;">BROADCAST MASTER</div>
             </div>
             <div style="display:flex; align-items:center; gap:12px">
-                <div id="hotkeyScore" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px;">
+                <div id="hotkeyScore" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px; cursor:pointer" title="Switch Match" onclick="openTournamentHub(currentMatch?.tournamentId)">
                     ${scoreStr}
                 </div>
                 <div style="background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.2); padding: 8px 16px; border-radius: 12px; color: #00e676; font-weight: 900; font-size: 11px;">
@@ -3353,6 +3368,22 @@ function renderBroadcastController(match) {
                         <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}" style="width:100%; height:100%; border:none; pointer-events:none;" scrolling="no"></iframe>
                     </div>
                     <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview</div>
+                    
+                    <!-- Manual Photo Triggers -->
+                    <div style="background:rgba(255,255,255,0.03); border-radius:18px; padding:15px; border:1px solid rgba(255,255,255,0.08); margin-top:12px">
+                        <div class="b-section-title">📷 MANUAL PHOTO INJECTORS</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                            <div style="text-align:center">
+                                <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(59, 130, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
+                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#3b82f6">STRIKER PHOTO</div>
+                            </div>
+                            <div style="text-align:center">
+                                <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(139, 92, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
+                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#8b5cf6">BOWLER PHOTO</div>
+                            </div>
+                        </div>
+                        <input type="file" id="manual-photo-input" style="display:none" accept="image/*" onchange="onManualPhotoSelected(event)">
+                    </div>
                 </div>
 
                 <!-- PLAYER & TEAM GRAPHICS -->
@@ -3365,8 +3396,6 @@ function renderBroadcastController(match) {
                                     <div class="b-btn-title">⚡ STRIKER PROFILE</div>
                                     <div class="b-btn-sub">Single batter stats card</div>
                                 </div>
-                                <div style="display:flex; gap:4px; align-items:center">
-                                    <div title="Override Photo for Striker" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
                                          onclick="event.stopPropagation(); document.getElementById('file_striker').click();" id="preview_striker"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
@@ -3607,4 +3636,30 @@ function renderBroadcastController(match) {
         socket.emit('join_match', match.id);
         console.log('📡 Remote Controller Joined:', match.id);
     }
+
+    // Manual Photo Override Logic
+    window._pendingManualPhotoType = null;
+    window.triggerManualPhoto = function(type) {
+        window._pendingManualPhotoType = type;
+        document.getElementById('manual-photo-input').click();
+    };
+
+    window.onManualPhotoSelected = function(e) {
+        const file = e.target.files[0];
+        if (!file || !window._pendingManualPhotoType) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = event.target.result;
+            if (window._pendingManualPhotoType === 'striker') {
+                window.__photo_striker = data;
+                const el = document.getElementById('preview_striker');
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+            } else {
+                window.__photo_bowler = data;
+                const el = document.getElementById('preview_bowler');
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 }
