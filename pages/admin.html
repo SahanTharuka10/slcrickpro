@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/main.css" />
     <style>
         .admin-section {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 40px 24px;
         }
@@ -66,6 +66,34 @@
         .product-card h4 {
             font-size: 16px;
             margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .admin-section {
+                padding: 20px 15px;
+            }
+            .request-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .admin-tabs {
+                flex-wrap: wrap !important;
+                gap: 6px !important;
+                border-bottom: none !important;
+            }
+            .admin-tabs .btn {
+                flex: 1 1 40%;
+                font-size: 11px !important;
+                padding: 8px !important;
+            }
+            .tab-players > div:first-child {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            #admin-player-search {
+                width: 100% !important;
+            }
         }
     </style>
 </head>

@@ -10,6 +10,41 @@
     .reg-layout {
         grid-template-columns: 1fr;
     }
+    
+    .player-id-preview {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .tab-bar {
+        margin-bottom: 20px !important;
+    }
+    
+    .id-body {
+        padding: 15px;
+    }
+    
+    .id-number {
+        font-size: 18px;
+    }
+    
+    .id-name {
+        font-size: 15px;
+    }
+
+    .lookup-card {
+        padding: 16px;
+    }
+
+    .lookup-id {
+        font-size: 22px;
+    }
+    
+    .lookup-name {
+        font-size: 18px;
+    }
 }
 
 /* Player ID Card */

@@ -782,3 +782,98 @@
     background: rgba(255,255,255,0.1);
     border-radius: 10px;
 }
+@media (max-width: 768px) {
+    .setup-tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .setup-tab-btn {
+        max-width: none;
+        padding: 12px;
+    }
+
+    .match-type-selector {
+        gap: 12px;
+    }
+    
+    .type-btn {
+        min-width: 140px;
+        padding: 16px;
+    }
+
+    .score-banner {
+        top: 50px; /* Adjust for mobile header */
+        padding: 12px 16px;
+    }
+
+    .sb-score {
+        font-size: 32px;
+    }
+
+    .sb-crr-val {
+        font-size: 20px;
+    }
+
+    .sb-team {
+        min-width: auto;
+    }
+
+    .sb-team-name {
+        font-size: 11px;
+    }
+
+    .ball-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .ball-btn {
+        padding: 16px 8px; /* Larger touch area */
+    }
+
+    .scorer-layout {
+        padding: 10px;
+    }
+
+    .overlay-card {
+        min-width: 90% !important;
+        padding: 16px !important;
+    }
+
+    .overlay-title {
+        font-size: 22px !important;
+    }
+    
+    .roster-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .player-main-info {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ball-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .sb-center {
+        display: none; /* Hide CRR in center to save space if needed, or shrink it further */
+    }
+    
+    .sb-score {
+        font-size: 28px;
+    }
+    
+    .over-balls-strip {
+        gap: 4px;
+    }
+    
+    .obs-chip {
+        width: 32px;
+        height: 32px;
+        font-size: 11px;
+    }
+}

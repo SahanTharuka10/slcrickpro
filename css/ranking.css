@@ -38,3 +38,13 @@
     font-size: 20px;
     margin-right: 4px;
 }
+
+@media (max-width: 600px) {
+    .team-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .team-card {
+        padding: 16px;
+    }
+}

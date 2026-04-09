@@ -220,18 +220,32 @@ a:hover {
   }
 }
 
-/* Mobile Performance Optimizations */
+/* Mobile Performance & Layout Optimizations */
 @media (max-width: 768px) {
   .bg-orb {
-    filter: blur(60px); /* Reduced from 120px for GPU performance */
+    filter: blur(60px); 
     opacity: 0.12;
-    animation-duration: 20s; /* Slower animations to reduce CPU load */
+    animation-duration: 20s;
   }
   .particle {
-    display: none; /* Disable particles on mobile for maximum speed */
+    display: none; 
   }
   .bg-canvas {
-    background: var(--c-bg); /* Ensure solid background if orbs are too light */
+    background: var(--c-bg); 
+  }
+  
+  /* Global Layout Fixes */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .card {
+    padding: 20px !important;
+  }
+  
+  .section-hd {
+    font-size: 20px !important;
   }
 }
 
@@ -529,6 +543,22 @@ body.light-mode .back-btn {
   color: var(--c-text);
 }
 
+@media (max-width: 768px) {
+  .sub-header {
+    padding: 10px 15px !important;
+    gap: 12px !important;
+    flex-wrap: wrap;
+  }
+  .back-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .sub-header .logo-name-animated {
+    font-size: 18px;
+  }
+}
+
 /* ========== HERO ========== */
 .hero-section {
   position: relative;
@@ -608,12 +638,25 @@ body.light-mode .back-btn {
 
 @media (max-width: 380px) {
   .nav-card {
-    min-height: 260px;
-    padding: 20px 16px;
+    min-height: auto;
+    padding: 24px 20px;
   }
   
   .card-title {
-    font-size: 17px;
+    font-size: 18px;
+  }
+  
+  .card-icon-wrap {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .card-icon {
+    font-size: 24px;
+  }
+
+  .logo-name-animated {
+    font-size: 20px;
   }
 }
 
@@ -1416,9 +1459,67 @@ body.light-mode .back-btn {
 .premium-logo { height: 42px; width: auto; border-radius: 4px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); transition: transform 0.2s ease; }
 .premium-logo:hover { transform: scale(1.08); }
 /* UI STABILITY & MOBILE WRAPS */
-.table-container, .data-table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; border-radius: 8px; background: var(--c-bg-card); border: 1px solid var(--c-border); }
-.data-table { min-width: 600px; }
-@media (max-width: 768px) { .premium-logo { height: 32px; } .logo-text { display: none; } .tab-bar { overflow-x: auto; display: flex; padding-bottom: 5px; gap: 8px; } .tab-btn { white-space: nowrap; flex-shrink: 0; } }
+.table-container, .data-table-wrapper { 
+    width: 100%; 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch; 
+    margin-bottom: 20px; 
+    border-radius: 8px; 
+    background: rgba(255, 255, 255, 0.02); 
+    border: 1px solid var(--c-border); 
+}
+.data-table { 
+    width: 100%;
+    min-width: 700px; /* Force scroll on very small screens */
+    border-collapse: collapse;
+}
+
+@media (max-width: 768px) { 
+    .premium-logo { height: 32px; } 
+    .logo-text { display: none; } 
+    .logo-tag-animated { font-size: 9px; }
+    
+    .tab-bar { 
+        overflow-x: auto; 
+        display: flex; 
+        padding-bottom: 5px; 
+        gap: 8px; 
+        scrollbar-width: none;
+    } 
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn { white-space: nowrap; flex-shrink: 0; padding: 10px 16px !important; } 
+
+    /* Hero adjustments */
+    .hero-title {
+        font-size: 38px !important;
+        line-height: 1.1;
+    }
+    .hero-sub {
+        font-size: 15px !important;
+    }
+
+    /* Modal responsiveness */
+    .modal-box {
+        width: 95% !important;
+        padding: 20px !important;
+        margin: 10px !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .modal-title {
+        font-size: 18px !important;
+    }
+
+    /* Form responsiveness */
+    .form-group {
+        width: 100% !important;
+    }
+    
+    .header-inner {
+        padding: 10px 15px;
+    }
+}
 
 /* DYNAMIC LOGO ANIMATION SYSTEM */
 .logo-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; position: relative; padding: 10px; }
