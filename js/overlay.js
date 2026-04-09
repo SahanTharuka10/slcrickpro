@@ -375,22 +375,55 @@ function showRunsBallsGraphic(data) {
 }
 
 function showNextMatchGraphic(data) {
-    const el = document.getElementById('broadcast-next-match');
-    if (!el) return;
-    
-    document.getElementById('nm-team-a').textContent = data.teamA || 'TBD';
-    document.getElementById('nm-team-b').textContent = data.teamB || 'TBD';
-    
-    el.style.display = 'flex';
-    // Cinematic entrance
-    gsap.fromTo(el, { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.8, ease: 'power3.out' });
-    gsap.from('.nm-artwork', { y: 60, opacity: 0, duration: 1, delay: 0.2, ease: 'expo.out' });
-    
-    // Auto-hide after 8 seconds
-    if (window._nmTimeout) clearTimeout(window._nmTimeout);
-    window._nmTimeout = setTimeout(() => {
-        gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.8, ease: 'power3.in', onComplete: () => el.style.display = 'none' });
-    }, 8000);
+    const teamA = data.teamA || 'TBD';
+    const teamB = data.teamB || 'TBD';
+
+    // Remove existing if any
+    const existing = document.getElementById('nm-wrapper');
+    if(existing) existing.remove();
+
+    const html = `
+        <div id="next-match-popup" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%) scale(0.9); opacity:0; z-index:20000; font-family:'Outfit', sans-serif;">
+            <div style="background:linear-gradient(135deg, rgba(20, 20, 35, 0.95), rgba(5, 5, 10, 0.98)); 
+                border-radius:30px; border:2px solid rgba(230,27,77,0.5); padding:50px 70px; text-align:center;
+                box-shadow: 0 40px 100px rgba(0,0,0,0.95), 0 0 60px rgba(230,27,77,0.3); backdrop-filter:blur(20px);">
+                
+                <div style="background:#e61b4d; color:#fff; display:inline-block; padding:10px 40px; border-radius:25px; 
+                    font-size:18px; font-weight:900; letter-spacing:5px; margin-bottom:40px; position:absolute; top:-25px; left:50%; transform:translateX(-50%); box-shadow:0 10px 20px rgba(230,27,77,0.5);">
+                    COMING UP NEXT
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:60px;">
+                    <div style="font-size:62px; font-weight:950; color:#fff; text-shadow:0 10px 20px rgba(0,0,0,0.5);">${teamA.toUpperCase()}</div>
+                    <div style="width:80px; height:80px; background:#e61b4d; border-radius:50%; display:flex; align-items:center; justify-content:center; 
+                        color:#fff; font-size:30px; font-weight:900; font-style:italic; box-shadow:0 0 30px rgba(230,27,77,0.6); flex-shrink:0;">VS</div>
+                    <div style="font-size:62px; font-weight:950; color:#fff; text-shadow:0 10px 20px rgba(0,0,0,0.5);">${teamB.toUpperCase()}</div>
+                </div>
+                
+                <div style="margin-top:50px; font-size:16px; color:rgba(255,255,255,0.3); font-weight:800; letter-spacing:8px;">
+                    SLCRICKPRO LIVE PRODUCTION
+                </div>
+            </div>
+        </div>
+    `;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'nm-wrapper';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+
+    if (typeof gsap !== 'undefined') {
+        gsap.to('#next-match-popup', { scale: 1, opacity: 1, duration: 1, ease: 'elastic.out(1, 0.6)' });
+        
+        if (window._nmTimeout) clearTimeout(window._nmTimeout);
+        window._nmTimeout = setTimeout(() => {
+            gsap.to('#next-match-popup', { scale: 0.9, opacity: 0, y: 50, duration: 0.6, ease: 'power3.in', onComplete: () => wrapper.remove() });
+        }, 8000);
+    } else {
+        document.getElementById('next-match-popup').style.opacity = 1;
+        document.getElementById('next-match-popup').style.transform = 'translate(-50%, -50%)';
+        setTimeout(() => wrapper.remove(), 8000);
+    }
 }
 
 // Milestone Graphic Removed as per User Request
@@ -626,6 +659,12 @@ function _renderOverlayFromMatch(m) {
     if (!container) return;
     const curInn = m.innings[m.currentInnings];
     if (!curInn) { container.style.display = 'none'; return; }
+    
+    // Performance optimization: prevent unnecessary DOM re-renders
+    const matchFingerprint = JSON.stringify(m);
+    if (window._lastOverlayFingerprint === matchFingerprint && container.style.display !== 'none' && container.innerHTML !== '') return;
+    window._lastOverlayFingerprint = matchFingerprint;
+
     container.style.display = 'flex';
 
     const t1Short = getShortName(curInn.battingTeam || 'T1');
@@ -1482,13 +1521,13 @@ function showBowlerProfileGraphic(data) {
         } else div.remove();
     }, 12000);
 }
+
 function showBigEventGraphic(data) {
     if (!data) return;
     const { type, playerName, playerPhoto, playerRuns, playerBalls, bowlerName, teamName, matchScore } = data;
     
     let themeColor = '#FFD700'; // Gold
     let label = type === 'WICKET' ? 'WICKET' : (type === 'SIX' ? 'SIX!' : 'FOUR!');
-    let bgGradient = 'linear-gradient(135deg, rgba(10,10,20,0.98), rgba(0,0,0,1))';
     let accentColor = '#FFC107'; 
 
     if (type === 'SIX') {
@@ -1499,67 +1538,45 @@ function showBigEventGraphic(data) {
         accentColor = '#ff8a80';
     }
 
-    const labelHtml = label.split('').map(char => `<span class="be-char" style="display:inline-block">${char}</span>`).join('');
+    const existing = document.getElementById('big-event-wrapper');
+    if(existing) existing.remove();
 
     const html = `
-        <div id="big-event-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; 
-            align-items:center; justify-content:center; background:${bgGradient}; z-index:20000; overflow:hidden; font-family:'Outfit', sans-serif; transform: scale(0.8)">
+        <div id="big-event-pop" style="position:fixed; bottom:120px; left:50%; transform:translate(-50%, 50px); opacity:0; z-index:20000; font-family:'Outfit', sans-serif; display:flex; flex-direction:column; align-items:center;">
             
-            <!-- Animated Background Particles/Glows -->
-            <div id="be-glow-main" style="position:absolute; width:1200px; height:1200px; background:radial-gradient(circle, ${themeColor}15 0%, transparent 70%); 
-                filter:blur(80px); border-radius:50%; opacity:0"></div>
-            
-            <div id="be-light-streak-1" style="position:absolute; width:150%; height:300px; background:linear-gradient(90deg, transparent, ${themeColor}11, transparent); 
-                transform:rotate(-35deg) translateY(-300%); filter:blur(60px)"></div>
-
-            <!-- Cinematic Decorative Borders (NEW Artwork) -->
-            <div class="be-border" style="position:absolute; top:20px; left:20px; right:20px; bottom:20px; border:1px solid rgba(255,255,255,0.05); pointer-events:none; border-radius:30px"></div>
-            <div class="be-border-accent" style="position:absolute; top:60px; left:60px; right:60px; bottom:60px; border:2px solid ${themeColor}22; pointer-events:none; border-radius:20px; opacity:0"></div>
-            
-            <!-- Content Container -->
-            <div id="big-event-container" style="position:relative; width:100%; display:flex; flex-direction:column; align-items:center; transform:perspective(1500px) rotateX(20deg); opacity:0">
+            <div id="be-popup-card" style="position:relative; width:auto; min-width:650px; background:linear-gradient(135deg, rgba(15,18,30,0.98), rgba(5,5,10,0.98)); 
+                border-top:6px solid ${themeColor}; border-radius:30px; padding:35px 50px; 
+                box-shadow: 0 40px 80px rgba(0,0,0,0.9), 0 0 50px ${themeColor}33; backdrop-filter:blur(20px); overflow:visible;">
                 
-                <!-- Match Context Bar -->
-                <div id="be-match-context" style="margin-bottom:40px; opacity:0; transform:translateY(-20px)">
-                    <span style="color:rgba(255,255,255,0.4); letter-spacing:4px; font-weight:700; font-size:14px; text-transform:uppercase">
-                        ${teamName} • ${matchScore}
-                    </span>
+                <!-- LABEL BADGE -->
+                <div style="position:absolute; top:-35px; left:50%; transform:translateX(-50%); 
+                    background:${themeColor}; color:${type === 'SIX' ? '#fff' : '#111'}; padding:12px 50px; border-radius:40px; 
+                    font-size:36px; font-weight:950; letter-spacing:8px; box-shadow: 0 15px 30px ${themeColor}66; z-index:2;">
+                    ${label}
                 </div>
-
-                <!-- Main Event Text -->
-                <div id="be-main-text" style="font-size:130px; font-weight:900; color:#fff; letter-spacing:15px; 
-                    text-shadow: 0 15px 30px rgba(0,0,0,0.4), 0 0 50px ${themeColor}33; 
-                    margin-bottom:20px; text-transform:uppercase; filter: drop-shadow(0 0 10px #fff)">${labelHtml}</div>
-
-                <!-- PLAYER CARD (The "WOW" Component) -->
-                <div id="be-player-card" style="display:flex; align-items:center; gap:25px; padding:15px 30px; 
-                    background:rgba(255,255,255,0.03); backdrop-filter:blur(30px); border:2px solid ${themeColor}44; 
-                    border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,0.5); opacity:0; transform:translateY(50px);
-                    box-shadow: 0 0 50px ${themeColor}22">
-                    
-                    <div style="width:110px; height:110px; border-radius:50%; overflow:hidden; border:4px solid ${themeColor}; box-shadow: 0 0 20px ${themeColor}66">
-                        <img src="${playerPhoto || '../assets/default-player.svg'}" style="width:100%; height:100%; object-fit:cover" />
+                
+                <div style="display:flex; align-items:center; gap:35px; margin-top:25px;">
+                    <!-- PHOTO -->
+                    <div style="width:130px; height:130px; border-radius:50%; overflow:hidden; border:4px solid ${themeColor}; flex-shrink:0; box-shadow: 0 0 30px ${themeColor}44;">
+                        <img src="${playerPhoto || '../assets/default-player.svg'}" style="width:100%; height:100%; object-fit:cover" onerror="this.onerror=null;this.src='../assets/default-player.svg'" />
                     </div>
                     
-                    <div style="text-align:left">
-                        <div style="font-size:36px; font-weight:950; color:#fff; margin-bottom:4px; letter-spacing:2px; text-transform:uppercase">${playerName || 'Unknown Player'}</div>
-                        <div style="font-size:20px; font-weight:800; color:${themeColor}; letter-spacing:3px; opacity:0.9">
-                            ${playerRuns || 0} (${playerBalls || 0}) <span style="color:rgba(255,255,255,0.4); margin-left:14px; letter-spacing:1px">VS ${bowlerName || 'Bowler'}</span>
+                    <!-- NAME & STATS -->
+                    <div style="flex:1;">
+                        <div style="font-size:38px; font-weight:950; color:#fff; text-transform:uppercase; margin-bottom:8px; line-height:1;">${playerName || 'PLAYER'}</div>
+                        <div style="font-size:22px; color:${accentColor}; font-weight:800; letter-spacing:2px;">
+                            ${playerRuns || 0} (${playerBalls || 0}) 
+                            <span style="color:rgba(255,255,255,0.4); margin-left:12px; font-size:16px;">VS ${bowlerName || 'Bowler'}</span>
                         </div>
                     </div>
+
+                    <!-- MATCH INFO -->
+                    <div style="text-align:right; border-left:1px solid rgba(255,255,255,0.15); padding-left:30px; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="font-size:14px; color:rgba(255,255,255,0.5); font-weight:800; letter-spacing:3px; margin-bottom:8px;">${teamName || 'TEAM'}</div>
+                        <div style="font-size:28px; font-weight:950; color:#fff; white-space:nowrap;">${matchScore || ''}</div>
+                    </div>
                 </div>
 
-                <!-- Divider Lines -->
-                <div class="be-line" style="position:absolute; bottom:-60px; width:0%; height:1px; background:linear-gradient(90deg, transparent, ${themeColor}, transparent); opacity:0.5"></div>
-            </div>
-
-            <!-- Corners -->
-            <div class="be-corner" style="position:absolute; top:40px; left:40px; width:40px; height:40px; border-top:2px solid ${themeColor}; border-left:2px solid ${themeColor}; opacity:0"></div>
-            <div class="be-corner" style="position:absolute; bottom:40px; right:40px; width:40px; height:40px; border-bottom:2px solid ${themeColor}; border-right:2px solid ${themeColor}; opacity:0"></div>
-
-            <!-- Footer Branding -->
-            <div id="be-footer" style="position:absolute; bottom:40px; width:100%; text-align:center; letter-spacing:8px; color:rgba(255,255,255,0.2); font-weight:800; font-size:11px; opacity:0">
-                LIVE BROADCAST PRODUCTION • SLCRICKPRO MAX
             </div>
         </div>
     `;
@@ -1569,38 +1586,26 @@ function showBigEventGraphic(data) {
     wrapper.innerHTML = html;
     document.body.appendChild(wrapper);
 
-    // Timeline execution
-    const tl = gsap.timeline();
-    
-    // Reset/Initial states
-    gsap.set('.be-char', { opacity: 0, y: 50, scale: 0.5, rotateX: -90 });
-    
-    // ENTRANCE SEQUENCE
-    tl.to('#big-event-overlay', { opacity: 1, duration: 0.4 })
-      .to('#be-glow-main', { opacity: 1, scale: 1.2, duration: 2, ease: 'power2.out' }, 0)
-      .to('.be-corner', { opacity: 0.4, duration: 1 }, 0.2)
-      .to('#big-event-container', { opacity: 1, rotateX: 0, duration: 1.2, ease: 'power4.out' }, 0.1)
-      .to('#be-match-context', { opacity: 1, y: 0, duration: 0.8 }, 0.3)
-      .to('.be-char', { opacity: 1, y: 0, scale: 1, rotateX: 0, duration: 0.8, stagger: 0.05, ease: 'back.out(1.7)' }, 0.2)
-      .to('#be-player-card', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, 0.5)
-      .to('.be-border-accent', { opacity: 1, scale: 1.05, duration: 2, ease: 'sine.inOut' }, 0.1)
-      .to('.be-line', { width: '80%', duration: 1.5, ease: 'expo.out' }, 0.6)
-      .to('#be-footer', { opacity: 1, duration: 1 }, 0.8)
-      .to('#be-light-streak-1', { y: '800%', duration: 2.5, ease: 'power1.inOut' }, 0.2);
+    if (typeof gsap !== 'undefined') {
+        const tl = gsap.timeline();
+        // Entrance
+        tl.to('#big-event-pop', { y: 0, opacity: 1, duration: 0.8, ease: 'back.out(1.5)' })
+          .from('#be-popup-card', { rotateX: 30, transformPerspective: 1200, duration: 0.8 }, "<");
+        
+        // Emphasize
+        if(type === 'SIX' || type === 'WICKET') {
+            tl.to('#big-event-pop', { scale: 1.03, duration: 0.3, repeat: 3, yoyo: true, ease: 'power1.inOut' }, "+=0.2");
+        }
 
-    // LOOPING / EMPHASIS
-    if (type === 'SIX') {
-        tl.to('#be-main-text', { scale: 1.05, duration: 0.4, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1);
-        tl.to('#be-player-card', { boxShadow: `0 0 40px ${themeColor}33`, repeat: -1, yoyo: true, duration: 1 }, 1);
-    } else if (type === 'WICKET') {
-        tl.to('#big-event-overlay', { background: '#300', duration: 0.1, repeat: 3, yoyo: true }, 0.1);
+        if (window._beTimeout) clearTimeout(window._beTimeout);
+        window._beTimeout = setTimeout(() => {
+            gsap.to('#big-event-pop', { y: 60, opacity: 0, scale: 0.95, duration: 0.6, ease: 'power3.in', onComplete: () => wrapper.remove() });
+        }, 7000);
+    } else {
+        document.getElementById('big-event-pop').style.opacity = 1;
+        document.getElementById('big-event-pop').style.transform = 'translate(-50%, 0)';
+        setTimeout(() => wrapper.remove(), 7000);
     }
-
-    // EXIT SEQUENCE
-    setTimeout(() => {
-        tl.timeScale(2).reverse();
-        setTimeout(() => wrapper.remove(), 1000);
-    }, 5500);
 }
 
 function showPartnershipGraphic(data) {
