@@ -268,16 +268,17 @@ function renderResumeMatchesImpl() {
     const container = document.getElementById('resume-matches-list');
     if (!container) return;
 
-    // 1. Get ALL matches and keep only paused ones for score/resume behavior
+    // 1. Get ALL matches and filter for displayable ones
     const allMatches = DB.getMatches();
     const pausedMatches = allMatches.filter(m => m.status === 'paused');
+    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' || m.status === 'setup').sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled', 'setup'].includes(t.status));
     
     const requests = DB.getRequests().filter(r => r.type === 'tournament' && r.status === 'pending');
 
-    if (!pausedMatches.length && !tourns.length && !requests.length) {
+    if (!pausedMatches.length && !tourns.length && !requests.length && !scheduledMatches.length) {
         const isSyncing = !window._isGlobalSyncCompleted;
         container.innerHTML = `
             <div style="color:var(--c-muted);font-size:14px;padding:32px 20px;text-align:center;background:rgba(255,255,255,0.015);border-radius:18px;border:1px dashed rgba(255,255,255,0.1); margin-bottom:15px">
@@ -369,7 +370,26 @@ function renderResumeMatchesImpl() {
         });
     }
 
-    // NOTE: Scheduled matches are not shown here per user request
+    // --- SCHEDULED MATCHES SECTION ---
+    if (scheduledMatches.length) {
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#00e676; margin:24px 0 12px 10px; opacity:0.8">📅 SCHEDULED MATCHES</div>`;
+        scheduledMatches.forEach(m => {
+            const hasPw = (m.scoringPassword || m.password || m.isLocked);
+            html += `
+                <div class="resume-card" style="border-left: 4px solid #00e676; background:linear-gradient(90deg, rgba(0,230,118,0.05), transparent)">
+                    <div class="resume-card-info">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                            <span style="font-size:10px; background:rgba(0,230,118,0.15); color:#00e676; padding:2px 8px; border-radius:100px; font-weight:800">READY</span>
+                            ${hasPw ? `<span style="font-size:10px; background:rgba(0,0,0,0.3); color:#ffc107; padding:2px 8px; border-radius:100px; font-weight:800">🔒 LOCKED</span>` : ''}
+                        </div>
+                        <h4 style="font-size:18px; font-weight:800">${m.team1 || 'Team A'} vs ${m.team2 || 'Team B'}</h4>
+                        <p style="opacity:0.7">${m.scheduledName || (m.type === 'tournament' ? (m.tournamentName || 'Tournament Match') : 'Single Match')}</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">▶ Start Match</button>
+                </div>
+            `;
+        });
+    }
 
     container.innerHTML = html;
 }

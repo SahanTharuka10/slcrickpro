@@ -25,7 +25,7 @@ app.use(cors({
   origin: true, // Dynamically set the Access-Control-Allow-Origin to the requested origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
 }));
 
 // A fallback middleware strictly for cases where `cors()` might be skipped
