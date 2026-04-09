@@ -3182,32 +3182,54 @@ function renderBroadcastController(match) {
             /* Mobile Fixes for Broadcast Controller */
             @media (max-width: 900px) {
                 .broadcast-controller-content {
-                    padding: 16px;
+                    padding: 12px;
                 }
                 .broadcast-main-grid {
                     grid-template-columns: 1fr !important;
-                    gap: 20px !important;
+                    gap: 12px !important;
                 }
                 .b-grid {
                     grid-template-columns: 1fr 1fr !important;
+                    gap: 8px !important;
                 }
                 .b-btn {
-                    min-height: 70px;
-                    padding: 12px;
+                    min-height: 50px;
+                    padding: 8px 12px;
                 }
                 .b-btn-title {
-                    font-size: 12px;
+                    font-size: 11px;
+                }
+                .v-trigger {
+                    padding: 12px 8px !important;
+                }
+                .v-trigger span {
+                    font-size: 22px !important;
+                }
+                .broadcast-header h1, .broadcast-header div:last-child {
+                    font-size: 18px !important;
+                }
+                .broadcast-header {
+                   margin-bottom: 12px !important;
+                }
+                .b-panel {
+                    padding: 16px !important;
+                }
+                .b-group-label {
+                    margin-bottom: 12px !important;
                 }
             }
 
             @media (max-width: 600px) {
                 .broadcast-header {
-                    flex-direction: column;
-                    align-items: flex-start !important;
-                    gap: 12px;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    align-items: center !important;
+                    gap: 8px;
                 }
+                /* Keep 2 columns for better button density on mobile */
                 .b-grid {
-                    grid-template-columns: 1fr !important;
+                    grid-template-columns: 1fr 1fr !important;
                 }
             }
         `;
