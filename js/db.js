@@ -104,8 +104,6 @@ const DB = {
         arr.forEach(p => syncToDB('player', p));
     },
     addPlayer(player) {
-        if (!this._playerPhotoCache) this._playerPhotoCache = {};
-
         const arr = this.getPlayers();
         const id = this.generatePlayerId(arr);
         player.playerId = id;
@@ -118,11 +116,10 @@ const DB = {
             catches: 0, stumpings: 0,
         };
 
-        // Keep image in separate in-memory cache, so localStorage quota doesn't blow up
-        const originalPhoto = player.photo;
+        // Persistent photo storage (localStorage vault)
         if (player.photo && String(player.photo).startsWith('data:')) {
-            this._playerPhotoCache[id] = player.photo;
-            player.photo = '';
+            localStorage.setItem('cricpro_photo_' + id, player.photo);
+            player.photo = ''; // Keep the player record light
         }
 
         arr.push(player);
@@ -134,8 +131,8 @@ const DB = {
             localStorage.setItem('cricpro_last_pid', (parseInt(m[1]) || 0).toString());
         }
 
-        // Sync to MongoDB (keep data URI so it saves to DB instead of just cache)
-        const syncPayload = { ...player, photo: originalPhoto || '' };
+        // Sync to MongoDB
+        const syncPayload = { ...player, photo: localStorage.getItem('cricpro_photo_' + id) || '' };
         syncToDB('player', syncPayload);
         return player;
     },
@@ -154,40 +151,37 @@ const DB = {
         return 'CP' + String(max + 1).padStart(4, '0');
     },
     getPlayerById(id) {
-        const p = this.getPlayers().find(p => p.playerId === id);
+        const arr = this.getPlayers();
+        const p = arr.find(p => p.playerId === id);
         if (!p) return null;
-        if ((!p.photo || p.photo === '') && this._playerPhotoCache && this._playerPhotoCache[id]) {
-            p.photo = this._playerPhotoCache[id];
+        
+        // Retrieve from persistent photo vault if missing in record
+        if (!p.photo || p.photo === '') {
+            const cached = localStorage.getItem('cricpro_photo_' + id);
+            if (cached) p.photo = cached;
         }
         return p;
     },
     updatePlayer(player) {
         if (!player || !player.playerId) return null;
-        if (!this._playerPhotoCache) this._playerPhotoCache = {};
-
         const arr = this.getPlayers();
         const idx = arr.findIndex(p => p.playerId === player.playerId);
+        
         if (idx === -1) {
             return this.addPlayer(player);
         }
 
-        // Handle photo caching to avoid localStorage quota issues.
-        const originalPhoto = player.photo;
+        const id = player.playerId;
+        // Handle persistent photo storage
         if (player.photo && String(player.photo).startsWith('data:')) {
-            this._playerPhotoCache[player.playerId] = player.photo;
-            player.photo = '';
+            localStorage.setItem('cricpro_photo_' + id, player.photo);
+            player.photo = ''; 
         }
 
         arr[idx] = { ...arr[idx], ...player };
-
-        // Keep the in-memory photo cache to use for display, but do not persist data URI heavy payload.
-        if (this._playerPhotoCache[player.playerId]) {
-            arr[idx].photo = '';
-        }
-
         this.savePlayers(arr);
 
-        const syncPayload = { ...arr[idx], photo: originalPhoto || this._playerPhotoCache[player.playerId] || '' };
+        const syncPayload = { ...arr[idx], photo: localStorage.getItem('cricpro_photo_' + id) || '' };
         syncToDB('player', syncPayload);
 
         return arr[idx];
@@ -598,6 +592,201 @@ const DB = {
         arr.forEach(p => syncToDB('post', p));
     },
     addPost(post) {
+        arr = arr.filter(t => t.id !== id);
+        this.saveTournaments(arr);
+        this.deleteTournamentFromCloud(id);
+    },
+    deleteTournamentFromCloud(id) {
+        if (!BACKEND_BASE_URL) return;
+        fetch(BACKEND_BASE_URL + '/sync/tournaments/' + id, { method: 'DELETE' })
+            .catch(() => {});
+    },
+    async createTournament(cfg) {
+        const t = {
+            id: 'TOURN-' + Date.now(),
+            name: cfg.name,
+            format: cfg.format || 'league',
+            overs: cfg.overs || 20,
+            ballsPerOver: cfg.ballsPerOver || 6,
+            startDate: cfg.startDate || '',
+            teams: cfg.teams || [],
+            matches: [],
+            standings: {},
+            createdAt: Date.now(),
+            status: 'active',
+            isOfficial: cfg.isOfficial || false,
+            matchCount: cfg.matchCount || 0,
+            totalTeams: cfg.totalTeams || cfg.teams.length,
+            prizes: cfg.prizes || { first: '', second: '', third: '' },
+            scoringPassword: cfg.scoringPassword || null,
+            rosters: {},
+        };
+
+        if (t.format === 'knockout') {
+            this._generateKnockoutMatches(t);
+        } else if (cfg.matchCount > 0) {
+            for (let i = 1; i <= cfg.matchCount; i++) {
+                const match = this.createMatch({
+                    type: 'tournament',
+                    tournamentId: t.id,
+                    tournamentName: t.name,
+                    team1: "TBD", team2: "TBD",
+                    overs: t.overs, ballsPerOver: t.ballsPerOver,
+                    scoringPassword: t.scoringPassword
+                }, true); // skipCloud during initial creation
+                match.status = 'scheduled';
+                match.scheduledName = `Match ${i}`;
+                match.publishLive = true; // Tournament matches should be visible to everyone
+                this.saveMatch(match, true);
+                t.matches.push(match.id);
+            }
+        }
+        
+        // Save tournament and preserve scoring token if any
+        await this.saveTournamentWithAuth(t);
+        
+        // SEQUENTIAL SYNC: Sync matches to cloud one by one to avoid overwhelming server
+        if (t.matches.length > 0) {
+            console.log("🕒 Bulk syncing tournament matches...");
+            for (const mId of t.matches) {
+                const m = this.getMatch(mId);
+                if (m) syncToDB('match', m);
+                await new Promise(r => setTimeout(r, 100)); // Small delay
+            }
+        }
+        
+        // Force UI refresh if available
+        if (typeof renderOngoing === 'function') renderOngoing();
+        
+        return t;
+    },
+
+    _generateKnockoutMatches(t) {
+        const N = t.totalTeams;
+        const rounds = Math.ceil(Math.log2(N));
+        const totalMatches = N - 1;
+        
+        let matchIndex = 1;
+        let currentRoundTeams = [];
+        
+        // Populate initial teams (fill with 'TBD' if needed)
+        for (let i = 0; i < N; i++) {
+            currentRoundTeams.push(t.teams[i] || `Team ${i + 1}`);
+        }
+
+        let roundNodes = []; // Tracks matches in current round to link to next
+        let prevRoundMatches = currentRoundTeams.map(name => ({ type: 'team', name }));
+
+        for (let r = 1; r <= rounds; r++) {
+            const nextRoundMatches = [];
+            const roundMatchCount = Math.floor(prevRoundMatches.length / 2);
+            
+            for (let i = 0; i < roundMatchCount; i++) {
+                const node1 = prevRoundMatches[i * 2];
+                const node2 = prevRoundMatches[i * 2 + 1];
+                
+                const mName = (r === rounds) ? "Final 🏆" : 
+                             (r === rounds - 1) ? `Semi-Final ${i + 1}` : 
+                             `Round ${r} - Match ${matchIndex}`;
+                
+                const match = this.createMatch({
+                    type: 'tournament', tournamentId: t.id, tournamentName: t.name,
+                    team1: node1.type === 'team' ? node1.name : 'TBD',
+                    team2: node2.type === 'team' ? node2.name : 'TBD',
+                    overs: t.overs, ballsPerOver: t.ballsPerOver,
+                    scoringPassword: t.scoringPassword
+                });
+
+                match.status = 'scheduled';
+                match.scheduledName = mName;
+                match.publishLive = true; // Tournament matches should be visible to everyone
+                match.knockout = { round: r, matchNum: matchIndex, nextMatchIndex: null, slot: null };
+                
+                // Link predecessors to this match
+                if (node1.type === 'match') { node1.ref.knockout.nextMatchId = match.id; node1.ref.knockout.slot = 1; this.saveMatch(node1.ref); }
+                if (node2.type === 'match') { node2.ref.knockout.nextMatchId = match.id; node2.ref.knockout.slot = 2; this.saveMatch(node2.ref); }
+
+                this.saveMatch(match);
+                t.matches.push(match.id);
+                nextRoundMatches.push({ type: 'match', id: match.id, ref: match });
+                matchIndex++;
+            }
+
+            // Handle Byes (if odd numbered nodes)
+            if (prevRoundMatches.length % 2 === 1) {
+                nextRoundMatches.push(prevRoundMatches[prevRoundMatches.length - 1]);
+            }
+            prevRoundMatches = nextRoundMatches;
+        }
+    },
+
+    // ---------- PRODUCTS ----------
+    getProducts() {
+        return this._secureGet(DB_KEYS.PRODUCTS, []);
+    },
+    saveProducts(arr, options = {}) {
+        this._secureSet(DB_KEYS.PRODUCTS, arr);
+        // Skip cloud push when data came from cloud polling to avoid sync loops.
+        if (options.skipSync) return;
+        // Sync every product to MongoDB so all devices see updates
+        arr.forEach(p => syncProductToDB(p));
+    },
+    deleteProductFromCloud(id) {
+        if (!BACKEND_BASE_URL) return;
+        fetch(BACKEND_BASE_URL + '/sync/products/' + id, { method: 'DELETE' })
+            .catch(() => {});
+    },
+
+    deletePlayerFromCloud(id) {
+        if (!BACKEND_BASE_URL) return;
+        fetch(BACKEND_BASE_URL + '/players/' + id, { method: 'DELETE' })
+            .catch(() => {});
+    },
+    // ---------- ORDERS ----------
+    getOrders() {
+        return this._secureGet(DB_KEYS.ORDERS, []);
+    },
+    saveOrders(arr) {
+        this._secureSet(DB_KEYS.ORDERS, arr);
+    },
+    addOrder(order) {
+        const arr = this.getOrders();
+        order.id = 'ORD-' + Date.now();
+        order.date = Date.now();
+        order.status = 'pending';
+        arr.push(order);
+        this.saveOrders(arr);
+        
+        // Sync to MongoDB Cloud
+        if (typeof syncToDB === 'function') {
+            syncToDB('order', order);
+        }
+        return order;
+    },
+    addTeamToSheets(team) {
+        syncToDB('team', team);
+    },
+
+    // ---------- SETTINGS ----------
+    getSettings() {
+        return this._secureGet(DB_KEYS.SETTINGS, {});
+    },
+    saveSetting(key, val) {
+        const s = this.getSettings();
+        s[key] = val;
+        this._secureSet(DB_KEYS.SETTINGS, s);
+    },
+
+    // ---------- POSTS ----------
+    getPosts() {
+        return this._secureGet(DB_KEYS.POSTS, []);
+    },
+    savePosts(arr) {
+        this._secureSet(DB_KEYS.POSTS, arr);
+        // Sync to cloud if needed
+        arr.forEach(p => syncToDB('post', p));
+    },
+    addPost(post) {
         const arr = this.getPosts();
         post.id = 'POST-' + Date.now();
         post.createdAt = Date.now();
@@ -605,6 +794,14 @@ const DB = {
         this.savePosts(arr);
         return post;
     },
+
+    // ---------- CLEANUP ----------
+    clearMatchData(matchId) {
+        // Clear session specific tokens
+        localStorage.removeItem('match_session_token_' + matchId);
+        sessionStorage.removeItem('hotkey_match_id');
+        console.log(`🧹 DB: Cleaned up session data for match ${matchId}`);
+    }
 };
 
 // ============================================================
@@ -844,220 +1041,12 @@ DB.handshake = async function(id, password) {
 };
 
 /**
- * Fetch ALL matches/tournaments from the cloud and merge them.
+ * Unified Cloud sync wrapper (Legacy pullGlobalData)
  */
 window.pullGlobalData = async function(showFeedback = false) {
-    if (!BACKEND_BASE_URL) return;
     if (showFeedback) showToast('🔄 Syncing with Cloud...', 'default');
-    
-    // Add animation to sync button if it exists
-    const syncBtn = document.getElementById('sync-toggle');
-    if (syncBtn) syncBtn.classList.add('syncing-animate');
-
-    try {
-        // --- FETCH MATCHES ---
-        const rm = await fetch(BACKEND_BASE_URL + '/sync/matches');
-        if (rm.ok) {
-            const dm = await rm.json();
-            if (dm.matches) {
-                const local = DB.getMatches();
-                const merged = dm.matches.map(cm => {
-                    const lm = local.find(x => x.id === cm.id);
-                    // Cloud-first approach for other devices, but preserve local if newer
-                    return (lm && lm.lastUpdated > (cm.lastUpdated || 0)) ? lm : cm;
-                });
-                // Add local-only matches that don't exist in cloud yet
-                local.forEach(lm => {
-                    if (!merged.find(x => x.id === lm.id)) merged.push(lm);
-                });
-                DB._secureSet(DB_KEYS.MATCHES, merged);
-            }
-        }
-
-        // --- FETCH TOURNAMENTS ---
-        const rt = await fetch(BACKEND_BASE_URL + '/sync/tournaments');
-        if (rt.ok) {
-            const dt = await rt.json();
-            if (dt.tournaments) {
-                const local = DB.getTournaments();
-                const mergedT = dt.tournaments.map(ct => {
-                    const lt = local.find(x => x.id === ct.id);
-                    return (lt && lt.lastUpdated > (ct.lastUpdated || 0)) ? lt : ct;
-                });
-                local.forEach(lt => {
-                    if (!mergedT.find(x => x.id === lt.id)) mergedT.push(lt);
-                });
-                DB._secureSet(DB_KEYS.TOURNAMENTS, mergedT);
-            }
-        }
-        
-        // --- FETCH PRODUCTS ---
-        const rp = await fetch(BACKEND_BASE_URL + '/sync/products');
-        if (rp.ok) {
-            const dp = await rp.json();
-            if (Array.isArray(dp)) {
-                const local = DB.getProducts();
-                const mergedP = dp.map(cp => {
-                    const lp = local.find(x => x.id === cp.id);
-                    return (lp && lp.lastUpdated > (cp.lastUpdated || 0)) ? lp : cp;
-                });
-                local.forEach(lp => {
-                    if (!mergedP.find(x => x.id === lp.id)) mergedP.push(lp);
-                });
-                DB._secureSet(DB_KEYS.PRODUCTS, mergedP);
-            }
-        }
-
-        // --- FETCH PLAYERS ---
-        const rpl = await fetch(BACKEND_BASE_URL + '/players');
-        if (rpl.ok) {
-            const dpl = await rpl.json();
-            if (Array.isArray(dpl)) {
-                const localPlayers = DB.getPlayers();
-                const mergedPlayers = dpl.map(cp => {
-                    if (cp.photo && String(cp.photo).startsWith('data:')) {
-                        if (!DB._playerPhotoCache) DB._playerPhotoCache = {};
-                        DB._playerPhotoCache[cp.id || cp.playerId] = cp.photo;
-                        cp.photo = '';
-                    }
-                    const lp = localPlayers.find(x => x.playerId === (cp.id || cp.playerId));
-                    return (lp && lp.createdAt > (cp.createdAt || 0)) ? lp : cp;
-                });
-                localPlayers.forEach(lp => {
-                    if (!mergedPlayers.find(x => (x.id || x.playerId) === lp.playerId)) mergedPlayers.push(lp);
-                });
-                DB.savePlayers(mergedPlayers);
-            }
-        }
-
-        // --- FETCH TEAMS ---
-        const rt2 = await fetch(BACKEND_BASE_URL + '/teams');
-        if (rt2.ok) {
-            const dt2 = await rt2.json();
-            if (Array.isArray(dt2)) {
-                const localTeams = DB.getTeams();
-                const mergedTeams = dt2.map(ct => {
-                    const lt = localTeams.find(x => x.id === ct.id);
-                    return (lt && lt.createdAt > (ct.createdAt || 0)) ? lt : ct;
-                });
-                localTeams.forEach(lt => {
-                    if (!mergedTeams.find(x => x.id === lt.id)) mergedTeams.push(lt);
-                });
-                DB.saveTeams(mergedTeams);
-            }
-        }
-
-        if (showFeedback) showToast('✅ Sync Complete!', 'success');
-        window._isGlobalSyncCompleted = true;
-
-    } catch (e) {
-        console.warn('Sync failed:', e.message);
-        if (showFeedback) showToast('⚠️ Sync Failed. Server might be sleeping.', 'error');
-    } finally {
-        if (syncBtn) syncBtn.classList.remove('syncing-animate');
-
-        // Always trigger UI refreshes eventually (throttle avoid socket flood lag)
-        clearTimeout(window._syncTimer);
-        window._syncTimer = setTimeout(() => {
-            if (typeof window.renderAll === 'function') window.renderAll();
-            if (typeof renderMatches === 'function') renderMatches();
-            if (typeof renderOngoing === 'function') renderOngoing();
-            if (typeof renderProducts === 'function') renderProducts();
-            if (typeof renderLive === 'function') renderLive();
-            if (typeof updateTicker === 'function') updateTicker();
-            if (typeof renderResumeMatches === 'function') renderResumeMatches();
-        }, 150);
-    }
+    return syncCloudData({ forceRefresh: true, silent: !showFeedback });
 };
-
-// Global Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    // Force sync on match load
-    window.pullGlobalData(false);
-
-    // Live Clock Ticker
-    setInterval(() => {
-        const el = document.getElementById('live-clock');
-        if (el) {
-            const now = new Date();
-            el.innerText = now.toLocaleTimeString('en-US', { hour12: false });
-        }
-    }, 1000);
-});
-
-// Start background discovery
-setInterval(() => { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }, 10000);
-setTimeout(() => { if (typeof window.pullGlobalData === 'function') window.pullGlobalData(); }, 1000);
-
-// ... (remove old redundant socket declaration section)
-
-/**
- * Sync a single product to MongoDB.
- */
-function syncProductToDB(product) {
-    if (!BACKEND_BASE_URL || !product || !product.id) return;
-    fetch(BACKEND_BASE_URL + '/sync/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(product),
-    }).catch(() => {});
-}
-
-/**
- * Push career stats for one player to MongoDB.
- * Called after every official tournament completes.
- */
-function pushPlayerStats(playerId, stats) {
-    if (!BACKEND_BASE_URL) return;
-    fetch(BACKEND_BASE_URL + '/stats/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, stats }),
-    }).catch(() => {});
-}
-
-/**
- * Bulk-push stats for ALL players who played in a tournament.
- * Call this when an official tournament completes.
- */
-function pushAllStatsAfterTournament(tournamentId) {
-    if (!BACKEND_BASE_URL) return;
-    const tournament = DB.getTournament(tournamentId);
-    if (!tournament || !tournament.isOfficial) return;
-
-    const allPlayers = DB.getPlayers();
-    // Only push players who have played at least one match
-    const toSync = allPlayers
-        .filter(p => p.stats && (p.stats.matches > 0 || p.stats.runs > 0 || p.stats.wickets > 0))
-        .map(p => ({ playerId: p.playerId, stats: p.stats }));
-
-    if (!toSync.length) return;
-
-    fetch(BACKEND_BASE_URL + '/stats/bulk-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ players: toSync }),
-    }).then(r => r.json()).then(d => {
-        console.log('✅ Player stats synced to MongoDB:', d);
-    }).catch(() => {});
-
-    // Also sync team stats (cumulative career stats)
-    const allTeams = DB.getTeams();
-    allTeams.forEach(team => {
-        // Sync the entire cumulative stats object for this team
-        if (team.stats && team.stats.played > 0) {
-            fetch(BACKEND_BASE_URL + '/team-stats/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: team.id, stats: team.stats }),
-            }).catch(() => {});
-        }
-    });
-}
-
-// Sheets sync logic handled in background.
-
-
 
 // ================================================
 // UTILITY FUNCTIONS (used across all pages)
@@ -1074,73 +1063,49 @@ function escapeHTML(str) {
     }[tag] || tag));
 }
 
-// Global Security: Sanitize all innerHTML assignments against common XSS
-// This securely intercepts and sanitizes payload without breaking legitimate app functionalities.
+// Global Security: Sanitize all innerHTML assignments
 const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
 if (originalInnerHTML) {
     Object.defineProperty(Element.prototype, 'innerHTML', {
         set: function(value) {
             let clean = typeof value === 'string' ? value : String(value);
-            // 1. Remove script tags
             clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-            // 2. Remove dangerous objects
             clean = clean.replace(/<(object|embed|iframe|applet|meta|base)\b[^>]*>/gi, '');
-            // 3. Neutralize javascript: protocols
             clean = clean.replace(/href\s*=\s*(['"]?)javascript:[^'"]*\1/gi, 'href="javascript:void(0);"');
-            // 4. Strip dangerous on* handlers (like onerror, onmouseover) but preserve legitimate ones: onclick, onchange, oninput
             clean = clean.replace(/\bon(?!(click|change|input)\b)\w+\s*=\s*(['"])(.*?)\2/gi, '');
             return originalInnerHTML.set.call(this, clean);
         },
-        get: function() {
-            return originalInnerHTML.get.call(this);
-        }
+        get: function() { return originalInnerHTML.get.call(this); }
     });
 }
-
 
 function showToast(msg, type = 'default') {
     const t = document.getElementById('toast');
     if (!t) return;
     t.textContent = msg;
-    t.className = 'toast show' + (type === 'error' ? ' toast-error' : type === 'success' ? ' toast-success' : '');
+    t.className = 'toast show ' + type; // Using space for simpler class handling
+    if (type === 'error') t.classList.add('toast-error');
+    if (type === 'success') t.classList.add('toast-success');
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'toast'; }, 3200);
 }
 
-function formatCRR(runs, balls) {
-    if (!balls) return '0.00';
-    return ((runs / balls) * 6).toFixed(2);
-}
+function formatCRR(runs, balls) { if (!balls) return '0.00'; return ((runs / balls) * 6).toFixed(2); }
+function formatOvers(balls, bpo = 6) { const ov = Math.floor(balls/bpo); const b = balls%bpo; return `${ov}.${b}`; }
+function formatSR(runs, balls) { if (!balls) return '0.0'; return ((runs/balls)*100).toFixed(1); }
+function formatEcon(runs, balls, bpo = 6) { if (!balls) return '0.0'; return ((runs/balls)*bpo).toFixed(1); }
 
-function formatOvers(balls, bpo = 6) {
-    const ov = Math.floor(balls / bpo);
-    const b = balls % bpo;
-    return `${ov}.${b}`;
-}
-
-function formatSR(runs, balls) {
-    if (!balls) return '0.0';
-    return ((runs / balls) * 100).toFixed(1);
-}
-
-function formatEcon(runs, balls, bpo = 6) {
-    if (!balls) return '0.0';
-    return ((runs / balls) * bpo).toFixed(1);
-}
-
-// Global Image Error Handler (for SVG fallbacks)
+// Global Image Error Handler
 window.addEventListener('error', function(e) {
     if (e.target.tagName && e.target.tagName.toLowerCase() === 'img') {
         const img = e.target;
-        // Hide the broken image
         img.style.display = 'none';
-        // If there's a professional SVG fallback next to it, show it
         const fallback = img.nextElementSibling;
         if (fallback && (fallback.classList.contains('product-svg-wrap') || fallback.classList.contains('svg-fallback-wrap'))) {
             fallback.style.display = 'flex';
         }
     }
-}, true); // Use capture phase to catch all errors
+}, true);
 
 function timeSince(ts) {
     const d = (Date.now() - ts) / 1000;
@@ -1150,79 +1115,46 @@ function timeSince(ts) {
     return Math.round(d / 86400) + 'd ago';
 }
 
-// High Security Global Error Catcher
-window.onerror = function (msg, url, lineNo, columnNo, error) {
-    showErrorInsideProgram(msg, url, lineNo);
-    return false;
-};
-
-window.addEventListener('unhandledrejection', function(event) {
-    showErrorInsideProgram("Promise Rejection: " + (event.reason ? event.reason.message || event.reason : ""), "", "");
-});
-
 function showErrorInsideProgram(msg, url, lineNo) {
     let errBox = document.getElementById('cricpro-global-error');
-    if (!errBox) {
+    if (!errBox && document.body) {
         errBox = document.createElement('div');
         errBox.id = 'cricpro-global-error';
-        errBox.style = 'position:fixed;top:20px;right:20px;z-index:2147483647;background:#d32f2f;color:#fff;padding:15px;border-radius:6px;width:300px;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-family:sans-serif;font-size:14px;border-left:5px solid #ff9800';
-        errBox.innerHTML = `
-            <div style="font-weight:900;margin-bottom:5px;display:flex;justify-content:space-between">
-                <span>SYSTEM ERROR</span>
-                <span style="cursor:pointer" onclick="this.parentElement.parentElement.remove()">✖</span>
-            </div>
-            <div id="cricpro-error-text" style="word-wrap:break-word;font-family:monospace;font-size:12px;"></div>
-        `;
-        if (document.body) {
-            document.body.appendChild(errBox);
-        } else {
-            window.addEventListener('DOMContentLoaded', () => document.body.appendChild(errBox));
-        }
-        // Auto-hide after 15 seconds to keep broadcast clean
-        setTimeout(() => { if(errBox) errBox.remove(); }, 15000);
+        errBox.style = 'position:fixed;top:20px;right:20px;z-index:99999;background:#d32f2f;color:#fff;padding:15px;border-radius:6px;width:300px;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-size:12px;';
+        errBox.innerHTML = `<div style="font-weight:900;mb:5px;display:flex;justify-content:space-between"><span>SYSTEM ERROR</span><span style="cursor:pointer" onclick="this.parentElement.parentElement.remove()">✖</span></div><div id="cricpro-error-text"></div>`;
+        document.body.appendChild(errBox);
+        setTimeout(() => errBox.remove(), 10000);
     }
     const txt = document.getElementById('cricpro-error-text');
-    if(txt) txt.innerHTML += `<div style="margin-top:5px;border-top:1px solid rgba(255,255,255,0.2);padding-top:5px">↳ ${msg} at line ${lineNo||'?'}</div>`;
+    if (txt) txt.innerHTML += `<div>↳ ${msg} @ ${lineNo||'?'}</div>`;
 }
 
-// Service Worker Registration for PWA / Offline capability
+// Service Worker Registration
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        // Register sw.js relative to the domain root
-        navigator.serviceWorker.register('/sw.js').then(reg => {
-            console.log('SW registered! Scope:', reg.scope);
-        }).catch(err => {
-            console.log('SW registration failed:', err);
-        });
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed:', err));
     });
 }
 
 // ============================================================
 //  UNIFIED CLOUD SYNC & REAL-TIME LOGIC
 // ============================================================
-
 let _isSyncingCloud = false;
-/**
- * Consolidated function to pull all matches and tournaments from the cloud.
- * @param {Object} options - { forceRefresh: boolean, silent: boolean }
- */
 async function syncCloudData(options = {}) {
-    if (!BACKEND_BASE_URL) return;
-    if (_isSyncingCloud) return; 
-    if (document.hidden && !options.forceRefresh) return; 
-    if (window._isEditingRoster && !options.forceRefresh) return; 
+    if (!BACKEND_BASE_URL || _isSyncingCloud) return;
+    if (document.hidden && !options.forceRefresh) return;
+    if (window._isEditingRoster && !options.forceRefresh) return;
 
     _isSyncingCloud = true;
     const NOW = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     try {
-        // Fetch Matches, Tournaments, Players, and Teams
         const [mReq, tReq, pReq, tmReq] = await Promise.all([
-            fetch(`${BACKEND_BASE_URL}/sync/matches`).catch(e => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/sync/tournaments`).catch(e => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/players`).catch(e => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/teams`).catch(e => ({ json: () => [] }))
+            fetch(`${BACKEND_BASE_URL}/sync/matches`).catch(() => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/sync/tournaments`).catch(() => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/players`).catch(() => ({ json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/teams`).catch(() => ({ json: () => [] }))
         ]);
 
         const matchData = await mReq.json();
@@ -1261,40 +1193,15 @@ async function syncCloudData(options = {}) {
             const remoteMatches = Array.isArray(matchData) ? (matchData.matches || matchData) : (matchData.matches || []);
             const localMatches = DB.getMatches();
             let anyUpdated = false;
-
-            const LOCAL_LOCK_WINDOW = 15000;
-
-            let mergedMatches = remoteMatches
-            .filter(cm => !cm.deleted && cm.status !== 'deleted')
-            .map(cm => {
+            let mergedMatches = remoteMatches.filter(cm => !cm.deleted).map(cm => {
                 const lm = localMatches.find(x => x.id === cm.id);
                 if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
-                if (lm && (NOW - (lm.lastUpdated || 0)) < LOCAL_LOCK_WINDOW) return lm;
                 if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
                 return cm;
             });
-
-            // Self-healing: restore missing matches to cloud
-            const MAX_BACKGROUND_SYNCS = 3;
-            let syncCount = 0;
-            for (const lm of localMatches) {
-                if (syncCount >= MAX_BACKGROUND_SYNCS) break;
-                const cloudMatch = remoteMatches.find(x => x.id === lm.id);
-                if (!cloudMatch) {
-                    if (!mergedMatches.find(x => x.id === lm.id)) {
-                        mergedMatches.push(lm);
-                        anyUpdated = true;
-                    }
-                    const localTime = lm.lastUpdated || 0;
-                    if (lm.publishLive && (NOW - localTime) < DAY_MS) {
-                        try { 
-                            console.log(`☁️ Background Sync [${lm.id}]: RESTORING...`);
-                            await syncToDB('match', { ...lm, _isBackgroundSync: true }); 
-                            syncCount++;
-                        } catch(err) {}
-                    }
-                }
-            }
+            localMatches.forEach(lm => {
+                if (!mergedMatches.find(x => x.id === lm.id)) { mergedMatches.push(lm); anyUpdated = true; }
+            });
 
             if (anyUpdated || options.forceRefresh) {
                 DB.saveMatches(mergedMatches);
@@ -1302,10 +1209,6 @@ async function syncCloudData(options = {}) {
                 if (typeof updateTicker === 'function') updateTicker();
                 if (typeof renderLive === 'function') renderLive();
                 localStorage.setItem('cricpro_force_update', Date.now().toString());
-                if (!options.silent) {
-                    if (typeof renderMatches === 'function') renderMatches();
-                    if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
-                }
             }
         }
 
@@ -1314,61 +1217,31 @@ async function syncCloudData(options = {}) {
             const remoteTournaments = Array.isArray(tournData) ? tournData : (tournData.tournaments || []);
             const localTournaments = DB.getTournaments();
             let anyTUpdated = false;
-            const LOCAL_LOCK_WINDOW = 15000; 
-
-            let mergedTournaments = remoteTournaments
-            .filter(ct => !ct.deleted && ct.status !== 'deleted')
-            .map(ct => {
+            let mergedTournaments = remoteTournaments.map(ct => {
                 const lt = localTournaments.find(x => x.id === ct.id);
                 if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) return lt;
-                if (lt && (NOW - (lt.lastUpdated || 0)) < LOCAL_LOCK_WINDOW) return lt;
                 if (!lt || JSON.stringify(lt) !== JSON.stringify(ct)) anyTUpdated = true;
                 return ct;
             });
-
-            let tSyncCount = 0;
-            for (const lt of localTournaments) {
-                if (tSyncCount >= 2) break;
-                const cloudHasIt = remoteTournaments.find(x => x.id === lt.id);
-                if (!cloudHasIt) {
-                    if (!mergedTournaments.find(x => x.id === lt.id)) {
-                        mergedTournaments.push(lt);
-                        anyTUpdated = true;
-                    }
-                    if ((NOW - (lt.lastUpdated || 0)) < (DAY_MS * 7)) {
-                        try { 
-                            await syncToDB('tournament', { ...lt, _isBackgroundSync: true });
-                            tSyncCount++;
-                        } catch(err) {}
-                    }
-                }
-            }
+            localTournaments.forEach(lt => {
+                if (!mergedTournaments.find(x => x.id === lt.id)) { mergedTournaments.push(lt); anyTUpdated = true; }
+            });
 
             if (anyTUpdated || options.forceRefresh) {
                 DB.saveTournaments(mergedTournaments);
-                if (!options.silent) {
-                    if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
-                    if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
-                }
+                if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
             }
         }
 
     } catch (err) {
-        if (!options.silent) console.warn('📡 Sync Fallback Active:', err.message);
+        console.warn('📡 Sync Fallback Active:', err.message);
     } finally {
         _isSyncingCloud = false;
     }
 }
 
-// Backward compatibility names
-window.pullGlobalData = window.pullGlobalData || (() => syncCloudData({ silent: true }));
-window.pullLiveUpdates = () => syncCloudData({ silent: true });
-
-// Initial grab on page boot (after 600ms so page DOM is ready)
+// Initial grab and Dynamic Polling
 setTimeout(() => syncCloudData({ forceRefresh: true }), 600);
-
-// Dynamic Polling — ongoing-matches gets 5s, overlay gets 4s, scorer gets 15s
-// Dynamic Polling — ongoing-matches gets 5s, overlay gets 4s, scorer/admin gets 4s, others get 15s
 const _isOverlayTab = window.location.pathname.includes('overlay.html');
 const _isPublicTab  = window.location.pathname.includes('ongoing-matches.html');
 const _isContributor = window.location.pathname.includes('score-match.html') || window.location.pathname.includes('admin.html');

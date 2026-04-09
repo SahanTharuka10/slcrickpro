@@ -1240,7 +1240,9 @@ function showStrikerProfileLeft(data, label = 'STRIKER') {
     if (!data) return;
     const { name, profile: p, stats: s, age } = data;
     const stats = s || { runs: 0, balls: 0, sixes: 0 };
-    const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    let src = (p && p.photo && String(p.photo).trim()) ? p.photo : null;
+    if (!src && p && p.playerId) src = localStorage.getItem('cricpro_photo_' + p.playerId);
+    if (!src) src = OVERLAY_DEFAULT_PLAYER_PHOTO;
     
     // UI Artifact removal if exists
     const old = document.getElementById('striker-profile-left');
@@ -1408,7 +1410,9 @@ function showBowlerProfileGraphic(data) {
     if (!data || !data.name) return;
     const { name, profile: p, stats: s } = data;
     const stats = s || { wickets: 0, runs: 0, balls: 0, overs: '0.0', econ: '0.00' };
-    const src = (p && p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    let src = (p && p.photo && String(p.photo).trim()) ? p.photo : null;
+    if (!src && p && p.playerId) src = localStorage.getItem('cricpro_photo_' + p.playerId);
+    if (!src) src = OVERLAY_DEFAULT_PLAYER_PHOTO;
 
     // Premium Color Palette for Bowler: Deep Purple Accent
     const accentColor = '#8b5cf6';

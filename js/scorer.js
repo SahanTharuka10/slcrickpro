@@ -73,8 +73,9 @@ function resolvePlayerProfileForBatter(inn, bName) {
 
 function playerPhotoSrc(p) {
     if (p && p.photo && String(p.photo).trim()) return p.photo;
-    if (p && p.playerId && DB && DB._playerPhotoCache && DB._playerPhotoCache[p.playerId]) {
-        return DB._playerPhotoCache[p.playerId];
+    if (p && p.playerId) {
+        const cached = localStorage.getItem('cricpro_photo_' + p.playerId);
+        if (cached) return cached;
     }
     return DEFAULT_PLAYER_PHOTO;
 }
@@ -2017,6 +2018,9 @@ function showMatchResult() {
             console.log(`🧹 Cleaned up rosters for ${m.team1} and ${m.team2} on match completion.`);
         }
     }
+    
+    // Clear session-specific tokens and hotkey state
+    DB.clearMatchData(m.id);
     DB.saveMatch(m);
 
     // Update tournament
@@ -2753,6 +2757,7 @@ function addRosterSlot() {
     if (!t.rosters) t.rosters = {};
     if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
     t.rosters[editingTeamName].push('');
+    DB.saveTournament(t); // Auto-save new slot
     openRosterEditor(editingTeamName);
 }
 
@@ -2766,6 +2771,13 @@ window.onRosterInputChanged = function(idx, val) {
         if (!currentTournament.rosters) currentTournament.rosters = {};
         if (!currentTournament.rosters[editingTeamName]) currentTournament.rosters[editingTeamName] = [];
         currentTournament.rosters[editingTeamName][idx] = cleanVal;
+        
+        // DEBOUNCED AUTO-SAVE TO DB
+        clearTimeout(window._rosterSyncTimer);
+        window._rosterSyncTimer = setTimeout(() => {
+            DB.saveTournament(currentTournament);
+            console.log("💾 Roster Auto-saved");
+        }, 800);
     }
 
     if (!cleanVal) {
@@ -3739,14 +3751,39 @@ function renderBroadcastController(match) {
         const reader = new FileReader();
         reader.onload = (event) => {
             const data = event.target.result;
+            const m = currentMatch;
+            const inn = m ? m.innings[m.currentInnings] : null;
+
             if (window._pendingManualPhotoType === 'striker') {
                 window.__photo_striker = data;
                 const el = document.getElementById('preview_striker');
                 if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                
+                // Persist to DB if possible
+                if (inn) {
+                    const strikerName = getStrikerBatterName(inn);
+                    const p = resolvePlayerProfileForBatter(inn, strikerName);
+                    if (p && p.playerId) {
+                        DB.updatePlayer({ ...p, photo: data });
+                        showToast(`Saved photo to ${p.name}`, 'success');
+                    }
+                }
             } else {
                 window.__photo_bowler = data;
                 const el = document.getElementById('preview_bowler');
                 if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                
+                // Persist to DB if possible
+                if (inn) {
+                    const bowler = inn.bowlers[inn.currentBowlerIdx];
+                    let p = null;
+                    if (bowler && bowler.playerId) p = DB.getPlayerById(bowler.playerId);
+                    
+                    if (p && p.playerId) {
+                        DB.updatePlayer({ ...p, photo: data });
+                        showToast(`Saved photo to ${p.name}`, 'success');
+                    }
+                }
             }
         };
         reader.readAsDataURL(file);
