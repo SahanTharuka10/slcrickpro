@@ -231,9 +231,16 @@
             <span class="live-pill" id="live-pill" style="display:none">
                 <span class="live-dot"></span> LIVE SYNC
             </span>
+            <button class="posts-refresh-btn" title="Suggestions & Complaints" onclick="openFeedbackModal()" style="padding: 8px; border-radius: 50%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="posts-refresh-btn" onclick="openSubmitPostModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Submit Your Post</span>
+            </button>
             <button class="posts-refresh-btn" id="refresh-btn" onclick="loadPosts()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
-                Refresh
+                <span>Refresh</span>
             </button>
             <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
         </div>
@@ -265,12 +272,120 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- Submit Post Modal -->
+    <div class="modal-overlay" id="modal-submit-post" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; align-items:center; justify-content:center;">
+        <div class="modal-box" style="background:var(--c-bg); border:1px solid var(--c-border); padding:24px; border-radius:12px; max-width:400px; width:90%;">
+            <h3 style="margin-bottom:16px;">Submit Your Post</h3>
+            <p style="font-size:12px; color:var(--c-muted); margin-bottom:16px;">Your post will be submitted to the admin for review. It will appear on the feed once approved.</p>
+            <div style="margin-bottom:12px;">
+                <label style="display:block; margin-bottom:4px; font-size:13px;">Title</label>
+                <input type="text" id="user-post-title" class="form-input" style="width:100%; padding:8px; border-radius:6px; background:transparent; border:1px solid var(--c-border); color:var(--c-text);" placeholder="Enter title" />
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; margin-bottom:4px; font-size:13px;">Description</label>
+                <textarea id="user-post-desc" class="form-input" rows="4" style="width:100%; padding:8px; border-radius:6px; background:transparent; border:1px solid var(--c-border); color:var(--c-text);" placeholder="Enter description"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button class="posts-refresh-btn" onclick="document.getElementById('modal-submit-post').style.display='none'">Cancel</button>
+                <button class="posts-refresh-btn" style="background:var(--c-primary); color:#fff; border:none;" onclick="submitUserPost()">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="modal-overlay" id="modal-feedback" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; align-items:center; justify-content:center;">
+        <div class="modal-box" style="background:var(--c-bg); border:1px solid var(--c-border); padding:24px; border-radius:12px; max-width:400px; width:90%;">
+            <h3 style="margin-bottom:16px;">Suggestions & Complaints</h3>
+            <p style="font-size:12px; color:var(--c-muted); margin-bottom:16px;">Have any suggestions or complaints? Let the admins know.</p>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; margin-bottom:4px; font-size:13px;">Message</label>
+                <textarea id="user-feedback-msg" class="form-input" rows="4" style="width:100%; padding:8px; border-radius:6px; background:transparent; border:1px solid var(--c-border); color:var(--c-text);" placeholder="Write your message here..."></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button class="posts-refresh-btn" onclick="document.getElementById('modal-feedback').style.display='none'">Cancel</button>
+                <button class="posts-refresh-btn" style="background:var(--c-primary); color:#fff; border:none;" onclick="submitFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Load Socket.io BEFORE db.js so db.js can use it -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/js/db.js"></script>
     <script>
-        const POSTS_URL = BACKEND_BASE_URL + '/sync/posts';
+        const POSTS_URL_API = BACKEND_BASE_URL + '/sync/posts?status=approved';
         let retryTimer = null;
+
+        function openSubmitPostModal() {
+            document.getElementById('user-post-title').value = '';
+            document.getElementById('user-post-desc').value = '';
+            document.getElementById('modal-submit-post').style.display = 'flex';
+        }
+
+        async function submitUserPost() {
+            const title = document.getElementById('user-post-title').value.trim();
+            const content = document.getElementById('user-post-desc').value.trim();
+            if(!title || !content) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(BACKEND_BASE_URL + '/sync/post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'post_' + Date.now(),
+                        title,
+                        content,
+                        status: 'pending',
+                        author: 'User',
+                        createdAt: Date.now()
+                    })
+                });
+                if(res.ok) {
+                    showToast('Post submitted for review!', 'success');
+                    document.getElementById('modal-submit-post').style.display = 'none';
+                } else {
+                    showToast('Failed to submit post', 'error');
+                }
+            } catch(e) {
+                console.error(e);
+                showToast('Network error', 'error');
+            }
+        }
+
+        function openFeedbackModal() {
+            document.getElementById('user-feedback-msg').value = '';
+            document.getElementById('modal-feedback').style.display = 'flex';
+        }
+
+        async function submitFeedback() {
+            const message = document.getElementById('user-feedback-msg').value.trim();
+            if(!message) {
+                showToast('Message cannot be empty', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(BACKEND_BASE_URL + '/sync/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'fb_' + Date.now(),
+                        message,
+                        status: 'unread',
+                        createdAt: Date.now()
+                    })
+                });
+                if(res.ok) {
+                    showToast('Feedback sent to admins!', 'success');
+                    document.getElementById('modal-feedback').style.display = 'none';
+                } else {
+                    showToast('Failed to send', 'error');
+                }
+            } catch(e) {
+                console.error(e);
+                showToast('Network error', 'error');
+            }
+        }
 
         /* ─────────────────────────────────────
            Load posts from DB and render
@@ -283,7 +398,7 @@
             btn.classList.add('spinning');
 
             try {
-                const resp = await fetch(POSTS_URL, { cache: 'no-store' });
+                const resp = await fetch(POSTS_URL_API, { cache: 'no-store' });
 
                 if (!resp.ok) throw new Error('Server returned ' + resp.status);
 

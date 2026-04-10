@@ -8,7 +8,10 @@ let refreshInterval;
 window.renderOngoing = function() {
     console.log("🔄 Ongoing UI refreshing from Global Sync...");
     if (currentTab === 'live') renderLive();
-    if (currentTab === 'tournament') renderTournamentSelector();
+    if (currentTab === 'tournament') {
+        renderTournamentSelector();
+        if (selectedTournId) renderTournDetails(selectedTournId);
+    }
     if (currentTab === 'recent') renderRecent();
 };
 
@@ -430,12 +433,13 @@ function buildTournSubTab(t, tab) {
 
     if (tab === 'nrr') {
         if (t.format === 'knockout') return `<div class="info-banner" style="margin-top:20px">NRR is not tracked for knockout tournaments.</div>`;
+        const bpo = t.ballsPerOver || 6;
         return `<div class="card"><table class="data-table">
             <thead><tr><th>#</th><th>Team</th><th>Runs For</th><th>Overs F.</th><th>Runs Ag.</th><th>Overs B.</th><th>NRR</th></tr></thead>
             <tbody>${sortedTeams.map((ts, i) => `<tr>
                 <td>${i+1}</td><td class="standings-team">${ts.name}</td>
-                <td>${ts.runsScored || 0}</td><td>${formatOvers(ts.ballsFaced || 0)}</td>
-                <td>${ts.runsConceded || 0}</td><td>${formatOvers(ts.ballsBowled || 0)}</td>
+                <td>${ts.runsScored || 0}</td><td>${formatOvers(ts.ballsFaced || 0, bpo)}</td>
+                <td>${ts.runsConceded || 0}</td><td>${formatOvers(ts.ballsBowled || 0, bpo)}</td>
                 <td class="${(ts.nrr || 0) >= 0 ? 'nrr-positive' : 'nrr-negative'}">${(ts.nrr || 0).toFixed(3)}</td>
             </tr>`).join('')}</tbody>
         </table></div>`;
@@ -537,7 +541,7 @@ function getBestBowlers(tournId) {
             });
         });
     });
-    return Object.values(stats).map(s => ({ ...s, econ: formatEcon(s.runs, s.balls), overs: formatOvers(s.balls) }))
+    return Object.values(stats).map(s => ({ ...s, econ: formatEcon(s.runs, s.balls, DB.getTournament(tournId)?.ballsPerOver || 6), overs: formatOvers(s.balls, DB.getTournament(tournId)?.ballsPerOver || 6) }))
         .sort((a, b) => b.wickets - a.wickets || parseFloat(a.econ) - parseFloat(b.econ));
 }
 
@@ -1297,6 +1301,27 @@ async function generateTournamentPDF(tournId) {
             html += `<tr class="${rowClass}">
                 <td>${i+1}</td><td><b>${b.name}</b></td><td>${b.team}</td>
                 <td><b>${b.wickets}</b></td><td>${b.runs}</td><td>${b.overs}</td><td>${b.econ}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+    }
+
+    // ── Match Summary Table ─────────────────────────────────────────────────────
+    if (allTournMatches.length) {
+        html += `<div style="padding:0 40px;">
+        <div class="section-title">📅 Match Summary Table</div>
+        <table>
+            <thead><tr><th>Match</th><th>Teams</th><th>Venue</th><th>Date</th><th>Result</th></tr></thead>
+            <tbody>`;
+        allTournMatches.forEach((m, i) => {
+            const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '-';
+            let res = m.result || (m.status === 'live' ? '🔴 Live' : (m.status === 'paused' ? '⏸ Paused' : '🗓 Scheduled'));
+            html += `<tr>
+                <td>${m.knockout ? `KO ` + m.knockout.matchNum : `M ` + (i + 1)}</td>
+                <td><b>${m.team1}</b> vs <b>${m.team2}</b></td>
+                <td>${m.venue || 'Neutral'}</td>
+                <td>${dateStr}</td>
+                <td>${res}</td>
             </tr>`;
         });
         html += `</tbody></table></div>`;

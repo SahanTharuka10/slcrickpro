@@ -189,14 +189,22 @@ const Post = sequelize.define('Post', {
   title: DataTypes.STRING,
   content: DataTypes.TEXT,
   image: DataTypes.TEXT,
+  status: { type: DataTypes.STRING, defaultValue: 'approved' },
   createdAt: DataTypes.BIGINT,
 }, { timestamps: true, tableName: 'posts' });
+
+const Feedback = sequelize.define('Feedback', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  message: DataTypes.TEXT,
+  status: { type: DataTypes.STRING, defaultValue: 'unread' },
+  createdAt: DataTypes.BIGINT,
+}, { timestamps: true, tableName: 'feedback' });
 
 async function ensureDB() {
   try {
     await sequelize.authenticate();
     // console.log('DB Authenticated');
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     return true;
   } catch (e) {
     console.warn('DB connection error detected:', e.message || e);
@@ -204,7 +212,7 @@ async function ensureDB() {
     try {
       if (DATABASE_URL.includes('postgres') || DATABASE_URL.includes('mysql')) {
         await trySqliteFallback();
-        await sequelize.sync();
+        await sequelize.sync({ alter: true });
         return true;
       }
     } catch (fallbackErr) {
@@ -421,7 +429,9 @@ app.post('/sync/order', async (req, res) => {
 app.get('/sync/posts', async (req, res) => {
   try {
     await ensureDB();
-    const posts = await Post.findAll({ order: [['createdAt', 'DESC']] });
+    let where = {};
+    if (req.query.status) where.status = req.query.status;
+    const posts = await Post.findAll({ where, order: [['createdAt', 'DESC']] });
     res.json(posts.map(p => p.dataValues || p));
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -452,7 +462,83 @@ app.delete('/sync/posts/:id', async (req, res) => {
   }
 });
 
+app.get('/sync/feedback', async (req, res) => {
+  try {
+    await ensureDB();
+    const feedbacks = await Feedback.findAll({ order: [['createdAt', 'DESC']] });
+    res.json(feedbacks.map(f => f.dataValues || f));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
+app.post('/sync/feedback', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing feedback id' });
+  try {
+    await ensureDB();
+    await Feedback.upsert(data);
+    emitUpdate('feedback', data.id, data);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to sync feedback' });
+  }
+});
+
+app.delete('/sync/feedback/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    await Feedback.destroy({ where: { id: req.params.id } });
+    emitUpdate('feedback_deleted', req.params.id, null);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete feedback' });
+  }
+});
+
 app.get('/test', (req, res) => res.json({ test: 'ok' }));
+
+app.post('/api/handshake', async (req, res) => {
+  const { id, password } = req.body;
+  if (!id || !password) return res.status(400).json({ error: 'Missing credentials' });
+  try {
+    await ensureDB();
+    const match = await Match.findByPk(id);
+    let matchPassword = null;
+
+    if (match) {
+        if (match.scoring_password) matchPassword = match.scoring_password;
+        else {
+            let mData = match.data || match.dataValues?.data || {};
+            if (typeof mData === 'string') try { mData = JSON.parse(mData); } catch(e){}
+            matchPassword = mData.scoringPassword || mData.password;
+        }
+    } else {
+        const tourn = await Tournament.findByPk(id);
+        if (tourn) {
+            if (tourn.scoring_password) matchPassword = tourn.scoring_password;
+            else {
+                let tData = tourn.data || tourn.dataValues?.data || {};
+                if (typeof tData === 'string') try { tData = JSON.parse(tData); } catch(e){}
+                matchPassword = tData.scoringPassword || tData.password;
+            }
+        }
+    }
+
+    // fallback for admin pin
+    if (password === process.env.ADMIN_PIN) return res.json({ ok: true, message: 'Admin override' });
+
+    if (!matchPassword) return res.json({ ok: true, message: 'No password set' });
+
+    if (password === matchPassword) {
+      res.json({ ok: true });
+    } else {
+      res.status(401).json({ error: 'Incorrect password' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 app.delete('/sync/matches/:id', async (req, res) => {
   try {

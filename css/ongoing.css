@@ -726,13 +726,14 @@
         padding: 5px !important;
         display: flex !important;
         gap: 4px !important;
-        overflow: hidden !important; /* Force fit */
+        overflow-x: auto !important; /* Allow scrolling on small screens */
+        flex-wrap: nowrap !important;
     }
     
     .tab-btn {
-        flex: 1 !important;
-        flex-shrink: 1 !important;
-        padding: 12px 4px !important;
+        flex: 0 0 auto !important;
+        min-width: 90px !important;
+        padding: 12px 14px !important;
         font-size: 11px !important;
         font-weight: 800 !important;
         text-transform: uppercase;
@@ -870,6 +871,8 @@
     .card {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        width: 100% !important;
+        display: block !important;
     }
 
     .data-table {

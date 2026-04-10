@@ -804,6 +804,27 @@ const DB = {
         localStorage.removeItem('match_session_token_' + matchId);
         sessionStorage.removeItem('hotkey_match_id');
         console.log(`🧹 DB: Cleaned up session data for match ${matchId}`);
+    },
+
+    async handshake(id, password) {
+        try {
+            const res = await fetch(BACKEND_BASE_URL + '/api/handshake', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, password })
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+                grants[id] = true;
+                localStorage.setItem('cricpro_grants', JSON.stringify(grants));
+                return { ok: true };
+            }
+            return { ok: false };
+        } catch (e) {
+            console.error('Handshake error', e);
+            return { ok: false };
+        }
     }
 };
 

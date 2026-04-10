@@ -2561,17 +2561,33 @@ function syncOfficialStats(m, t) {
 }
 
 // ========== ROSTER & OVERLAYS ==========
+function getActiveRosterRoot() {
+    return (currentTournament && !currentTournament.isMock) ? currentTournament : currentMatch;
+}
+
+function saveActiveRosterRoot(rootObj) {
+    if (rootObj.id && rootObj.id.startsWith('MATCH-')) {
+        DB.saveMatch(rootObj);
+    } else {
+        DB.saveTournament(rootObj);
+    }
+}
+
 function renderTournamentTeams() {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t) return;
     const container = document.getElementById('tm-teams-list');
+    
+    // For single match, 'teams' might just be team1 and team2
+    const teamsList = t.teams || [t.team1, t.team2].filter(Boolean);
 
-    container.innerHTML = t.teams.map(teamName => {
+    container.innerHTML = teamsList.map(teamName => {
+        if (!t.rosters) t.rosters = {};
         const roster = t.rosters[teamName] || [];
         return `
             <div class="card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:12px;margin-bottom:8px">
                 <div style="display:flex;align-items:center;gap:12px">
-                    <div style="width:40px;height:40px;background:var(--c-primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">${teamName[0].toUpperCase()}</div>
+                    <div style="width:40px;height:40px;background:var(--c-primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">${teamName[0] ? teamName[0].toUpperCase() : 'T'}</div>
                     <div>
                         <div style="font-weight:700;font-size:16px">${teamName}</div>
                         <div style="font-size:12px;opacity:0.6">${roster.filter(n => n && n.trim()).length} / 11 Players Registered</div>
@@ -2596,7 +2612,7 @@ let pendingRosterSlotToRegister = null;
 let pendingRosterName = null;
 
 function onRosterSlotClick(idx) {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t || !editingTeamName) return;
 
     const roster = t.rosters?.[editingTeamName] || [];
@@ -2611,7 +2627,7 @@ function onRosterSlotClick(idx) {
     if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
     t.rosters[editingTeamName][idx] = name;
     
-    DB.saveTournament(t);
+    saveActiveRosterRoot(t);
     showToast('Player name assigned to slot ' + (idx + 1), 'success');
     openRosterEditor(editingTeamName);
 }
@@ -2624,12 +2640,12 @@ window.onRosterPhotoClick = function(idx) {
 };
 
 function assignRosterSlot(idx, playerOrId) {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t || !editingTeamName) return;
     if (!t.rosters) t.rosters = {};
     if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
     t.rosters[editingTeamName][idx] = typeof playerOrId === 'string' ? playerOrId : playerOrId.playerId;
-    DB.saveTournament(t);
+    saveActiveRosterRoot(t);
     openRosterEditor(editingTeamName);
 }
 
@@ -2646,7 +2662,7 @@ function onRosterPhotoFileSelected(e) {
     reader.onload = function(event) {
         const imageData = event.target.result;
 
-        const t = currentTournament;
+        const t = getActiveRosterRoot();
         if (!t || !editingTeamName) return;
 
         const roster = t.rosters?.[editingTeamName] || [];
@@ -2679,7 +2695,7 @@ function onRosterPhotoFileSelected(e) {
 }
 
 function openRosterEditor(teamName) {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t) return;
     
     window._isEditingRoster = true; // Block intrusive refreshes
@@ -2752,12 +2768,12 @@ function openRosterEditor(teamName) {
 }
 
 function addRosterSlot() {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t || !editingTeamName) return;
     if (!t.rosters) t.rosters = {};
     if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
     t.rosters[editingTeamName].push('');
-    DB.saveTournament(t); // Auto-save new slot
+    saveActiveRosterRoot(t); // Auto-save new slot
     openRosterEditor(editingTeamName);
 }
 
@@ -2766,16 +2782,17 @@ window.onRosterInputChanged = function(idx, val) {
     const infoEl = document.getElementById(`roster-info-${idx}`);
     const imgEl = document.getElementById(`roster-photo-${idx}`);
     
+    const t = getActiveRosterRoot();
     // Immediate state persistence
-    if (currentTournament && editingTeamName) {
-        if (!currentTournament.rosters) currentTournament.rosters = {};
-        if (!currentTournament.rosters[editingTeamName]) currentTournament.rosters[editingTeamName] = [];
-        currentTournament.rosters[editingTeamName][idx] = cleanVal;
+    if (t && editingTeamName) {
+        if (!t.rosters) t.rosters = {};
+        if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+        t.rosters[editingTeamName][idx] = cleanVal;
         
         // DEBOUNCED AUTO-SAVE TO DB
         clearTimeout(window._rosterSyncTimer);
         window._rosterSyncTimer = setTimeout(() => {
-            DB.saveTournament(currentTournament);
+            saveActiveRosterRoot(t);
             console.log("💾 Roster Auto-saved");
         }, 800);
     }
@@ -2797,7 +2814,7 @@ window.onRosterInputChanged = function(idx, val) {
 };
 
 function saveRoster(teamName, silent = false) {
-    const t = currentTournament;
+    const t = getActiveRosterRoot();
     if (!t) return;
     
     const inputs = document.querySelectorAll('.roster-player-input');
@@ -2834,7 +2851,7 @@ function saveRoster(teamName, silent = false) {
     t.rosters[teamName] = newRoster;
     t.lastUpdated = Date.now(); // Ensure sync prioritizes local edits
     
-    DB.saveTournament(t);
+    saveActiveRosterRoot(t);
     if (!silent) {
         window._isEditingRoster = false;
         showToast('Roster saved for ' + teamName, 'success');
@@ -2847,7 +2864,7 @@ function showTeamOverlay(teamIdx) {
     const m = currentMatch;
     if (!m) return;
     const teamName = teamIdx === 0 ? m.team1 : m.team2;
-    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : m;
     const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
     
     let html = `
@@ -2997,7 +3014,7 @@ function broadcastTeamRoster(teamIdx) {
     const m = currentMatch;
     if (!m) return;
     const teamName = teamIdx === 0 ? m.team1 : m.team2;
-    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : m;
     const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
     
     const players = rosterIds.map(pid => DB.getPlayerById(pid)).filter(Boolean);
@@ -3008,7 +3025,7 @@ function broadcastTeamCard(teamIdx) {
     const m = currentMatch;
     if (!m) return;
     const teamName = teamIdx === 0 ? m.team1 : m.team2;
-    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : null;
+    const t = m.tournamentId ? DB.getTournament(m.tournamentId) : m;
     const rosterIds = (t && t.rosters) ? (t.rosters[teamName] || []) : [];
     
     const players = rosterIds.slice(0, 11).map(pid => {

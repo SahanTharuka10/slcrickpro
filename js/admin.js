@@ -68,7 +68,7 @@ function logoutAdmin() {
 
 function switchAdminTab(tab) {
     currentTab = tab;
-    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'posts', 'match-entry'];
+    const panels = ['requests', 'matches', 'tournaments', 'players', 'store', 'posts', 'feedback', 'match-entry'];
     panels.forEach(p => {
         const el = document.getElementById('tab-' + p);
         const btn = document.getElementById('btn-tab-' + p);
@@ -84,6 +84,7 @@ function switchAdminTab(tab) {
     if (tab === 'players') renderPlayersAdmin();
     if (tab === 'store') renderStoreItems();
     if (tab === 'posts') renderPostsAdmin();
+    if (tab === 'feedback') renderFeedbackAdmin();
 }
 
 function renderRequests() {
@@ -219,10 +220,33 @@ function renderSystemMatches() {
                 <p>${m.status.toUpperCase()} · ${m.type} · ${m.id}</p>
             </div>
             <div class="req-actions">
+                <button class="btn btn-primary btn-sm" onclick="scoreAdminMatchRedirect('${m.id}')">⚡ Score</button>
                 <button class="btn btn-red btn-sm" onclick="forceDeleteMatch('${m.id}')">🗑️ Delete</button>
             </div>
         </div>
     `).join('');
+}
+
+async function scoreAdminMatchRedirect(id) {
+    const m = DB.getMatch(id) || DB.getTournament(id);
+    if (!m) {
+        window.location.href = 'score-match.html?matchId=' + id;
+        return;
+    }
+    const needsPassword = (m.isLocked || m.scoringPassword || m.password);
+    const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+    if (needsPassword && !grants[id]) {
+        const password = prompt("🔐 This match is protected. Enter the Scoring Password to continue:");
+        if (password === null) return;
+        const res = await DB.handshake(id, password);
+        if (res.ok) {
+            window.location.href = 'score-match.html?matchId=' + id;
+        } else {
+            showToast("❌ Incorrect password", "error");
+        }
+    } else {
+        window.location.href = 'score-match.html?matchId=' + id;
+    }
 }
 
 function renderTournamentsAdmin() {
@@ -616,23 +640,90 @@ async function renderPostsAdmin() {
         const posts = await r.json();
         
         if (!posts || !posts.length) {
-            list.innerHTML = '<div class="empty-state">No posts have been published.</div>';
+            list.innerHTML = '<div class="empty-state">No posts found.</div>';
             return;
         }
 
         list.innerHTML = posts.map(p => `
-            <div class="card" style="margin-bottom:12px">
+            <div class="card" style="margin-bottom:12px; border-left:4px solid ${p.status === 'pending' ? 'var(--c-amber)' : 'var(--c-primary)'}">
                 <div style="display:flex; justify-content:space-between">
-                    <strong>🛡️ ${p.title || 'Official Update'}</strong>
+                    <strong>${p.author === 'Admin' ? '🛡️' : '👤'} ${p.title || 'Untitled'} <span class="badge ${p.status==='pending' ? 'badge-amber' : 'badge-green'}">${p.status}</span></strong>
                     <span style="font-size:12px; color:var(--c-muted)">${new Date(p.createdAt).toLocaleString()}</span>
                 </div>
                 ${p.image ? `<img src="${p.image}" style="width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin:10px 0;" />` : ''}
                 <div style="margin:10px 0; line-height:1.5">${p.content}</div>
-                <button class="btn btn-red btn-sm" onclick="deletePostAdmin('${p.id}')">🗑️ Delete</button>
+                <div>
+                    ${p.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approvePost('${p.id}', '${p.title}', '${p.content}')">✅ Approve</button>` : ''}
+                    <button class="btn ${p.status === 'pending' ? 'btn-red' : 'btn-ghost'} btn-sm" onclick="deletePostAdmin('${p.id}')">${p.status === 'pending' ? '❌ Reject' : '🗑️ Delete'}</button>
+                </div>
             </div>
         `).join('');
     } catch (e) {
         list.innerHTML = '<div style="color:var(--c-red)">Failed to load posts from cloud.</div>';
+    }
+}
+
+async function approvePost(id, title, content) {
+    try {
+        const post = {
+            id,
+            title,
+            content,
+            status: 'approved',
+            updatedAt: Date.now()
+        };
+        const r = await fetch(BACKEND_BASE_URL + '/sync/post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(post)
+        });
+        if (r.ok) {
+            showToast('✅ Post approved', 'success');
+            renderPostsAdmin();
+        }
+    } catch(e) {
+        showToast('❌ Failed to approve', 'error');
+    }
+}
+
+async function renderFeedbackAdmin() {
+    const list = document.getElementById('admin-feedback-list');
+    if (!list) return;
+    list.innerHTML = '<div>Loading feedback...</div>';
+
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/feedback');
+        const feedbacks = await r.json();
+        
+        if (!feedbacks || !feedbacks.length) {
+            list.innerHTML = '<div class="empty-state">No feedback yet.</div>';
+            return;
+        }
+
+        list.innerHTML = feedbacks.map(f => `
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex; justify-content:space-between">
+                    <span style="font-size:12px; color:var(--c-muted)">${new Date(f.createdAt).toLocaleString()}</span>
+                    <button class="btn btn-ghost btn-sm" onclick="deleteFeedback('${f.id}')">🗑️ Delete</button>
+                </div>
+                <div style="margin:10px 0; line-height:1.5">${f.message}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = '<div style="color:var(--c-red)">Failed to load feedback.</div>';
+    }
+}
+
+async function deleteFeedback(id) {
+    if (!confirm('Delete this feedback?')) return;
+    try {
+        const r = await fetch(BACKEND_BASE_URL + '/sync/feedback/' + id, { method: 'DELETE' });
+        if (r.ok) {
+            showToast('🗑️ Feedback deleted', 'success');
+            renderFeedbackAdmin();
+        }
+    } catch (e) {
+        showToast('❌ Delete failed', 'error');
     }
 }
 

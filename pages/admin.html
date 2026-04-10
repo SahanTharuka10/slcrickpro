@@ -153,6 +153,7 @@
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
                 Data</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('posts')" id="btn-tab-posts">➕ Posts</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('feedback')" id="btn-tab-feedback">💬 Feedback</button>
             <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry">Match Entry</button>
             <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
         </div>
@@ -212,6 +213,25 @@
             </div>
             <div id="store-list"
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+        </div>
+
+        <!-- Posts Tab -->
+        <div id="tab-posts" class="admin-panel" style="display:none">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px">
+                <div>
+                    <h3 class="section-hd" style="margin-bottom:8px">Manage Posts</h3>
+                    <p style="color:var(--c-muted);margin-bottom:0">Review pending posts or create official announcements.</p>
+                </div>
+                <button class="btn btn-green" onclick="openAdminCreatePost()">➕ Add Official Post</button>
+            </div>
+            <div id="admin-posts-list"></div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div id="tab-feedback" class="admin-panel" style="display:none">
+            <h3 class="section-hd" style="margin-bottom:8px">Suggestions & Complaints</h3>
+            <p style="color:var(--c-muted);margin-bottom:24px">View feedback submitted by users.</p>
+            <div id="admin-feedback-list"></div>
         </div>
 
         <!-- Match Entry Tab -->
