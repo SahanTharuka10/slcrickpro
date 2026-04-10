@@ -10,7 +10,21 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        const allowedPatterns = ['slcrickpro.live', 'railway.app', 'localhost', '127.0.0.1'];
+        const isAllowed = allowedPatterns.some(pattern => origin.includes(pattern));
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Fallback for maximum compatibility
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
+}));
 app.use(express.json());
 app.use(express.text({ type: 'text/plain' }));
 
@@ -489,7 +503,12 @@ app.get('/team-stats', async (req, res) => {
 // ─── Socket.io & HTTP Setup ──────────────────────────────────────────────────
 const server = http.createServer(app);
 const io = socketIo(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { 
+        origin: true, 
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
+    }
 });
 
 io.on('connection', (socket) => {

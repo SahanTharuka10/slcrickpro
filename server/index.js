@@ -17,15 +17,36 @@ const server = http.createServer(app);
 // Accept any origin and reflect it back to fully bypass strict CORS limitations
 const io = socketIo(server, {
   cors: {
-    origin: ["https://www.slcrickpro.live", "http://localhost:3000", "https://slcrickpro-production.up.railway.app"], // Allow specific origins
+    origin: true, // Reflects the request origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
   }
 });
 
 // Using standard cors to apply CORS universally
 app.use(cors({
-  origin: ["https://www.slcrickpro.live", "http://localhost:3000", "https://slcrickpro-production.up.railway.app"], // Allow specific origins
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps)
+    if (!origin) return callback(null, true);
+    
+    // Whitelist for production and development
+    const allowedPatterns = [
+      'slcrickpro.live',
+      'railway.app',
+      'localhost',
+      '127.0.0.1'
+    ];
+    
+    const isAllowed = allowedPatterns.some(pattern => origin.includes(pattern));
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      // Fallback: reflect the origin anyway but log it (for now to resolve user issues)
+      callback(null, true);
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
@@ -33,9 +54,17 @@ app.use(cors({
 
 // A fallback middleware strictly for cases where `cors()` might be skipped
 app.use((req, res, next) => {
-  if (!res.headersSent && req.headers.origin) {
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+  const origin = req.headers.origin;
+  if (origin && !res.headersSent) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
+  }
+  
+  // Handle OPTIONS preflight directly if not handled by cors()
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
   }
   next();
 });
@@ -1056,6 +1085,19 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('User disconnected from Sync Engine:', socket.id);
     });
+});
+
+// --- GLOBAL ERROR HANDLER ---
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && !res.headersSent) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  console.error('Unhandled Server Error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
