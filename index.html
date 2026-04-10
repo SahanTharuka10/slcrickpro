@@ -88,13 +88,16 @@
         </div>
       </div>
       <div class="header-info">
-        <div class="header-actions" style="display:flex; gap:10px; margin-right:10px;">
           <a href="pages/admin.html" class="header-btn-sm admin-btn-glow" title="Admin Panel">
             <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span>Admin</span>
           </a>
-          <a href="pages/posts.html" class="header-btn-sm posts-btn-glow" title="Community Posts">
+          <button class="header-btn-sm chat-btn-glow" title="Feedback & Chat" onclick="openFeedbackModal()">
             <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Chat</span>
+          </button>
+          <a href="pages/posts.html" class="header-btn-sm posts-btn-glow" title="Community Posts">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/><path d="M12 18v4l4-4"/><path d="M2 12h5"/></svg>
             <span>Posts</span>
           </a>
         </div>
@@ -259,8 +262,44 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Feedback Modal -->
+  <div class="modal-overlay" id="modal-feedback" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+      <div class="modal-box" style="background:#0f172a; border:1px solid rgba(255,255,255,0.1); padding:28px; border-radius:16px; max-width:400px; width:92%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+          <h3 style="margin-bottom:12px; font-size:20px; font-weight:800; color:#fff;">Suggestions & Complaints</h3>
+          <p style="font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:20px; line-height:1.5;">Have a suggestion or found a bug? Send us a quick message.</p>
+          <div style="margin-bottom:20px;">
+              <textarea id="user-feedback-msg" rows="4" style="width:100%; padding:12px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; font-family:inherit; resize:none;" placeholder="Write your message here..."></textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button class="header-btn-sm" onclick="document.getElementById('modal-feedback').style.display='none'" style="background:rgba(255,255,255,0.05); border:none; height:40px; padding:0 16px;">Cancel</button>
+              <button class="header-btn-sm admin-btn-glow" style="border:none; height:40px; padding:0 24px;" onclick="submitFeedback()">Send Message</button>
+          </div>
+      </div>
+  </div>
+
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="js/db.js"></script>
+  <script>
+    function openFeedbackModal() {
+        document.getElementById('user-feedback-msg').value = '';
+        document.getElementById('modal-feedback').style.display = 'flex';
+    }
+    async function submitFeedback() {
+        const msg = document.getElementById('user-feedback-msg').value.trim();
+        if(!msg) { showToast('Please write something', 'error'); return; }
+        try {
+            const res = await fetch(DB.getCloudURL() + '/sync/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id:'fb_'+Date.now(), message:msg, status:'unread', createdAt:Date.now() })
+            });
+            if(res.ok) {
+                showToast('✅ Feedback sent! Thank you.', 'success');
+                document.getElementById('modal-feedback').style.display = 'none';
+            } else { showToast('Sync failed', 'error'); }
+        } catch(e) { showToast('Network connection issue', 'error'); }
+    }
+  </script>
   <script src="js/home.js"></script>
 </body>
 

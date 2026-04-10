@@ -469,6 +469,18 @@ body.light-mode .theme-toggle {
   transform: translateY(-2px);
 }
 
+.chat-btn-glow {
+  background: rgba(0, 230, 118, 0.1);
+  color: #00e676;
+  border-color: rgba(0, 230, 118, 0.2);
+}
+
+.chat-btn-glow:hover {
+  background: rgba(0, 230, 118, 0.2);
+  box-shadow: 0 0 15px rgba(0, 230, 118, 0.3);
+  transform: translateY(-2px);
+}
+
 .posts-btn-glow {
   background: rgba(233, 30, 99, 0.1);
   color: #f06292;
