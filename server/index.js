@@ -125,104 +125,112 @@ app.get('/api/admin/check', (req, res) => {
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || '';
 
-// Start with SQLite for model definitions (models need a sequelize instance at module load time)
-// Will switch to Postgres in initDatabase() if available and reachable
-let sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
 let dbType = 'sqlite';
+let sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
+
+// Let's define models in a way that allows us to re-bind them if we switch to Postgres
+let Player, Team, Match, Tournament, Product, Order, Post, Feedback;
+
+function defineModels(seq) {
+  Player = seq.define('Player', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    name: DataTypes.STRING,
+    dob: DataTypes.STRING,
+    phone: DataTypes.STRING,
+    address: DataTypes.STRING,
+    team: DataTypes.STRING,
+    role: DataTypes.STRING,
+    batStyle: DataTypes.STRING,
+    bowlStyle: DataTypes.STRING,
+    jersey: DataTypes.JSON,
+    photo: DataTypes.TEXT,
+    createdAt: DataTypes.BIGINT,
+    stats: { type: DataTypes.JSON, defaultValue: {} },
+  }, { timestamps: true, tableName: 'players' });
+
+  Team = seq.define('Team', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    name: DataTypes.STRING,
+    ground: DataTypes.STRING,
+    captain: DataTypes.STRING,
+    manager: DataTypes.STRING,
+    contact: DataTypes.STRING,
+    year: DataTypes.STRING,
+    createdAt: DataTypes.BIGINT,
+    stats: { type: DataTypes.JSON, defaultValue: {} },
+  }, { timestamps: true, tableName: 'teams' });
+
+  Match = seq.define('Match', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    scoring_password: DataTypes.STRING,
+    data: DataTypes.JSON,
+  }, { timestamps: true, tableName: 'matches' });
+
+  Tournament = seq.define('Tournament', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    scoring_password: DataTypes.STRING,
+    data: DataTypes.JSON,
+  }, { timestamps: true, tableName: 'tournaments' });
+
+  Product = seq.define('Product', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    name: DataTypes.STRING,
+    price: DataTypes.DECIMAL(10,2),
+    stock: DataTypes.INTEGER,
+    category: DataTypes.STRING,
+    type: DataTypes.STRING,
+    brand: DataTypes.STRING,
+    rating: DataTypes.DECIMAL(3,1),
+    img: DataTypes.TEXT,
+    imgFallback: DataTypes.TEXT,
+    desc: DataTypes.TEXT,
+    details: DataTypes.TEXT,
+    isService: DataTypes.BOOLEAN,
+  }, { timestamps: true, tableName: 'products' });
+
+  Order = seq.define('Order', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    name: DataTypes.STRING,
+    phone: DataTypes.STRING,
+    address: DataTypes.STRING,
+    note: DataTypes.TEXT,
+    items: DataTypes.JSON,
+    total: DataTypes.DECIMAL(10,2),
+    status: { type: DataTypes.STRING, defaultValue: 'pending' },
+    date: DataTypes.BIGINT,
+  }, { timestamps: true, tableName: 'orders' });
+
+  Post = seq.define('Post', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    author: DataTypes.STRING,
+    title: DataTypes.STRING,
+    content: DataTypes.TEXT,
+    image: DataTypes.TEXT,
+    status: { type: DataTypes.STRING, defaultValue: 'approved' },
+    createdAt: DataTypes.BIGINT,
+  }, { timestamps: true, tableName: 'posts' });
+
+  Feedback = seq.define('Feedback', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    message: DataTypes.TEXT,
+    status: { type: DataTypes.STRING, defaultValue: 'unread' },
+    createdAt: DataTypes.BIGINT,
+  }, { timestamps: true, tableName: 'feedback' });
+}
 
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 // Note: ADMIN_USERNAME and ADMIN_PASSWORD are now handled inside the login route for reliability
 
-const Player = sequelize.define('Player', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  name: DataTypes.STRING,
-  dob: DataTypes.STRING,
-  phone: DataTypes.STRING,
-  address: DataTypes.STRING,
-  team: DataTypes.STRING,
-  role: DataTypes.STRING,
-  batStyle: DataTypes.STRING,
-  bowlStyle: DataTypes.STRING,
-  jersey: DataTypes.JSON,
-  photo: DataTypes.TEXT,
-  createdAt: DataTypes.BIGINT,
-  stats: { type: DataTypes.JSON, defaultValue: {} },
-}, { timestamps: true, tableName: 'players' });
-
-const Team = sequelize.define('Team', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  name: DataTypes.STRING,
-  ground: DataTypes.STRING,
-  captain: DataTypes.STRING,
-  manager: DataTypes.STRING,
-  contact: DataTypes.STRING,
-  year: DataTypes.STRING,
-  createdAt: DataTypes.BIGINT,
-  stats: { type: DataTypes.JSON, defaultValue: {} },
-}, { timestamps: true, tableName: 'teams' });
-
-const Match = sequelize.define('Match', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  scoring_password: DataTypes.STRING,
-  data: DataTypes.JSON,
-}, { timestamps: true, tableName: 'matches' });
-
-const Tournament = sequelize.define('Tournament', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  scoring_password: DataTypes.STRING,
-  data: DataTypes.JSON,
-}, { timestamps: true, tableName: 'tournaments' });
-
-const Product = sequelize.define('Product', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  name: DataTypes.STRING,
-  price: DataTypes.DECIMAL(10,2),
-  stock: DataTypes.INTEGER,
-  category: DataTypes.STRING,
-  type: DataTypes.STRING,
-  brand: DataTypes.STRING,
-  rating: DataTypes.DECIMAL(3,1),
-  img: DataTypes.TEXT,
-  imgFallback: DataTypes.TEXT,
-  desc: DataTypes.TEXT,
-  details: DataTypes.TEXT,
-  isService: DataTypes.BOOLEAN,
-}, { timestamps: true, tableName: 'products' });
-
-const Order = sequelize.define('Order', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  name: DataTypes.STRING,
-  phone: DataTypes.STRING,
-  address: DataTypes.STRING,
-  note: DataTypes.TEXT,
-  items: DataTypes.JSON,
-  total: DataTypes.DECIMAL(10,2),
-  status: { type: DataTypes.STRING, defaultValue: 'pending' },
-  date: DataTypes.BIGINT,
-}, { timestamps: true, tableName: 'orders' });
-
-const Post = sequelize.define('Post', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  author: DataTypes.STRING,
-  title: DataTypes.STRING,
-  content: DataTypes.TEXT,
-  image: DataTypes.TEXT,
-  status: { type: DataTypes.STRING, defaultValue: 'approved' },
-  createdAt: DataTypes.BIGINT,
-}, { timestamps: true, tableName: 'posts' });
-
-const Feedback = sequelize.define('Feedback', {
-  id: { type: DataTypes.STRING, primaryKey: true },
-  message: DataTypes.TEXT,
-  status: { type: DataTypes.STRING, defaultValue: 'unread' },
-  createdAt: DataTypes.BIGINT,
-}, { timestamps: true, tableName: 'feedback' });
-
+let _dbInitPromise = null;
 async function ensureDB() {
-  // DB is already initialized and synced at startup, just check the flag
-  return dbInitialized;
+  if (!_dbInitPromise) {
+    _dbInitPromise = initDatabase();
+  }
+  await _dbInitPromise;
+  if (!dbInitialized) throw new Error('Database not ready');
+  return true;
 }
 
 // Global Error Handlers to keep process alive on Railway
@@ -248,22 +256,26 @@ async function initDatabase() {
     
     try {
       await testSeq.authenticate();
-      console.log('✅ Postgres available - switching to Postgres');
-      await sequelize.close();
+      console.log('✅ Postgres detected and authenticated');
+      // If we got here, Postgres is usable. We switch.
+      await sequelize.close().catch(() => {});
       sequelize = testSeq;
       dbType = 'postgres';
     } catch (pgErr) {
-      console.warn('⚠️ Postgres unavailable (' + pgErr.message.slice(0, 40) + '), staying with SQLite');
+      console.warn('⚠️ Postgres probe failed (' + pgErr.message.slice(0, 40) + '), falling back to SQLite');
       try { await testSeq.close(); } catch (e) { }
     }
   }
+
+  // Now that we have the final chosen instance, define and sync models
+  console.log(`ℹ️ Finalizing components on ${dbType.toUpperCase()}...`);
+  defineModels(sequelize);
 
   try {
     await sequelize.authenticate();
     console.log('✅ ' + dbType.toUpperCase() + ' connection authenticated');
   } catch (authErr) {
     console.warn('⚠️ Database authentication failed:', authErr.message);
-    // Do not throw, allow server to start
   }
 
   try {
@@ -272,7 +284,6 @@ async function initDatabase() {
     console.log('✅ Database models synced successfully');
   } catch (syncErr) {
     console.error('❌ Database sync failed:', syncErr.message);
-    // Do not throw
   }
 }
 
