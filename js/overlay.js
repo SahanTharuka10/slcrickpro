@@ -230,6 +230,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 1500); // Speed up for better real-time feel
 
+    // ── Live Clock Ticker ──────────────────────────────────
+    function updateClock() {
+        const el = document.getElementById('overlay-live-clock');
+        if (!el) return;
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        el.textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+
     // ── Storage events: instant cross-tab updates on the same machine
     window.addEventListener('storage', (e) => {
         if (e.key === 'cricpro_broadcast_cmd') {
@@ -645,6 +659,7 @@ function renderOverlay() {
     container.style.display = 'flex';
     container.innerHTML = `
         <div class="score-center-section" style="width: auto; padding: 10px 40px; margin: 0 auto;">
+            <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top" style="justify-content: center;">
                 <span class="teams" style="font-size:22px;">${title}</span>
             </div>
@@ -710,6 +725,23 @@ function _renderOverlayFromMatch(m) {
         bottomText = `TOSS: ${m.tossWinner||'TBD'} CHOSE TO ${(m.tossDecision||'bat').toUpperCase()}`;
     }
 
+    // Compute RRR for 2nd innings
+    let rrrText = '';
+    if (m.currentInnings === 1 && m.innings[0]) {
+        const need = m.innings[0].runs + 1 - curInn.runs;
+        const ballsLeft = (m.overs * m.ballsPerOver) - curInn.balls;
+        if (need > 0 && ballsLeft > 0) {
+            const rrr = ((need / ballsLeft) * 6).toFixed(2);
+            rrrText = `RRR ${rrr}`;
+        }
+    }
+
+    // Detect if the last ball was a wicket for the flash
+    const lastBall = (curInn.currentOver && curInn.currentOver.length > 0)
+        ? curInn.currentOver[curInn.currentOver.length - 1]
+        : null;
+    const isWicketBall = lastBall && lastBall.wicket;
+
     container.innerHTML = `
         <div class="team-logo-box left">
             <div class="logo-circle">${t1Short}</div>
@@ -732,7 +764,8 @@ function _renderOverlayFromMatch(m) {
                 <div class="player-value balls">${nonStriker.balls || 0}</div>
             </div>
         </div>
-        <div class="score-center-section">
+        <div class="score-center-section${isWicketBall ? ' wicket-flash' : ''}" id="score-pill">
+            <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top">
                 <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
                 <div class="score-pill-main">
@@ -742,6 +775,7 @@ function _renderOverlayFromMatch(m) {
                 </div>
             </div>
             <div class="score-bottom">${bottomText}</div>
+            ${rrrText ? `<span class="score-rrr">${rrrText}</span>` : ''}
         </div>
         <div class="bowler-section">
             <div class="player-row" style="margin-bottom: 2px;">
@@ -755,6 +789,21 @@ function _renderOverlayFromMatch(m) {
             <div class="logo-circle">${t2Short}</div>
         </div>
     `;
+
+    // Re-start clock in the newly rendered pill
+    const clockEl = document.getElementById('overlay-live-clock');
+    if (clockEl) {
+        const now = new Date();
+        clockEl.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    }
+
+    // Remove wicket-flash class after animation ends to allow re-triggering
+    if (isWicketBall) {
+        const pill = document.getElementById('score-pill');
+        if (pill) {
+            pill.addEventListener('animationend', () => pill.classList.remove('wicket-flash'), { once: true });
+        }
+    }
 }
 
 function renderOverlayFromLightPayload(payload) {

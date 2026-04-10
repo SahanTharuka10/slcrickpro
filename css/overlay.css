@@ -284,3 +284,39 @@ body {
     color: #fff;
     border-color: #aaa;
 }
+
+/* ─── Live Clock in Scoreboard Pill ────────────────────────── */
+.score-clock {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    position: absolute;
+    top: 5px;
+    right: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Wicket Flash Animation ────────────────────────────────── */
+@keyframes wicketFlash {
+    0%   { box-shadow: 0 8px 28px rgba(227,36,89,0); background: linear-gradient(160deg, #1b1642 0%, #252060 50%, #1b1642 100%); }
+    20%  { box-shadow: 0 0 60px rgba(227,36,89,0.9), 0 8px 28px rgba(27,22,66,0.55); background: linear-gradient(160deg, #7b0028 0%, #e32459 50%, #7b0028 100%); }
+    60%  { box-shadow: 0 0 40px rgba(227,36,89,0.5); }
+    100% { box-shadow: 0 8px 28px rgba(27,22,66,0.55); background: linear-gradient(160deg, #1b1642 0%, #252060 50%, #1b1642 100%); }
+}
+
+.score-center-section.wicket-flash {
+    animation: wicketFlash 1.6s ease-out forwards;
+}
+
+/* ─── Score-pill RRR info ────────────────────────────────────── */
+.score-rrr {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1px;
+    position: absolute;
+    bottom: 5px;
+    right: 12px;
+}
