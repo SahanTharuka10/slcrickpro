@@ -62,7 +62,7 @@ window.showToast = function(msg, type = 'default') {
 
 const DB = {
     getCloudURL() {
-        return window.BACKEND_BASE_URL || "https://slcrickpro-production.up.railway.app";
+        return window.BACKEND_BASE_URL || "https://slcrickpro.onrender.com";
     },
 
     // ---------- SECURE STORAGE ----------
@@ -839,7 +839,7 @@ const DB = {
 // 1. Change `IS_PRODUCTION` to true
 // 2. Paste your Railway backend link into `PROD_BACKEND_URL`
 const IS_PRODUCTION = true; 
-const PROD_BACKEND_URL = "https://slcrickpro-production.up.railway.app"; 
+const PROD_BACKEND_URL = "https://slcrickpro.onrender.com"; 
 
 let BACKEND_BASE_URL = IS_PRODUCTION 
     ? PROD_BACKEND_URL 
