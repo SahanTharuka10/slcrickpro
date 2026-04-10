@@ -14,6 +14,19 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 *
 const app = express();
 const server = http.createServer(app);
 
+// --- EMERGENCY DIAGNOSTICS ---
+console.log('🚀 [STARTUP] Server process started');
+console.log('🚀 [STARTUP] Node version:', process.version);
+console.log('🚀 [STARTUP] Port:', process.env.PORT);
+
+app.use((req, res, next) => {
+    console.log(`📡 [HTTP] ${req.method} ${req.url} (Origin: ${req.headers.origin || 'none'})`);
+    next();
+});
+
+app.get('/api/ping', (req, res) => res.json({ status: 'alive', time: new Date().toISOString() }));
+app.get('/api/status', (req, res) => res.send('SLCRICKPRO_SERVER_UP'));
+
 // Accept any origin and reflect it back to fully bypass strict CORS limitations
 const io = socketIo(server, {
   cors: {
@@ -1102,11 +1115,12 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Rocket backend: http://localhost:${PORT}`);
-  
-  // Initialize database after server starts to ensure health checks pass
-  initDatabase()
-    .then(() => console.log('📦 Database initialization background process finished'))
-    .catch((e) => console.error('📦 Database initialization background process failed:', e));
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Rocket backend listening on 0.0.0.0:${PORT}`);
+    console.log(`🚀 Health Check: http://localhost:${PORT}/api/status`);
+    
+    // Initialize database after server starts to ensure health checks pass
+    initDatabase()
+      .then(() => console.log('📦 Database initialization background process finished'))
+      .catch((e) => console.error('📦 Database initialization background process failed:', e));
 });
