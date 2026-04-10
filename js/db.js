@@ -862,11 +862,18 @@ window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 let socket = null;
 if (typeof io !== 'undefined') {
     socket = io(BACKEND_BASE_URL, {
+        path: '/socket.io',
         transports: ['polling', 'websocket'],
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
+        timeout: 20000,
     });
     window._cricproSocket = socket; // Expose globally so overlay.js can reuse
+
+    socket.on('connect_error', (err) => console.warn('🔴 Socket connect_error:', err && err.message ? err.message : err));
+    socket.on('connect_timeout', () => console.warn('🔴 Socket connect_timeout'));
+    socket.on('reconnect_error', (err) => console.warn('🔴 Socket reconnect_error:', err && err.message ? err.message : err));
+    socket.on('reconnect_failed', () => console.warn('🔴 Socket reconnect_failed'));
 
     socket.on('connect', () => {
         console.log('📡 Real-time Socket: CONNECTED to', BACKEND_BASE_URL);

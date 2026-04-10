@@ -209,6 +209,18 @@ async function ensureDB() {
 process.on('uncaughtException', (err) => console.error('CRITICAL UNCAUGHT EXCEPTION:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('UNHANDLED REJECTION:', reason));
 
+let dbInitialized = false;
+async function initDatabase() {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync();
+    dbInitialized = true;
+    console.log('Database initialized and synced.');
+  } catch (e) {
+    console.error('Database initialization failed:', e);
+    throw e;
+  }
+}
 
 function parseBody(req) {
   if (!req.body) return null;
@@ -1014,6 +1026,13 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Rocket backend: http://localhost:${PORT}`);
-});
+initDatabase()
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log(`Rocket backend: http://localhost:${PORT}`);
+    });
+  })
+  .catch((e) => {
+    console.error('Server startup aborted due to database init failure:', e);
+    process.exit(1);
+  });
