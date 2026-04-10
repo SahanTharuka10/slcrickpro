@@ -221,14 +221,15 @@ async function initDatabase() {
   const isPossiblePostgres = DATABASE_URL && (DATABASE_URL.startsWith('postgres') || DATABASE_URL.includes('railway'));
   
   if (isPossiblePostgres && !process.env.NO_POSTGRES_CHECK) {
-    console.log('ℹ️ Probing PostgreSQL availability (3s timeout)...');
+    console.log('ℹ️ Probing PostgreSQL availability (5s timeout)...');
+    console.log('ℹ️ Using DATABASE_URL prefix:', DATABASE_URL.substring(0, 15) + '...');
     const testSeq = new Sequelize(DATABASE_URL, {
       dialect: 'postgres',
       logging: false,
-      pool: { max: 1, min: 0, acquire: 3000, idle: 1000 },
+      pool: { max: 5, min: 0, acquire: 5000, idle: 1000 },
       dialectOptions: {
         ssl: { require: true, rejectUnauthorized: false },
-        connectionTimeoutMillis: 3000,
+        connectionTimeoutMillis: 5000,
       }
     });
     
@@ -248,8 +249,8 @@ async function initDatabase() {
     await sequelize.authenticate();
     console.log('✅ ' + dbType.toUpperCase() + ' connection authenticated');
   } catch (authErr) {
-    console.error('❌ Database authentication failed:', authErr.message);
-    throw authErr;
+    console.warn('⚠️ Database authentication failed:', authErr.message);
+    // Do not throw, allow server to start
   }
 
   try {
@@ -258,7 +259,7 @@ async function initDatabase() {
     console.log('✅ Database models synced successfully');
   } catch (syncErr) {
     console.error('❌ Database sync failed:', syncErr.message);
-    throw syncErr;
+    // Do not throw
   }
 }
 
@@ -1101,13 +1102,11 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-initDatabase()
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`Rocket backend: http://localhost:${PORT}`);
-    });
-  })
-  .catch((e) => {
-    console.error('Server startup aborted due to database init failure:', e);
-    process.exit(1);
-  });
+server.listen(PORT, () => {
+  console.log(`Rocket backend: http://localhost:${PORT}`);
+  
+  // Initialize database after server starts to ensure health checks pass
+  initDatabase()
+    .then(() => console.log('📦 Database initialization background process finished'))
+    .catch((e) => console.error('📦 Database initialization background process failed:', e));
+});

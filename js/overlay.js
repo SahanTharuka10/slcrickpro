@@ -232,15 +232,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Live Clock Ticker ──────────────────────────────────
     function updateClock() {
-        const el = document.getElementById('overlay-live-clock');
-        if (!el) return;
+        // Look for the clock in both the normal score-pill and the fallback overlay
+        const elements = document.querySelectorAll('#overlay-live-clock');
+        if (elements.length === 0) return;
+        
         const now = new Date();
         const h = String(now.getHours()).padStart(2, '0');
         const m = String(now.getMinutes()).padStart(2, '0');
         const s = String(now.getSeconds()).padStart(2, '0');
-        el.textContent = `${h}:${m}:${s}`;
+        const timeStr = `${h}:${m}:${s}`;
+        
+        elements.forEach(el => {
+            if (el.textContent !== timeStr) el.textContent = timeStr;
+        });
     }
-    setInterval(updateClock, 1000);
+    // High-frequency clock update for multi-element support
+    setInterval(updateClock, 500);
     updateClock();
 
 
@@ -269,10 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function handleBroadcastCommand(cmd, data) {
-    if (data && typeof data === 'object') {
-        if (data.tournamentId && tournId && data.tournamentId !== tournId) return;
-        if (data.matchId && matchId && data.matchId !== matchId) return;
+function handleBroadcastCommand(cmd, data = {}) {
+    if (!cmd) return;
+    try {
+        if (data && typeof data === 'object') {
+            if (data.tournamentId && tournId && String(data.tournamentId) !== String(tournId)) return;
+            if (data.matchId && matchId && String(data.matchId) !== String(matchId)) return;
+        }
+    } catch (e) {
+        console.warn('Broadcast filter error', e);
     }
     if (!window.gsap) { console.error("🚫 GSAP not loaded. Broadcast animations skipped."); return; }
     console.log("📥 Received Broadcast:", cmd, data);

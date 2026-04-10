@@ -38,10 +38,11 @@ function initParticles() {
 }
 
 function updateClock() {
-    const el = document.getElementById('current-time');
+    // Check both potential IDs used in different templates
+    const el = document.getElementById('live-clock') || document.getElementById('current-time') || document.getElementById('overlay-live-clock');
     if (!el) return;
     const now = new Date();
-    el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
 function updateTicker() {
