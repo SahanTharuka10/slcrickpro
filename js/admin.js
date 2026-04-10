@@ -653,7 +653,7 @@ async function renderPostsAdmin() {
                 ${p.image ? `<img src="${p.image}" style="width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin:10px 0;" />` : ''}
                 <div style="margin:10px 0; line-height:1.5">${p.content}</div>
                 <div>
-                    ${p.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approvePost('${p.id}', '${p.title}', '${p.content}')">✅ Approve</button>` : ''}
+                    ${p.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick='approvePost(${JSON.stringify(p.id)}, ${JSON.stringify(p.title || '')}, ${JSON.stringify(p.content || '')}, ${JSON.stringify(p.image || '')})'>✅ Approve</button>` : ''}
                     <button class="btn ${p.status === 'pending' ? 'btn-red' : 'btn-ghost'} btn-sm" onclick="deletePostAdmin('${p.id}')">${p.status === 'pending' ? '❌ Reject' : '🗑️ Delete'}</button>
                 </div>
             </div>
@@ -663,12 +663,13 @@ async function renderPostsAdmin() {
     }
 }
 
-async function approvePost(id, title, content) {
+async function approvePost(id, title, content, image) {
     try {
         const post = {
             id,
             title,
             content,
+            image: image || null,
             status: 'approved',
             updatedAt: Date.now()
         };

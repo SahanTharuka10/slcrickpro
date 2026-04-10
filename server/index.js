@@ -2,11 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const { Sequelize, DataTypes, Op } = require('sequelize');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
 const socketIo = require('socket.io');
 const http = require('http');
 const crypto = require('crypto');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 * 1024 * 1024 } });
 
 const app = express();
 const server = http.createServer(app);
@@ -285,6 +288,8 @@ app.get('/sync/matches', async (req, res) => {
         try { d = JSON.parse(d); } catch (e) { d = {}; }
       }
       d.isLocked = !!m.scoring_password;
+      d.id = d.id || m.id;
+      d.createdAt = d.createdAt || m.createdAt;
       return d;
     });
     res.json({ matches });
@@ -306,6 +311,8 @@ app.get('/sync/tournaments', async (req, res) => {
         try { d = JSON.parse(d); } catch (e) { d = {}; }
       }
       d.isLocked = !!t.scoring_password;
+      d.id = d.id || t.id;
+      d.createdAt = d.createdAt || t.createdAt;
       return d;
     });
     res.json({ tournaments });
@@ -451,15 +458,33 @@ app.get('/sync/posts', async (req, res) => {
   }
 });
 
-app.post('/sync/post', async (req, res) => {
-  const data = parseBody(req);
-  if (!data || !data.id) return res.status(400).json({ error: 'Missing post id' });
+app.post('/sync/post', upload.single('image'), async (req, res) => {
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch (_) { body = {}; }
+  }
+
+  if (req.file && req.file.buffer) {
+    const imageBase64 = req.file.buffer.toString('base64');
+    body.image = `data:${req.file.mimetype};base64,${imageBase64}`;
+  }
+
+  if (!body || !body.id) return res.status(400).json({ error: 'Missing post id' });
+  if (!body.status) body.status = 'pending';
+  if (!body.author) body.author = 'User';
+  if (!body.createdAt) body.createdAt = Date.now();
+
+  if (body.createdAt && typeof body.createdAt === 'string' && !Number.isNaN(Number(body.createdAt))) {
+    body.createdAt = Number(body.createdAt);
+  }
+
   try {
     await ensureDB();
-    await Post.upsert(data);
-    emitUpdate('post', data.id, data);
+    await Post.upsert(body);
+    emitUpdate('post', body.id, body);
     res.json({ ok: true });
   } catch (e) {
+    console.error('/sync/post error:', e.message);
     res.status(500).json({ error: 'Failed to sync post' });
   }
 });

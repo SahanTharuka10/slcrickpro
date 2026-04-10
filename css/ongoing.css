@@ -36,6 +36,77 @@
     }
 }
 
+@media (max-width: 768px) {
+    .sub-header {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .header-right-group {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .tab-bar,
+    .tournament-selector-row,
+    .tournament-header-flex,
+    .tournament-schedule-block {
+        flex-wrap: wrap;
+    }
+
+    .tab-bar {
+        gap: 10px;
+    }
+
+    .matches-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .match-card {
+        padding: 18px;
+    }
+
+    .match-card-header,
+    .match-score-row,
+    .match-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .match-score-row {
+        justify-content: space-between;
+    }
+
+    .match-meta {
+        justify-content: flex-start;
+    }
+
+    .match-team-score {
+        width: 100%;
+    }
+
+    .match-score-val {
+        font-size: 20px;
+    }
+
+    .tournament-header-card {
+        padding: 20px;
+    }
+
+    .tourn-name {
+        font-size: 22px;
+    }
+
+    .tourn-stats-mini {
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+}
+
 .match-card.live-card {
     border-color: rgba(0, 230, 118, 0.3);
 }
@@ -813,5 +884,40 @@
         gap: 16px;
         padding: 0 4px;
     }
+
+    .header-right-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .sub-header {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 0 12px;
+    }
+
+    .tab-btn {
+        width: auto !important;
+        min-width: 120px !important;
+    }
+
+    .match-vs-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .match-team-name {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .match-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
 }
-
+

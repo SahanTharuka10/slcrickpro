@@ -86,16 +86,13 @@ function renderLive() {
   const matches = DB.getMatches().filter(m => {
     const isPublic = m.publishLive !== false; // Default to true if undefined
     if (!isPublic) return false;
-    
-    // Hide scheduled/setup matches ONLY if they are part of a tournament AND it's a Knockout
-    // League tournament matches should still show up in Live if they are 'scheduled' 
-    // to allow people to see what's coming next.
-    if (m.type === 'tournament' && m.knockout && (m.status === 'scheduled' || m.status === 'setup')) return false;
-    
-    return (m.status === 'live' || m.status === 'paused' || m.status === 'setup' || m.status === 'scheduled');
+    if (m.type !== 'tournament') return false;
+    return (m.status === 'live' || m.status === 'paused');
   });
 
-  if (!matches.length) {
+  const uniqueMatches = Array.from(new Map(matches.map(m => [m.id, m])).values());
+
+  if (!uniqueMatches.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-state-icon">🏏</div>
       <div class="empty-state-title">No Live Matches Currently</div>
@@ -104,7 +101,7 @@ function renderLive() {
     return;
   }
 
-  grid.innerHTML = matches.map(m => buildMatchCard(m, true)).join('');
+  grid.innerHTML = uniqueMatches.map(m => buildMatchCard(m, true)).join('');
 }
 
 function buildMatchCard(m, isLive) {
