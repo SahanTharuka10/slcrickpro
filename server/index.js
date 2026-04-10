@@ -78,31 +78,13 @@ app.get('/api/admin/check', (req, res) => {
 
 // --- DATABASE INITIALIZATION ---
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
-let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
+let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || '';
 
-// Forced choice at startup to ensure Models bind to the right instance
-let sequelize;
-const isPostgres = DATABASE_URL.startsWith('postgres') || DATABASE_URL.includes('railway');
+// Start with SQLite for model definitions (models need a sequelize instance at module load time)
+// Will switch to Postgres in initDatabase() if available and reachable
+let sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
+let dbType = 'sqlite';
 
-if (DATABASE_URL.startsWith('mongodb') || !DATABASE_URL) {
-    console.warn('Invalid DB URL or Mongo detected. Forcing SQLite.');
-    sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
-} else {
-    try {
-        sequelize = new Sequelize(DATABASE_URL, {
-            dialect: isPostgres ? 'postgres' : 'sqlite',
-            logging: false,
-            pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
-            dialectOptions: isPostgres ? {
-                ssl: { require: true, rejectUnauthorized: false },
-                keepAlive: true,
-            } : { storage: LOCAL_SQLITE_PATH }
-        });
-    } catch (e) {
-        console.error('Sequelize Constructor Error:', e.message);
-        sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
-    }
-}
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
@@ -194,15 +176,8 @@ const Feedback = sequelize.define('Feedback', {
 }, { timestamps: true, tableName: 'feedback' });
 
 async function ensureDB() {
-  try {
-    // Check if truly connected
-    await sequelize.authenticate();
-    return true;
-  } catch (e) {
-    // If not connected, we rely on the top-level catch and SQLite initialization
-    // which happened at the top of the script.
-    return false;
-  }
+  // DB is already initialized and synced at startup, just check the flag
+  return dbInitialized;
 }
 
 // Global Error Handlers to keep process alive on Railway
@@ -211,14 +186,47 @@ process.on('unhandledRejection', (reason, promise) => console.error('UNHANDLED R
 
 let dbInitialized = false;
 async function initDatabase() {
+  const isPossiblePostgres = DATABASE_URL && (DATABASE_URL.startsWith('postgres') || DATABASE_URL.includes('railway'));
+  
+  if (isPossiblePostgres && !process.env.NO_POSTGRES_CHECK) {
+    console.log('ℹ️ Probing PostgreSQL availability (3s timeout)...');
+    const testSeq = new Sequelize(DATABASE_URL, {
+      dialect: 'postgres',
+      logging: false,
+      pool: { max: 1, min: 0, acquire: 3000, idle: 1000 },
+      dialectOptions: {
+        ssl: { require: true, rejectUnauthorized: false },
+        connectionTimeoutMillis: 3000,
+      }
+    });
+    
+    try {
+      await testSeq.authenticate();
+      console.log('✅ Postgres available - switching to Postgres');
+      await sequelize.close();
+      sequelize = testSeq;
+      dbType = 'postgres';
+    } catch (pgErr) {
+      console.warn('⚠️ Postgres unavailable (' + pgErr.message.slice(0, 40) + '), staying with SQLite');
+      try { await testSeq.close(); } catch (e) { }
+    }
+  }
+
   try {
     await sequelize.authenticate();
+    console.log('✅ ' + dbType.toUpperCase() + ' connection authenticated');
+  } catch (authErr) {
+    console.error('❌ Database authentication failed:', authErr.message);
+    throw authErr;
+  }
+
+  try {
     await sequelize.sync();
     dbInitialized = true;
-    console.log('Database initialized and synced.');
-  } catch (e) {
-    console.error('Database initialization failed:', e);
-    throw e;
+    console.log('✅ Database models synced successfully');
+  } catch (syncErr) {
+    console.error('❌ Database sync failed:', syncErr.message);
+    throw syncErr;
   }
 }
 
