@@ -76,40 +76,33 @@ app.get('/api/admin/check', (req, res) => {
     res.json({ status: 'ok', pin_length: ADMIN_PIN.length, message: 'Server is running' });
 });
 
+// --- DATABASE INITIALIZATION ---
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
 let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || 'sqlite::memory:';
 
-const sequelizeConfig = {
-  dialect: DATABASE_URL.startsWith('postgres') ? 'postgres' : 'sqlite',
-  logging: false,
-  pool: {
-    max: 10, 
-    min: 2,
-    acquire: 30000,
-    idle: 10000
-  },
-  dialectOptions: DATABASE_URL.startsWith('postgres') ? {
-    ssl: { require: true, rejectUnauthorized: false },
-    keepAlive: true,
-  } : {
-    storage: LOCAL_SQLITE_PATH
-  }
-};
+// Forced choice at startup to ensure Models bind to the right instance
+let sequelize;
+const isPostgres = DATABASE_URL.startsWith('postgres') || DATABASE_URL.includes('railway');
 
-let sequelize = new Sequelize(DATABASE_URL, sequelizeConfig);
-
-async function trySqliteFallback() {
-  const sqliteUrl = `sqlite:${LOCAL_SQLITE_PATH}`;
-  console.warn('Falling back to local SQLite:', sqliteUrl);
-  DATABASE_URL = sqliteUrl;
-  sequelize = new Sequelize(sqliteUrl, {
-    dialect: 'sqlite',
-    storage: LOCAL_SQLITE_PATH,
-    logging: false
-  });
-  await sequelize.authenticate();
+if (DATABASE_URL.startsWith('mongodb') || !DATABASE_URL) {
+    console.warn('Invalid DB URL or Mongo detected. Forcing SQLite.');
+    sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
+} else {
+    try {
+        sequelize = new Sequelize(DATABASE_URL, {
+            dialect: isPostgres ? 'postgres' : 'sqlite',
+            logging: false,
+            pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+            dialectOptions: isPostgres ? {
+                ssl: { require: true, rejectUnauthorized: false },
+                keepAlive: true,
+            } : { storage: LOCAL_SQLITE_PATH }
+        });
+    } catch (e) {
+        console.error('Sequelize Constructor Error:', e.message);
+        sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
+    }
 }
-
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
@@ -202,26 +195,20 @@ const Feedback = sequelize.define('Feedback', {
 
 async function ensureDB() {
   try {
+    // Check if truly connected
     await sequelize.authenticate();
-    // console.log('DB Authenticated');
-    await sequelize.sync({ alter: true });
     return true;
   } catch (e) {
-    console.warn('DB connection error detected:', e.message || e);
-    // try fallback
-    try {
-      if (DATABASE_URL.includes('postgres') || DATABASE_URL.includes('mysql')) {
-        await trySqliteFallback();
-        await sequelize.sync({ alter: true });
-        return true;
-      }
-    } catch (fallbackErr) {
-      console.error('Fallback DB error', fallbackErr);
-      throw fallbackErr;
-    }
-    throw e;
+    // If not connected, we rely on the top-level catch and SQLite initialization
+    // which happened at the top of the script.
+    return false;
   }
 }
+
+// Global Error Handlers to keep process alive on Railway
+process.on('uncaughtException', (err) => console.error('CRITICAL UNCAUGHT EXCEPTION:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('UNHANDLED REJECTION:', reason));
+
 
 function parseBody(req) {
   if (!req.body) return null;
@@ -268,7 +255,9 @@ function emitUpdate(type, id, data) {
 
 app.get('/sync/matches', async (req, res) => {
   try {
-    await ensureDB();
+    const dbOk = await ensureDB();
+    if (!dbOk) return res.json({ matches: [], warning: 'Database offline, using cache' });
+    
     const rows = await Match.findAll();
     let matches = rows.map(m => {
       let d = m.data || m.dataValues?.data || {};
@@ -280,14 +269,16 @@ app.get('/sync/matches', async (req, res) => {
     });
     res.json({ matches });
   } catch (e) {
-    console.error('/sync/matches error', e);
-    res.status(500).json({ error: e.message || 'Failed to fetch matches' });
+    console.error('/sync/matches error:', e.message);
+    res.status(500).json({ error: 'Failed to fetch matches', details: e.message });
   }
 });
 
 app.get('/sync/tournaments', async (req, res) => {
   try {
-    await ensureDB();
+    const dbOk = await ensureDB();
+    if (!dbOk) return res.json({ tournaments: [], warning: 'Database offline' });
+
     const rows = await Tournament.findAll();
     const tournaments = rows.map(t => {
       let d = t.data || t.dataValues?.data || {};
@@ -299,8 +290,8 @@ app.get('/sync/tournaments', async (req, res) => {
     });
     res.json({ tournaments });
   } catch (e) {
-    console.error('/sync/tournaments error', e);
-    res.status(500).json({ error: e.message || 'Failed to fetch tournaments' });
+    console.error('/sync/tournaments error:', e.message);
+    res.status(500).json({ error: 'Failed to fetch tournaments', details: e.message });
   }
 });
 
@@ -344,12 +335,13 @@ app.get('/tv/matches/:matchId/light', async (req, res) => {
 
 app.get('/players', async (req, res) => {
   try {
-    await ensureDB();
+    const dbOk = await ensureDB();
+    if (!dbOk) return res.json([]);
     const players = await Player.findAll();
     res.json(players.map(p => p.dataValues || p));
   } catch (e) {
-    console.error('/players error', e);
-    res.status(500).json({ error: e.message || 'Failed to fetch players' });
+    console.error('/players error:', e.message);
+    res.status(500).json({ error: 'Failed to fetch players' });
   }
 });
 
@@ -370,12 +362,13 @@ app.post('/players', async (req, res) => {
 
 app.get('/teams', async (req, res) => {
   try {
-    await ensureDB();
+    const dbOk = await ensureDB();
+    if (!dbOk) return res.json([]);
     const teams = await Team.findAll();
     res.json(teams.map(t => t.dataValues || t));
   } catch (e) {
-    console.error('/teams error', e);
-    res.status(500).json({ error: e.message || 'Failed to fetch teams' });
+    console.error('/teams error:', e.message);
+    res.status(500).json({ error: 'Failed to fetch teams' });
   }
 });
 

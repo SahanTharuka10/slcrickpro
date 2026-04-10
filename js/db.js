@@ -1175,60 +1175,92 @@ async function syncCloudData(options = {}) {
 
     try {
         const [mReq, tReq, pReq, tmReq] = await Promise.all([
-            fetch(`${BACKEND_BASE_URL}/sync/matches`).catch(() => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/sync/tournaments`).catch(() => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/players`).catch(() => ({ json: () => [] })),
-            fetch(`${BACKEND_BASE_URL}/teams`).catch(() => ({ json: () => [] }))
+            fetch(`${BACKEND_BASE_URL}/sync/matches`).catch(() => ({ ok: false, json: () => ({ matches: [] }) })),
+            fetch(`${BACKEND_BASE_URL}/sync/tournaments`).catch(() => ({ ok: false, json: () => ({ tournaments: [] }) })),
+            fetch(`${BACKEND_BASE_URL}/players`).catch(() => ({ ok: false, json: () => [] })),
+            fetch(`${BACKEND_BASE_URL}/teams`).catch(() => ({ ok: false, json: () => [] }))
         ]);
+
+        // Validate responses before parsing
+        if (!mReq.ok || !tReq.ok) {
+            console.warn('📡 Sync: One or more cloud requests failed. Skipping update to preserve local cache.');
+            _isSyncingCloud = false;
+            return;
+        }
 
         const matchData = await mReq.json();
         const tournData = await tReq.json();
         const playerData = await pReq.json();
         const teamData = await tmReq.json();
 
-        // Sync Players
-        if (playerData && Array.isArray(playerData)) {
+        // 1. Sync Players (Preserve local if remote is empty or error)
+        if (playerData && Array.isArray(playerData) && playerData.length > 0) {
             const localPlayers = DB.getPlayers();
-            const mergedPlayers = playerData.map(p => ({ ...p, playerId: p.playerId || p._id }));
+            // Create a map of existing players for faster merging
+            const playerMap = new Map();
+            playerData.forEach(p => {
+                const id = p.id || p.playerId || p._id;
+                if (id) playerMap.set(id, { ...p, playerId: id });
+            });
+            
+            // Re-add local players that might not be on cloud yet
             localPlayers.forEach(lp => {
-                if (!mergedPlayers.find(p => p.playerId === lp.playerId)) {
-                    mergedPlayers.push(lp);
+                if (!playerMap.has(lp.playerId)) {
+                    playerMap.set(lp.playerId, lp);
                     try { syncToDB('player', lp); } catch(e) {}
                 }
             });
-            DB.savePlayers(mergedPlayers);
+            DB.savePlayers(Array.from(playerMap.values()));
         }
         
-        // Sync Teams
-        if (teamData && Array.isArray(teamData)) {
+        // 2. Sync Teams
+        if (teamData && Array.isArray(teamData) && teamData.length > 0) {
             const localTeams = DB.getTeams();
-            const mergedTeams = [...teamData];
+            const teamMap = new Map();
+            teamData.forEach(t => teamMap.set(t.id, t));
+            
             localTeams.forEach(lt => {
-                if (!mergedTeams.find(t => t.id === lt.id)) {
-                    mergedTeams.push(lt);
+                if (!teamMap.has(lt.id)) {
+                    teamMap.set(lt.id, lt);
                     try { syncToDB('team', lt); } catch(e) {}
                 }
             });
-            DB.saveTeams(mergedTeams);
+            DB.saveTeams(Array.from(teamMap.values()));
         }
 
-        // Sync Matches
-        if (matchData) {
-            const remoteMatches = Array.isArray(matchData) ? (matchData.matches || matchData) : (matchData.matches || []);
+        // 3. Sync Matches
+        const remoteMatches = matchData && Array.isArray(matchData.matches) ? matchData.matches : (Array.isArray(matchData) ? matchData : []);
+        if (remoteMatches.length > 0 || options.forceRefresh) {
             const localMatches = DB.getMatches();
             let anyUpdated = false;
-            let mergedMatches = remoteMatches.filter(cm => !cm.deleted).map(cm => {
+            
+            // Create a merged set
+            const matchMap = new Map();
+            
+            // Add remote matches (filter out deleted ones)
+            remoteMatches.filter(cm => !cm.deleted).forEach(cm => {
                 const lm = localMatches.find(x => x.id === cm.id);
-                if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) return lm;
-                if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
-                return cm;
+                // Rule: If local version is newer (higher timestamp), keep local
+                if (lm && (lm.lastUpdated || 0) > (cm.lastUpdated || 0)) {
+                    matchMap.set(lm.id, lm);
+                } else {
+                    if (!lm || JSON.stringify(lm) !== JSON.stringify(cm)) anyUpdated = true;
+                    matchMap.set(cm.id, cm);
+                }
             });
+
+            // Re-add local matches not found on remote
             localMatches.forEach(lm => {
-                if (!mergedMatches.find(x => x.id === lm.id)) { mergedMatches.push(lm); anyUpdated = true; }
+                if (!matchMap.has(lm.id)) {
+                    matchMap.set(lm.id, lm);
+                    anyUpdated = true;
+                    // Try to push new local matches to cloud
+                    try { syncToDB('match', lm); } catch(e) {}
+                }
             });
 
             if (anyUpdated || options.forceRefresh) {
-                DB.saveMatches(mergedMatches);
+                DB.saveMatches(Array.from(matchMap.values()));
                 if (typeof renderOngoing === 'function') renderOngoing();
                 if (typeof updateTicker === 'function') updateTicker();
                 if (typeof renderLive === 'function') renderLive();
@@ -1236,29 +1268,39 @@ async function syncCloudData(options = {}) {
             }
         }
 
-        // Sync Tournaments
-        if (tournData) {
-            const remoteTournaments = Array.isArray(tournData) ? tournData : (tournData.tournaments || []);
+        // 4. Sync Tournaments
+        const remoteTournaments = tournData && Array.isArray(tournData.tournaments) ? tournData.tournaments : (Array.isArray(tournData) ? tournData : []);
+        if (remoteTournaments.length > 0 || options.forceRefresh) {
             const localTournaments = DB.getTournaments();
             let anyTUpdated = false;
-            let mergedTournaments = remoteTournaments.map(ct => {
+            const tournMap = new Map();
+
+            remoteTournaments.forEach(ct => {
                 const lt = localTournaments.find(x => x.id === ct.id);
-                if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) return lt;
-                if (!lt || JSON.stringify(lt) !== JSON.stringify(ct)) anyTUpdated = true;
-                return ct;
+                if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) {
+                    tournMap.set(lt.id, lt);
+                } else {
+                    if (!lt || JSON.stringify(lt) !== JSON.stringify(ct)) anyTUpdated = true;
+                    tournMap.set(ct.id, ct);
+                }
             });
+
             localTournaments.forEach(lt => {
-                if (!mergedTournaments.find(x => x.id === lt.id)) { mergedTournaments.push(lt); anyTUpdated = true; }
+                if (!tournMap.has(lt.id)) {
+                    tournMap.set(lt.id, lt);
+                    anyTUpdated = true;
+                }
             });
 
             if (anyTUpdated || options.forceRefresh) {
-                DB.saveTournaments(mergedTournaments);
+                DB.saveTournaments(Array.from(tournMap.values()));
                 if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
+                if (typeof renderOngoing === 'function') renderOngoing();
             }
         }
 
     } catch (err) {
-        console.warn('📡 Sync Fallback Active:', err.message);
+        console.warn('📡 Sync Error:', err.message);
     } finally {
         _isSyncingCloud = false;
     }

@@ -6,43 +6,53 @@ let tournamentPageView = 'matches';
 let refreshInterval;
 
 window.renderOngoing = function() {
-    console.log("🔄 Ongoing UI refreshing from Global Sync...");
-    if (currentTab === 'live') renderLive();
-    if (currentTab === 'tournament') {
-        renderTournamentSelector();
-        if (selectedTournId) renderTournDetails(selectedTournId);
+    try {
+        console.log("🔄 Ongoing UI refreshing from Global Sync...");
+        const target = document.getElementById('panel-live');
+        if (!target && currentTab === 'live') {
+            console.warn("⚠️ Live panel container not found in DOM.");
+        }
+
+        if (currentTab === 'live') renderLive();
+        if (currentTab === 'tournament') {
+            renderTournamentSelector();
+            if (selectedTournId) renderTournDetails(selectedTournId);
+        }
+        if (currentTab === 'recent') renderRecent();
+    } catch (e) {
+        console.error("❌ UI Render Failure:", e);
     }
-    if (currentTab === 'recent') renderRecent();
 };
 
 // Global sync connection
 window.renderAll = window.renderOngoing;
 
 // Export globally for sync updates
-window.renderLive = renderLive;
-
-document.addEventListener('DOMContentLoaded', async () => {
-    // Mobile Label Optimization
-    if (window.innerWidth < 480) {
+window.renderLive = renderLive;const optimizeMobileLabels = () => {
+    if (window.innerWidth < 500) {
         const tabLive = document.getElementById('tab-live');
         const tabTourn = document.getElementById('tab-tournament');
         const tabRecent = document.getElementById('tab-recent');
         if (tabLive) tabLive.innerHTML = 'Live';
         if (tabTourn) tabTourn.innerHTML = 'Tourn';
-        if (tabRecent) tabRecent.innerHTML = 'Done';
+        if (tabRecent) tabRecent.innerHTML = 'Recent';
     }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    optimizeMobileLabels();
+    window.addEventListener('resize', optimizeMobileLabels);
 
     // Stage 1: Render Local Cache Immediately (Fast Load)
-    renderLive();
+    renderOngoing(); 
     
     // Stage 2: Synchronize with Cloud (Background)
     if (typeof syncCloudData === 'function') {
-        // Subtle background sync
         await syncCloudData({ silent: true }); 
     }
     
     // Stage 3: Render Final Results after sync
-    renderLive();
+    renderOngoing();
 });
 
 function startAutoRefresh() {
@@ -74,10 +84,14 @@ function renderLive() {
   if (!grid) return;
 
   const matches = DB.getMatches().filter(m => {
-    if (!m.publishLive) return false;
-    // Hide scheduled/setup matches ONLY if they are part of a tournament (they belong in Tournament Hub)
-    if (m.type === 'tournament' && (m.status === 'scheduled' || m.status === 'setup')) return false;
-    // Show single matches even if they are in setup/scheduled state
+    const isPublic = m.publishLive !== false; // Default to true if undefined
+    if (!isPublic) return false;
+    
+    // Hide scheduled/setup matches ONLY if they are part of a tournament AND it's a Knockout
+    // League tournament matches should still show up in Live if they are 'scheduled' 
+    // to allow people to see what's coming next.
+    if (m.type === 'tournament' && m.knockout && (m.status === 'scheduled' || m.status === 'setup')) return false;
+    
     return (m.status === 'live' || m.status === 'paused' || m.status === 'setup' || m.status === 'scheduled');
   });
 
