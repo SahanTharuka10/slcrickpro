@@ -88,27 +88,30 @@
         </div>
       </div>
       <div class="header-info">
+        <div class="header-actions">
           <a href="pages/admin.html" class="header-btn-sm admin-btn-glow" title="Admin Panel">
-            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span>Admin</span>
           </a>
           <button class="header-btn-sm chat-btn-glow" title="Feedback & Chat" onclick="openFeedbackModal()">
-            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>Chat</span>
           </button>
           <a href="pages/posts.html" class="header-btn-sm posts-btn-glow" title="Community Posts">
-            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/><path d="M12 18v4l4-4"/><path d="M2 12h5"/></svg>
+            <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/><path d="M12 18v4l4-4"/><path d="M2 12h5"/></svg>
             <span>Posts</span>
           </a>
         </div>
-        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Switch Day/Dark Mode" style="width:36px;height:36px">
-          <svg class="svg-theme-icon moon-icon"><use href="#icon-moon"></use></svg>
-          <svg class="svg-theme-icon sun-icon"><use href="#icon-sun"></use></svg>
-        </button>
-        <div class="live-clock" id="live-clock" style="font-family:'JetBrains Mono',monospace; font-weight:800; color:var(--c-amber); font-size:14px; min-width:100px; text-align:right">00:00:00</div>
-        <div class="live-badge">
-          <span class="live-dot"></span>
-          <span>LIVE</span>
+        <div class="header-meta">
+          <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Switch Day/Dark Mode">
+            <svg class="svg-theme-icon moon-icon"><use href="#icon-moon"></use></svg>
+            <svg class="svg-theme-icon sun-icon"><use href="#icon-sun"></use></svg>
+          </button>
+          <div class="live-clock" id="live-clock">00:00:00</div>
+          <div class="live-badge">
+            <span class="live-dot"></span>
+            <span>LIVE</span>
+          </div>
         </div>
       </div>
     </div>
