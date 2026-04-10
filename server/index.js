@@ -17,7 +17,7 @@ const server = http.createServer(app);
 // Accept any origin and reflect it back to fully bypass strict CORS limitations
 const io = socketIo(server, {
   cors: {
-    origin: true, // Echoes the origin
+    origin: ["https://www.slcrickpro.live", "http://localhost:3000", "https://slcrickpro-production.up.railway.app"], // Allow specific origins
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
@@ -25,7 +25,7 @@ const io = socketIo(server, {
 
 // Using standard cors to apply CORS universally
 app.use(cors({
-  origin: true, // Dynamically set the Access-Control-Allow-Origin to the requested origin
+  origin: ["https://www.slcrickpro.live", "http://localhost:3000", "https://slcrickpro-production.up.railway.app"], // Allow specific origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
