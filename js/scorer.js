@@ -713,17 +713,26 @@ window.promptMatchTeamManual = function(matchId, teamSlot) {
 };
 
 function endTournamentManually(tournId) {
-    if (!confirm("Are you sure you want to end this tournament? This will mark it as completed and finalize results.")) return;
+    if (!confirm("Are you sure you want to end this tournament? This will finalize all standings and results.")) return;
     const t = DB.getTournament(tournId);
     if (t) {
         t.status = 'completed';
-        t.rosters = {}; // Clear rosters when tournament is COMPLETED
         DB.saveTournament(t);
-        showToast('Tournament marked as COMPLETED!', 'success');
+
+        // Sync to backend/cloud
+        if (typeof syncToDB === 'function') {
+            syncToDB('tournament', { ...t, id: t.id });
+        }
+        // Emit globalUpdate so ongoing.js & other tabs refresh standings/NRR instantly
+        if (typeof socket !== 'undefined' && socket && socket.connected) {
+            socket.emit('globalUpdate', { type: 'tournament_completed', id: t.id });
+        }
+
+        showToast('🏆 Tournament COMPLETED! Standings finalized.', 'success');
         closeModal('modal-tournament-matches');
-        // Optionally refresh summary if applicable
+        
         if (currentMatch && currentMatch.tournamentId === tournId) {
-           openTournamentSummary();
+            openTournamentSummary();
         }
     }
 }
@@ -2084,6 +2093,34 @@ function showMatchResult() {
         sendBroadcast('SHOW_SUMMARY');
     } else {
         sendBroadcast('SHOW_SCORECARD');
+    }
+
+    // Check if tournament is fully complete – show End Tournament button
+    if (m.tournamentId) {
+        const t = DB.getTournament(m.tournamentId);
+        if (t) {
+            const allMatchIds = t.matches || [];
+            const allMatches = allMatchIds.map(id => DB.getMatch(id)).filter(Boolean);
+            // Count matches excluding this one (it's just been marked completed)
+            const allDone = allMatches.every(mx => mx.status === 'completed' || mx.id === m.id);
+            if (allDone && t.status !== 'completed') {
+                // All matches done – prompt End Tournament
+                const mrHomeBtn = document.querySelector('#modal-result .btn-primary');
+                const mrBackBtn = document.querySelector('#modal-result .btn-ghost');
+                if (mrHomeBtn) {
+                    mrHomeBtn.innerHTML = '🏆 End Tournament';
+                    mrHomeBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                    mrHomeBtn.onclick = () => {
+                        closeModal('modal-result');
+                        endTournamentManually(m.tournamentId);
+                    };
+                }
+                if (mrBackBtn) {
+                    mrBackBtn.innerHTML = '📊 View Table';
+                    mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentSummary(); };
+                }
+            }
+        }
     }
 
     openModal('modal-result');
@@ -3529,26 +3566,7 @@ function renderBroadcastController(match) {
                         <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}" style="width:100%; height:100%; border:none; pointer-events:none;" scrolling="no"></iframe>
                     </div>
                     <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview</div>
-                    
-                    <!-- Manual Photo Triggers -->
-                    <div style="background:rgba(255,255,255,0.03); border-radius:18px; padding:15px; border:1px solid rgba(255,255,255,0.08); margin-top:12px">
-                        <div class="b-section-title">📷 MANUAL PHOTO INJECTORS</div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px">
-                            <div style="text-align:center">
-                                <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(59, 130, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
-                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#3b82f6">STRIKER PHOTO</div>
-                            </div>
-                            <div style="text-align:center">
-                                <div id="preview_nonstriker" onclick="triggerManualPhoto('nonstriker')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(244, 63, 94, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(244,63,94,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
-                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#f43f5e">NON-STRIKER PHOTO</div>
-                            </div>
-                            <div style="text-align:center">
-                                <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(139, 92, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
-                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#8b5cf6">BOWLER PHOTO</div>
-                            </div>
-                        </div>
-                        <input type="file" id="manual-photo-input" style="display:none" accept="image/*" onchange="onManualPhotoSelected(event)">
-                    </div>
+                <div
                 </div>
 
                 <!-- PLAYER & TEAM GRAPHICS -->
@@ -3557,127 +3575,118 @@ function renderBroadcastController(match) {
                     <div class="b-grid">
                         <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
                             <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                <div>
                                     <div class="b-btn-title">⚡ STRIKER PROFILE</div>
-                                    <div class="b-btn-sub">Single batter stats card</div>
+                                    <div class="b-btn-sub">Batter stats card</div>
                                 </div>
-                                         onclick="event.stopPropagation(); document.getElementById('file_striker').click();" id="preview_striker"
-                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
-                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_striker']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
-                                        📷
-                                    </div>
-                                    <input type="file" id="file_striker" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_striker']=data; document.getElementById('preview_striker').innerHTML='✅'; document.getElementById('preview_striker').style.borderColor='#00e676'; }); }">
-                                    <div class="b-btn-hotkey" style="margin-left:8px">S+B</div>
-                                </div>
+                                <div class="b-btn-hotkey">S+B</div>
                             </div>
                         </button>
                         
                         <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
                             <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
-                                    <div class="b-btn-title">🏏 CURRENT BATTERS</div>
-                                    <div class="b-btn-sub">Comparison on crease</div>
+                                <div>
+                                    <div class="b-btn-title">🏏 BATTERS</div>
+                                    <div class="b-btn-sub">Both on crease</div>
                                 </div>
-                                <div style="display:flex; gap:4px; align-items:center">
-                                    <div title="Override Photo for Batter 1" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
-                                         onclick="event.stopPropagation(); document.getElementById('file_batter1').click();" id="preview_batter1"
-                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
-                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_batter1']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
-                                        📷
-                                    </div>
-                                    <input type="file" id="file_batter1" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_batter1']=data; document.getElementById('preview_batter1').innerHTML='✅'; document.getElementById('preview_batter1').style.borderColor='#00e676'; }); }">
-                                    <div title="Override Photo for Batter 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
-                                         onclick="event.stopPropagation(); document.getElementById('file_batter2').click();" id="preview_batter2"
-                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
-                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_batter2']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
-                                        📷
-                                    </div>
-                                    <input type="file" id="file_batter2" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_batter2']=data; document.getElementById('preview_batter2').innerHTML='✅'; document.getElementById('preview_batter2').style.borderColor='#00e676'; }); }">
-                                    <div class="b-btn-hotkey" style="margin-left:8px">S+P</div>
-                                </div>
+                                <div class="b-btn-hotkey">S+P</div>
                             </div>
                         </button>
                         
                         <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
                             <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                <div>
                                     <div class="b-btn-title">🤝 PARTNERSHIP</div>
-                                    <div class="b-btn-sub">Current standing pair</div>
+                                    <div class="b-btn-sub">Standing pair</div>
                                 </div>
-                                <div style="display:flex; gap:4px; align-items:center">
-                                    <div title="Override Photo for Partner 1" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
-                                         onclick="event.stopPropagation(); document.getElementById('file_partner1').click();" id="preview_partner1"
-                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
-                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_partner1']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
-                                        📷
-                                    </div>
-                                    <input type="file" id="file_partner1" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_partner1']=data; document.getElementById('preview_partner1').innerHTML='✅'; document.getElementById('preview_partner1').style.borderColor='#00e676'; }); }">
-                                    <div title="Override Photo for Partner 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
-                                         onclick="event.stopPropagation(); document.getElementById('file_partner2').click();" id="preview_partner2"
-                                         ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
-                                         ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_partner2']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
-                                        📷
-                                    </div>
-                                    <input type="file" id="file_partner2" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_partner2']=data; document.getElementById('preview_partner2').innerHTML='✅'; document.getElementById('preview_partner2').style.borderColor='#00e676'; }); }">
-                                    <div class="b-btn-hotkey" style="margin-left:8px">S+H</div>
-                                </div>
+                                <div class="b-btn-hotkey">S+H</div>
                             </div>
                         </button>
                         
                         <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🛡️ BOWLER PROFILE</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+L</div>
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div>
+                                    <div class="b-btn-title">🛡️ BOWLER PROFILE</div>
+                                    <div class="b-btn-sub">Current bowler</div>
+                                </div>
+                                <div class="b-btn-hotkey">S+L</div>
                             </div>
                         </button>
+                        
+                        <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div>
+                                    <div class="b-btn-title">👕 ${match.team1}</div>
+                                    <div class="b-btn-sub">Team Card</div>
+                                </div>
+                                <div class="b-btn-hotkey">S+K</div>
+                            </div>
+                        </button>
+
                         <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🟣 TEAM CARD</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; font-size:10px; font-weight:900">S+K</div>
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div>
+                                    <div class="b-btn-title">👕 ${match.team2}</div>
+                                    <div class="b-btn-sub">Team Card</div>
+                                </div>
+                                <div class="b-btn-hotkey">S+J</div>
                             </div>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT COLUMN: MATCH DATA & TEAMS -->
+            <!-- RIGHT COLUMN: MATCH DATA, PHOTO INJECTORS & TEAMS -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                <!-- PHOTO INJECTORS -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">📷 PHOTO UPLOADS</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px">
+                        <div style="text-align:center">
+                            <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:64px; background:rgba(59,130,246,0.07); border:2px dashed rgba(59,130,246,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.07)'">📷</div>
+                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#3b82f6">STRIKER</div>
+                        </div>
+                        <div style="text-align:center">
+                            <div id="preview_nonstriker" onclick="triggerManualPhoto('nonstriker')" style="width:100%; height:64px; background:rgba(244,63,94,0.07); border:2px dashed rgba(244,63,94,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(244,63,94,0.18)'" onmouseout="this.style.background='rgba(244,63,94,0.07)'">📷</div>
+                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#f43f5e">NON-STRIKER</div>
+                        </div>
+                        <div style="text-align:center">
+                            <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:64px; background:rgba(139,92,246,0.07); border:2px dashed rgba(139,92,246,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background='rgba(139,92,246,0.07)'">📷</div>
+                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#8b5cf6">BOWLER</div>
+                        </div>
+                    </div>
+                    <input type="file" id="manual-photo-input" style="display:none" accept="image/*" onchange="onManualPhotoSelected(event)">
+                    <div style="font-size:8px; color:rgba(255,255,255,0.3); text-align:center; margin-top:4px">Tap a slot to assign photo · auto-compressed for mobile</div>
+                </div>
+
                 <!-- MATCH STATS -->
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="b-btn b-btn-primary" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <div class="b-btn-title">🚀 RUNS NEEDED</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+R</div>
+                                <div class="b-btn-hotkey">S+R</div>
                             </div>
-                            <div class="b-btn-sub">Chase requirement info</div>
                         </button>
-                        <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
+                        <button class="b-btn b-btn-emerald" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <div class="b-btn-title">📈 RUN RATE</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+C</div>
+                                <div class="b-btn-hotkey">S+C</div>
                             </div>
-                            <div class="b-btn-sub">Current match RR</div>
                         </button>
-                        <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
+                        <button class="b-btn b-btn-purple" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <div class="b-btn-title">📄 SCORECARD</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+S</div>
+                                <div class="b-btn-hotkey">S+S</div>
                             </div>
-                            <div class="b-btn-sub">Auto-hide after display</div>
                         </button>
-                        <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
+                        <button class="b-btn b-btn-amber" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
-                                <div style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900">S+T</div>
+                                <div class="b-btn-hotkey">S+T</div>
                             </div>
-                            <div class="b-btn-sub">Standings & Results</div>
                         </button>
                     </div>
                 </div>
@@ -3685,16 +3694,16 @@ function renderBroadcastController(match) {
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">📋 ROSTERS</div>
                     <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="b-btn b-btn-slate" style="min-height:50px" onclick="broadcastTeamRoster(0)">
-                            <div class="b-btn-title">${match.team1} ROSTER</div>
+                        <button class="b-btn b-btn-slate" style="min-height:46px" onclick="broadcastTeamRoster(0)">
+                            <div class="b-btn-title">${match.team1}</div>
                         </button>
-                        <button class="b-btn b-btn-slate" style="min-height:50px" onclick="broadcastTeamRoster(1)">
-                            <div class="b-btn-title">${match.team2} ROSTER</div>
+                        <button class="b-btn b-btn-slate" style="min-height:46px" onclick="broadcastTeamRoster(1)">
+                            <div class="b-btn-title">${match.team2}</div>
                         </button>
                     </div>
                 </div>
 
-                <button onclick="window.close()" style="margin-top:auto; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 16px; border-radius: 16px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Session</button>
+                <button onclick="window.close()" style="margin-top:auto; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 12px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Session</button>
             </div>
             
         </div>
@@ -3728,7 +3737,8 @@ function renderBroadcastController(match) {
                 case 'P': broadcastCurrentBatters(); break;
                 case 'H': broadcastPartnership(); break;
                 case 'L': broadcastBowlerProfile(); break;
-                case 'K': broadcastTeamCard(1); break;
+                case 'K': broadcastTeamCard(0); break;
+                case 'J': broadcastTeamCard(1); break;
                 case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
                 case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
                 case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;

@@ -1133,151 +1133,134 @@ function showTeamCardGraphic(data) {
     const { teamName, players } = data;
     if (!players || players.length === 0) return;
 
-    // Create the HTML for the player grid (up to 11 players)
+    const accentColor = '#e61b4d';
+    const accentAlt = '#7c4dff';
+
+    // Build 11-player grid (4-4-3 layout like the reference image)
     const playersHtml = players.slice(0, 11).map((p, idx) => {
         const src = (p.photo && String(p.photo).trim()) ? p.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+        const isCaptain = (p.role && p.role.toLowerCase().includes('captain'));
         return `
-            <div class="squad-player-item" style="opacity:0; transform:translateY(30px)">
-                <div class="squad-photo-wrapper">
-                    <img src="${src}" class="squad-photo" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
-                    <div class="squad-photo-ring"></div>
-                </div>
-                <div class="squad-player-info">
-                    <div class="squad-player-name">${p.name.toUpperCase()}</div>
-                    <div class="squad-player-role">${p.role || 'Player'}</div>
-                </div>
+        <div class="tc-player" style="opacity:0; transform:scale(0.8) translateY(20px)">
+            <div class="tc-photo-wrap">
+                <img src="${src}" class="tc-photo" onerror="this.onerror=null;this.src='${OVERLAY_DEFAULT_PLAYER_PHOTO}'" />
+                <div class="tc-photo-gradient"></div>
+                ${isCaptain ? `<div class="tc-captain-badge">C</div>` : ''}
             </div>
-        `;
+            <div class="tc-name">${(p.name || 'Player').split(' ').slice(-1)[0].toUpperCase()}</div>
+            <div class="tc-fullname">${(p.name || 'Player').toUpperCase()}</div>
+        </div>`;
     }).join('');
 
     const html = `
-        <div class="overlay-container show" id="overlay-team-squad">
-            <style>
-                #overlay-team-squad {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    background: radial-gradient(circle at center, rgba(13, 71, 161, 0.4) 0%, rgba(0,0,0,0.85) 100%);
-                    backdrop-filter: blur(10px);
-                }
-                .squad-main-container {
-                    width: 90%;
-                    max-width: 1200px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }
-                .squad-header {
-                    text-align: center;
-                    margin-bottom: 40px;
-                    border-bottom: 4px solid #ff1744;
-                    padding-bottom: 10px;
-                    width: 100%;
-                }
-                .squad-header-sub {
-                    font-size: 18px;
-                    font-weight: 900;
-                    color: #ffc107;
-                    letter-spacing: 4px;
-                }
-                .squad-header-title {
-                    font-size: 52px;
-                    font-weight: 950;
-                    color: #fff;
-                    text-shadow: 0 4px 15px rgba(0,0,0,0.5);
-                }
-                .squad-grid {
-                    display: grid;
-                    grid-template-columns: repeat(12, 1fr);
-                    gap: 30px;
-                    width: 100%;
-                    justify-items: center;
-                }
-                .squad-player-item {
-                    grid-column: span 3;
-                    width: 180px;
-                    text-align: center;
-                    transition: 0.3s;
-                }
-                /* Custom grid positioning for rows (4 per row, total 11) */
-                /* Players 1-4: span 3 each = 12 */
-                /* Players 5-8: span 3 each = 12 */
-                /* Players 9-11 (last row): span 4 each = 12 */
-                .squad-player-item:nth-child(n+9) {
-                    grid-column: span 4;
-                }
-                .squad-photo-wrapper {
-                    position: relative;
-                    width: 130px;
-                    height: 130px;
-                    margin: 0 auto 15px;
-                }
-                .squad-photo {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.1);
-                    border: 4px solid #fff;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-                }
-                .squad-photo-ring {
-                    position: absolute;
-                    top: -5px;
-                    left: -5px;
-                    right: -5px;
-                    bottom: -5px;
-                    border: 2px solid #ff1744;
-                    border-radius: 50%;
-                    animation: pulse 2s infinite;
-                }
-                @keyframes pulse {
-                    0% { transform: scale(1); opacity: 0.5; }
-                    50% { transform: scale(1.05); opacity: 1; }
-                    100% { transform: scale(1); opacity: 0.5; }
-                }
-                .squad-player-name {
-                    font-weight: 900;
-                    font-size: 14px;
-                    color: #fff;
-                    margin-bottom: 4px;
-                    background: rgba(255,255,255,0.1);
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                }
-                .squad-player-role {
-                    font-size: 11px;
-                    color: #ffc107;
-                    font-weight: 800;
-                    letter-spacing: 1px;
-                }
-            </style>
-            <div class="squad-main-container">
-                <div class="squad-header">
-                    <div class="squad-header-sub">OFFICIAL PLAYING XI</div>
-                    <div class="squad-header-title">${teamName.toUpperCase()}</div>
-                </div>
-                <div class="squad-grid">
-                    ${playersHtml}
-                </div>
+    <div class="overlay-container show" id="overlay-team-squad" style="display:flex; justify-content:center; align-items:center;
+        background:linear-gradient(160deg, rgba(8,12,28,0.97) 0%, rgba(20,5,40,0.97) 100%); backdrop-filter:blur(12px);">
+        <style>
+            #overlay-team-squad {
+                font-family: 'Outfit', 'Inter', sans-serif;
+            }
+            .tc-main {
+                width: 96%; max-width: 1400px;
+                display: flex; flex-direction: column; align-items: center; gap: 24px;
+            }
+            .tc-header {
+                width: 100%; text-align: center; position: relative;
+                border-bottom: 3px solid ${accentColor};
+                padding-bottom: 16px;
+            }
+            .tc-header-label {
+                font-size: 14px; font-weight: 900; color: ${accentColor};
+                letter-spacing: 6px; text-transform: uppercase; margin-bottom: 6px;
+            }
+            .tc-header-team {
+                font-size: 56px; font-weight: 950; color: #fff;
+                text-transform: uppercase; line-height: 1;
+                text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            }
+            .tc-grid {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 16px; width: 100%;
+            }
+            /* Row 1: 6 players */
+            .tc-player:nth-child(-n+6) { grid-column: span 1; }
+            /* Row 2: next 5 players — center them */
+            .tc-player:nth-child(n+7) { grid-column: span 1; }
+            .tc-player:nth-child(7) { grid-column-start: 1; }
+            /* Override: 5 in second row, offset by half column */
+            @supports (display: grid) {
+                .tc-grid { grid-template-columns: repeat(12, 1fr); }
+                .tc-player { grid-column: span 2; }
+                .tc-player:nth-child(7) { grid-column-start: 2; }
+                .tc-player:nth-child(n+7) { grid-column: span 2; }
+            }
+            .tc-player {
+                display: flex; flex-direction: column; align-items: center;
+                transition: 0.3s;
+            }
+            .tc-photo-wrap {
+                position: relative; width: 100%; padding-bottom: 120%;
+                border-radius: 14px; overflow: hidden;
+                background: rgba(255,255,255,0.05);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+                border: 2px solid rgba(255,255,255,0.12);
+            }
+            .tc-photo {
+                position: absolute; top: 0; left: 0;
+                width: 100%; height: 100%; object-fit: cover;
+            }
+            .tc-photo-gradient {
+                position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+                background: linear-gradient(transparent, rgba(0,0,0,0.85));
+            }
+            .tc-captain-badge {
+                position: absolute; top: 8px; right: 8px;
+                width: 28px; height: 28px; background: ${accentColor};
+                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                font-size: 13px; font-weight: 900; color: #fff;
+                box-shadow: 0 4px 12px rgba(230,27,77,0.6);
+            }
+            .tc-name {
+                margin-top: 8px; font-size: 13px; font-weight: 900;
+                color: #fff; text-align: center; text-transform: uppercase;
+                letter-spacing: 0.5px; line-height: 1.1;
+            }
+            .tc-fullname {
+                font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.4);
+                text-align: center; letter-spacing: 0.5px;
+            }
+            .tc-footer {
+                width: 100%; text-align: center;
+                font-size: 13px; font-weight: 900; color: rgba(255,255,255,0.3);
+                letter-spacing: 6px; text-transform: uppercase;
+                border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;
+            }
+        </style>
+        <div class="tc-main">
+            <div class="tc-header">
+                <div class="tc-header-label">PLAYING XI</div>
+                <div class="tc-header-team">${teamName.toUpperCase()}</div>
             </div>
+            <div class="tc-grid">
+                ${playersHtml}
+            </div>
+            <div class="tc-footer">SLCRICKPRO LIVE PRODUCTION</div>
         </div>
-    `;
+    </div>`;
 
     renderBroadcastOverlay(html);
 
-    // Staggered GSAP Animation
+    // Staggered GSAP entrance
     setTimeout(() => {
         if (typeof gsap !== 'undefined') {
-            gsap.to('.squad-player-item', {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                stagger: 0.1,
-                ease: "back.out(1.7)"
+            gsap.to('.tc-player', {
+                opacity: 1, scale: 1, y: 0,
+                duration: 0.7, stagger: 0.06, ease: 'back.out(1.4)'
             });
         } else {
-            document.querySelectorAll('.squad-player-item').forEach(el => el.style.opacity = '1');
+            document.querySelectorAll('.tc-player').forEach(el => {
+                el.style.opacity = '1'; el.style.transform = 'none';
+            });
         }
     }, 100);
 }

@@ -710,6 +710,19 @@ if (typeof io !== 'undefined') {
             DB._secureSet(DB_KEYS.MATCHES, mArr);
             console.log('🗑️ Tournament deleted from local cache:', info.id);
         }
+        if (info && info.type === 'tournament_completed' && info.id) {
+            // Mark tournament as completed in local cache
+            let tArr = DB.getTournaments().map(t => {
+                if (t.id === info.id) { t.status = 'completed'; }
+                return t;
+            });
+            DB._secureSet(DB_KEYS.TOURNAMENTS, tArr);
+            console.log('🏆 Tournament marked completed in local cache:', info.id);
+            // Re-render ongoing UI if it's showing this tournament
+            if (typeof window.renderOngoing === 'function') {
+                window.renderOngoing();
+            }
+        }
         if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
     });
 
