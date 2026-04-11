@@ -694,8 +694,8 @@ function _renderOverlayFromMatch(m) {
 
     container.style.display = 'flex';
 
-    const t1Short = getShortName(curInn.battingTeam || 'T1');
-    const t2Short = getShortName(curInn.bowlingTeam || 'T2');
+    const t1Short = getShortName((curInn.battingTeam && curInn.battingTeam !== 'TBD') ? curInn.battingTeam : (m.team1 || 'T1'));
+    const t2Short = getShortName((curInn.bowlingTeam && curInn.bowlingTeam !== 'TBD') ? curInn.bowlingTeam : (m.team2 || 'T2'));
     const score   = curInn.runs + '-' + curInn.wickets;
     const ov      = formatOvers(curInn.balls, m.ballsPerOver);
 
@@ -727,12 +727,14 @@ function _renderOverlayFromMatch(m) {
     const phase = m.overs>20 ? (ovNum>=40?'P3':ovNum>=10?'P2':'P1') : (ovNum>=6?'P2':'P1');
 
     let bottomText;
-    if (m.currentInnings===1 && m.innings[0]) {
+    if (m.status === 'completed') {
+        bottomText = `<span style="color:#fff; font-weight: 800; font-size: 15px;">🎉 ${m.result || 'MATCH COMPLETED'}</span>`;
+    } else if (m.currentInnings===1 && m.innings[0]) {
         const need      = m.innings[0].runs + 1 - curInn.runs;
         const ballsLeft = (m.overs * m.ballsPerOver) - curInn.balls;
         bottomText = need>0  ? `NEED <span style="color:#fff">${need}</span> FROM <span style="color:#fff">${ballsLeft}</span> BALLS`
                    : need===0? `<span style="color:#fff">SCORES LEVEL</span>`
-                             : `<span style="color:#fff">🎉 WON BY ${m.playersPerSide-curInn.wickets-1} WICKETS</span>`;
+                             : `<span style="color:#fff; font-weight: 800; font-size: 15px;">🎉 WON BY ${m.playersPerSide-curInn.wickets-1} WICKETS</span>`;
     } else {
         bottomText = `TOSS: ${m.tossWinner||'TBD'} CHOSE TO ${(m.tossDecision||'bat').toUpperCase()}`;
     }

@@ -2079,6 +2079,13 @@ function showMatchResult() {
         }
     }
 
+    // Auto-broadcast summary or scorecard on match complete
+    if (m.tournamentId) {
+        sendBroadcast('SHOW_SUMMARY');
+    } else {
+        sendBroadcast('SHOW_SCORECARD');
+    }
+
     openModal('modal-result');
 }
 
@@ -3057,16 +3064,28 @@ function broadcastCurrentBatters() {
     if (!m) return;
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
-    const batters = getOnCreaseBatterNames(inn);
+    const batters = getOnCreaseBatterNames(inn); // [idx0, idx1]
     
     const profiles = batters.map((bName, index) => {
         let p = resolvePlayerProfileForBatter(inn, bName) || {};
+        
+        // Priority 1: Specific inline button
         if (window[`__photo_batter${index+1}`]) {
             p.photo = window[`__photo_batter${index+1}`];
             window[`__photo_batter${index+1}`] = null;
             const el = document.getElementById(`preview_batter${index+1}`);
             if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
+        } else {
+            // Priority 2: Global Striker / Non-Striker
+            const isStriker = (inn.strikerIdx === index);
+            if (isStriker && window.__photo_striker) {
+                p.photo = window.__photo_striker; 
+                // Note: Not clearing global striker photo so it remains active for other graphics
+            } else if (!isStriker && window.__photo_nonstriker) {
+                p.photo = window.__photo_nonstriker;
+            }
         }
+        
         const stats = inn.batsmen.find(x => x.name === bName) || { runs:0, balls:0, fours:0, sixes:0 };
         return { name: bName, profile: p, stats };
     });
@@ -3087,9 +3106,9 @@ function broadcastStrikerProfile() {
     if (!p) p = {};
     if (window.__photo_striker) {
         p.photo = window.__photo_striker;
-        window.__photo_striker = null;
-        const el = document.getElementById('preview_striker');
-        if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
+        // Don't nullify window.__photo_striker so it stays for Partnership
+        // window.__photo_striker = null;
+        // document.getElementById('preview_striker').innerHTML = '📷';
     }
     
     const age = p.dob ? calculateAge(p.dob) : "";
@@ -3121,9 +3140,7 @@ function broadcastBowlerProfile() {
     if (!p) p = {};
     if (window.__photo_bowler) {
         p.photo = window.__photo_bowler;
-        window.__photo_bowler = null;
-        const el = document.getElementById('preview_bowler');
-        if(el) { el.innerHTML = '📷'; el.style.borderColor = 'rgba(255,255,255,0.3)'; }
+        // Retain for multiple re-broadcasts
     }
     
     sendBroadcast('SHOW_BOWLER_PROFILE', { 
@@ -3146,7 +3163,9 @@ function triggerVisualBigEvent(type) {
     if (!inn) return;
 
     const strikerName = getStrikerBatterName(inn);
-    const strikerProfile = resolvePlayerProfileForBatter(inn, strikerName);
+    const strikerProfile = resolvePlayerProfileForBatter(inn, strikerName) || {};
+    if (window.__photo_striker) strikerProfile.photo = window.__photo_striker;
+
     const strikerStats = inn.batsmen.find(x => x.name === strikerName) || { runs: 0, balls: 0 };
     const bowler = inn.bowlers[inn.currentBowlerIdx] || { name: 'Bowler' };
     
@@ -3171,13 +3190,33 @@ function broadcastPartnership() {
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
 
-    const names = getOnCreaseBatterNames(inn);
+    const names = getOnCreaseBatterNames(inn); // [idx0, idx1]
     const p = inn.currentPartnership || { runs: 0, balls: 0 };
     let p1Profile = resolvePlayerProfileForBatter(inn, names[0]) || {};
     let p2Profile = resolvePlayerProfileForBatter(inn, names[1]) || {};
 
-    if (window.__photo_partner1) { p1Profile.photo = window.__photo_partner1; window.__photo_partner1 = null; const el = document.getElementById('preview_partner1'); if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} }
-    if (window.__photo_partner2) { p2Profile.photo = window.__photo_partner2; window.__photo_partner2 = null; const el = document.getElementById('preview_partner2'); if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} }
+    // Apply inline overrides if present
+    if (window.__photo_partner1) { 
+        p1Profile.photo = window.__photo_partner1; 
+        window.__photo_partner1 = null; 
+        const el = document.getElementById('preview_partner1'); 
+        if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} 
+    } else {
+        const isP1Striker = (inn.strikerIdx === 0);
+        if (isP1Striker && window.__photo_striker) p1Profile.photo = window.__photo_striker;
+        if (!isP1Striker && window.__photo_nonstriker) p1Profile.photo = window.__photo_nonstriker;
+    }
+
+    if (window.__photo_partner2) { 
+        p2Profile.photo = window.__photo_partner2; 
+        window.__photo_partner2 = null; 
+        const el = document.getElementById('preview_partner2'); 
+        if(el) { el.innerHTML='📷'; el.style.borderColor='rgba(255,255,255,0.3)';} 
+    } else {
+        const isP2Striker = (inn.strikerIdx === 1);
+        if (isP2Striker && window.__photo_striker) p2Profile.photo = window.__photo_striker;
+        if (!isP2Striker && window.__photo_nonstriker) p2Profile.photo = window.__photo_nonstriker;
+    }
 
     const wicketLabel = ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH", "9TH", "10TH"];
     const wicketNum = wicketLabel[inn.wickets] || (inn.wickets + 1) + "TH";
@@ -3271,7 +3310,7 @@ function renderBroadcastController(match) {
             .b-btn {
                 border: none;
                 border-radius: 16px;
-                padding: 16px;
+                padding: 10px 16px;
                 color: white;
                 cursor: pointer;
                 text-align: left;
@@ -3280,8 +3319,8 @@ function renderBroadcastController(match) {
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
-                min-height: 80px;
+                justify-content: center;
+                min-height: 55px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             }
             .b-btn:active { transform: scale(0.96); }
@@ -3494,10 +3533,14 @@ function renderBroadcastController(match) {
                     <!-- Manual Photo Triggers -->
                     <div style="background:rgba(255,255,255,0.03); border-radius:18px; padding:15px; border:1px solid rgba(255,255,255,0.08); margin-top:12px">
                         <div class="b-section-title">📷 MANUAL PHOTO INJECTORS</div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px">
                             <div style="text-align:center">
                                 <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(59, 130, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
                                 <div style="font-size:9px; font-weight:800; margin-top:6px; color:#3b82f6">STRIKER PHOTO</div>
+                            </div>
+                            <div style="text-align:center">
+                                <div id="preview_nonstriker" onclick="triggerManualPhoto('nonstriker')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(244, 63, 94, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(244,63,94,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
+                                <div style="font-size:9px; font-weight:800; margin-top:6px; color:#f43f5e">NON-STRIKER PHOTO</div>
                             </div>
                             <div style="text-align:center">
                                 <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:80px; background:rgba(255,255,255,0.02); border:2px dashed rgba(139, 92, 246, 0.3); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:24px; transition:0.2s" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">📷</div>
@@ -3789,7 +3832,24 @@ function renderBroadcastController(match) {
                         showToast(`Saved photo to ${p.name}`, 'success');
                     }
                 }
-            } else {
+            } else if (window._pendingManualPhotoType === 'nonstriker') {
+                window.__photo_nonstriker = data;
+                const el = document.getElementById('preview_nonstriker');
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                
+                // Persist to DB if possible
+                if (inn) {
+                    const nonStrikerIdx = (inn.strikerIdx === 0) ? inn.currentBatsmenIdx[1] : inn.currentBatsmenIdx[0];
+                    const nonStrikerB = inn.batsmen[nonStrikerIdx];
+                    if (nonStrikerB) {
+                        const p = resolvePlayerProfileForBatter(inn, nonStrikerB.name);
+                        if (p && p.playerId) {
+                            DB.updatePlayer({ ...p, photo: data });
+                            showToast(`Saved photo to ${p.name}`, 'success');
+                        }
+                    }
+                }
+            } else if (window._pendingManualPhotoType === 'bowler') {
                 window.__photo_bowler = data;
                 const el = document.getElementById('preview_bowler');
                 if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
