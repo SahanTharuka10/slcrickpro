@@ -3511,7 +3511,7 @@ function renderBroadcastController(match) {
                          <button class="b-btn b-btn-slate" style="flex:1; min-height:40px; justify-content:center; align-items:center" onclick="document.getElementById('file_guest').click()">
                             <span id="preview_guest">📷 PHOTO</span>
                          </button>
-                         <input type="file" id="file_guest" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_guest']=e.target.result; document.getElementById('preview_guest').innerHTML='✅ READY'; }; r.readAsDataURL(this.files[0]); }">
+                         <input type="file" id="file_guest" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_guest']=data; document.getElementById('preview_guest').innerHTML='✅ READY'; }); }">
                          <button class="b-btn b-btn-purple" style="flex:1; min-height:40px; justify-content:center; align-items:center" 
                                 onclick="const n=document.getElementById('guest-name').value; const t=document.getElementById('guest-title').value; sendBroadcast('SHOW_GUEST', { name: n, title: t, photo: window['__photo_guest'] }); showToast('⭐ Guest Published!', 'success');">
                             <div class="b-btn-title" style="font-size:11px">PUBLISH</div>
@@ -3564,10 +3564,10 @@ function renderBroadcastController(match) {
                                          onclick="event.stopPropagation(); document.getElementById('file_striker').click();" id="preview_striker"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_striker']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_striker']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
                                         📷
                                     </div>
-                                    <input type="file" id="file_striker" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_striker']=e.target.result; document.getElementById('preview_striker').innerHTML='✅'; document.getElementById('preview_striker').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <input type="file" id="file_striker" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_striker']=data; document.getElementById('preview_striker').innerHTML='✅'; document.getElementById('preview_striker').style.borderColor='#00e676'; }); }">
                                     <div class="b-btn-hotkey" style="margin-left:8px">S+B</div>
                                 </div>
                             </div>
@@ -3584,18 +3584,18 @@ function renderBroadcastController(match) {
                                          onclick="event.stopPropagation(); document.getElementById('file_batter1').click();" id="preview_batter1"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter1']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_batter1']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
                                         📷
                                     </div>
-                                    <input type="file" id="file_batter1" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter1']=e.target.result; document.getElementById('preview_batter1').innerHTML='✅'; document.getElementById('preview_batter1').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <input type="file" id="file_batter1" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_batter1']=data; document.getElementById('preview_batter1').innerHTML='✅'; document.getElementById('preview_batter1').style.borderColor='#00e676'; }); }">
                                     <div title="Override Photo for Batter 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
                                          onclick="event.stopPropagation(); document.getElementById('file_batter2').click();" id="preview_batter2"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter2']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_batter2']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
                                         📷
                                     </div>
-                                    <input type="file" id="file_batter2" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_batter2']=e.target.result; document.getElementById('preview_batter2').innerHTML='✅'; document.getElementById('preview_batter2').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <input type="file" id="file_batter2" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_batter2']=data; document.getElementById('preview_batter2').innerHTML='✅'; document.getElementById('preview_batter2').style.borderColor='#00e676'; }); }">
                                     <div class="b-btn-hotkey" style="margin-left:8px">S+P</div>
                                 </div>
                             </div>
@@ -3612,18 +3612,18 @@ function renderBroadcastController(match) {
                                          onclick="event.stopPropagation(); document.getElementById('file_partner1').click();" id="preview_partner1"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner1']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_partner1']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
                                         📷
                                     </div>
-                                    <input type="file" id="file_partner1" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner1']=e.target.result; document.getElementById('preview_partner1').innerHTML='✅'; document.getElementById('preview_partner1').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <input type="file" id="file_partner1" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_partner1']=data; document.getElementById('preview_partner1').innerHTML='✅'; document.getElementById('preview_partner1').style.borderColor='#00e676'; }); }">
                                     <div title="Override Photo for Partner 2" style="width:28px; height:28px; background:rgba(255,255,255,0.1); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; border:1px dashed rgba(255,255,255,0.3)"
                                          onclick="event.stopPropagation(); document.getElementById('file_partner2').click();" id="preview_partner2"
                                          ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#3b82f6';"
                                          ondragleave="event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)';"
-                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner2']=e.target.result; this.innerHTML='✅'; this.style.borderColor='#00e676'; }; r.readAsDataURL(event.dataTransfer.files[0]); }">
+                                         ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='rgba(255,255,255,0.3)'; if(event.dataTransfer.files[0]){ window.compressImageUtility(event.dataTransfer.files[0], data => { if(!data)return; window['__photo_partner2']=data; this.innerHTML='✅'; this.style.borderColor='#00e676'; }); }">
                                         📷
                                     </div>
-                                    <input type="file" id="file_partner2" style="display:none" accept="image/*" onchange="if(this.files[0]){ const r = new FileReader(); r.onload=e=>{ window['__photo_partner2']=e.target.result; document.getElementById('preview_partner2').innerHTML='✅'; document.getElementById('preview_partner2').style.borderColor='#00e676'; }; r.readAsDataURL(this.files[0]); }">
+                                    <input type="file" id="file_partner2" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_partner2']=data; document.getElementById('preview_partner2').innerHTML='✅'; document.getElementById('preview_partner2').style.borderColor='#00e676'; }); }">
                                     <div class="b-btn-hotkey" style="margin-left:8px">S+H</div>
                                 </div>
                             </div>
@@ -3809,65 +3809,81 @@ function renderBroadcastController(match) {
         document.getElementById('manual-photo-input').click();
     };
 
+    window.compressImageUtility = function(file, callback) {
+        if (!file) { callback(null); return; }
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 600;
+                const MAX_HEIGHT = 600;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                } else {
+                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                callback(dataUrl);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
     window.onManualPhotoSelected = function(e) {
         const file = e.target.files[0];
         if (!file || !window._pendingManualPhotoType) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = event.target.result;
+        
+        window.compressImageUtility(file, (data) => {
+            if (!data) return;
             const m = currentMatch;
             const inn = m ? m.innings[m.currentInnings] : null;
 
             if (window._pendingManualPhotoType === 'striker') {
                 window.__photo_striker = data;
                 const el = document.getElementById('preview_striker');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
                 
-                // Persist to DB if possible
                 if (inn) {
                     const strikerName = getStrikerBatterName(inn);
                     const p = resolvePlayerProfileForBatter(inn, strikerName);
-                    if (p && p.playerId) {
-                        DB.updatePlayer({ ...p, photo: data });
-                        showToast(`Saved photo to ${p.name}`, 'success');
-                    }
+                    if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
                 }
             } else if (window._pendingManualPhotoType === 'nonstriker') {
                 window.__photo_nonstriker = data;
                 const el = document.getElementById('preview_nonstriker');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
                 
-                // Persist to DB if possible
                 if (inn) {
                     const nonStrikerIdx = (inn.strikerIdx === 0) ? inn.currentBatsmenIdx[1] : inn.currentBatsmenIdx[0];
                     const nonStrikerB = inn.batsmen[nonStrikerIdx];
                     if (nonStrikerB) {
                         const p = resolvePlayerProfileForBatter(inn, nonStrikerB.name);
-                        if (p && p.playerId) {
-                            DB.updatePlayer({ ...p, photo: data });
-                            showToast(`Saved photo to ${p.name}`, 'success');
-                        }
+                        if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
                     }
                 }
             } else if (window._pendingManualPhotoType === 'bowler') {
                 window.__photo_bowler = data;
                 const el = document.getElementById('preview_bowler');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:cover; border-radius:10px">`;
+                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
                 
-                // Persist to DB if possible
                 if (inn) {
                     const bowler = inn.bowlers[inn.currentBowlerIdx];
                     let p = null;
                     if (bowler && bowler.playerId) p = DB.getPlayerById(bowler.playerId);
-                    
-                    if (p && p.playerId) {
-                        DB.updatePlayer({ ...p, photo: data });
-                        showToast(`Saved photo to ${p.name}`, 'success');
-                    }
+                    if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
                 }
             }
-        };
-        reader.readAsDataURL(file);
+        });
     };
 }
 
