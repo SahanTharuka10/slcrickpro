@@ -1112,16 +1112,17 @@ body.light-mode .back-btn {
 
 /* ========== FORM ELEMENTS ========== */
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 7px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  margin-bottom: 6px;
   color: var(--c-muted);
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .form-input,
@@ -1475,13 +1476,13 @@ body.light-mode .back-btn {
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 14px;
 }
 
 .grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
 }
 
 @media (max-width: 768px) {

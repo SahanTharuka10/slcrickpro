@@ -1094,19 +1094,19 @@
             <div class="modal-sub">How would you like to open this match?</div>
 
             <div style="display:grid; grid-template-columns:1fr; gap:16px; margin:24px 0">
-                <button class="btn btn-primary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-scorer">
+                <button class="btn btn-primary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-scorer" onclick="closeModal('modal-select-mode')">
                     <span style="font-size:24px">📱</span>
                     <div style="text-align:left">
-                        <div style="font-weight:900">Score Match</div>
-                        <div style="font-size:11px; font-weight:400; opacity:0.7">Full scoring dashboard</div>
+                        <div style="font-weight:900">Score & Entry</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Ball-by-ball Dashboard</div>
                     </div>
                 </button>
 
-                <button class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-hotkey">
+                <button class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-hotkey" onclick="closeModal('modal-select-mode'); renderBroadcastController(currentMatch);">
                     <span style="font-size:24px">⌨️</span>
                     <div style="text-align:left">
-                        <div style="font-weight:900">Hotkey Mode</div>
-                        <div style="font-size:11px; font-weight:400; opacity:0.7">Remote Broadcast Controller</div>
+                        <div style="font-weight:900">Broadcast Station</div>
+                        <div style="font-size:11px; font-weight:400; opacity:0.7">Hotkey & Visual Master Control</div>
                     </div>
                 </button>
             </div>
@@ -1125,7 +1125,6 @@
     <script src="../js/scorer.js"></script>
     <script src="../js/instant-nrr.js"></script>
     <script src="../js/match-entry.js"></script>
-    <script src="../js/hotkey-handler.js"></script>
 </body>
 
 </html>

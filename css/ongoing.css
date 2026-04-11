@@ -53,6 +53,7 @@
     .tournament-selector-row,
     .tournament-header-flex,
     .tournament-schedule-block {
+        display: flex;
         flex-wrap: wrap;
     }
 
@@ -795,10 +796,10 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 14px !important;
         padding: 4px !important;
-        display: flex !important;
+        display: flex;
         gap: 4px !important;
-        overflow-x: auto !important;
-        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        flex-wrap: nowrap;
         justify-content: flex-start;
         scrollbar-width: none;
     }
@@ -893,8 +894,8 @@
 
     .sub-header {
         flex-wrap: wrap;
-        gap: 12px;
-        padding: 0 12px;
+        gap: 8px;
+        padding: 0 10px;
     }
 
     .tab-btn {

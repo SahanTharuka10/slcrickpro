@@ -28,14 +28,21 @@ window.renderOngoing = function() {
 window.renderAll = window.renderOngoing;
 
 // Export globally for sync updates
-window.renderLive = renderLive;const optimizeMobileLabels = () => {
+window.renderLive = renderLive;
+
+const optimizeMobileLabels = () => {
+    const tabLive = document.getElementById('tab-live');
+    const tabTourn = document.getElementById('tab-tournament');
+    const tabRecent = document.getElementById('tab-recent');
+    
     if (window.innerWidth < 500) {
-        const tabLive = document.getElementById('tab-live');
-        const tabTourn = document.getElementById('tab-tournament');
-        const tabRecent = document.getElementById('tab-recent');
         if (tabLive) tabLive.innerHTML = 'Live';
         if (tabTourn) tabTourn.innerHTML = 'Tourn';
         if (tabRecent) tabRecent.innerHTML = 'Recent';
+    } else {
+        if (tabLive) tabLive.innerHTML = 'Live Matches';
+        if (tabTourn) tabTourn.innerHTML = 'Tournament';
+        if (tabRecent) tabRecent.innerHTML = 'Completed';
     }
 };
 
@@ -60,9 +67,24 @@ function startAutoRefresh() {
 }
 
 function refreshAll() {
-  renderLive();
-  renderTournamentSelector();
-  showToast('🔄 Refreshed!');
+    // Force a full cloud synchronization instead of just a UI refresh
+    if (typeof pullGlobalData === 'function') {
+        const btn = document.querySelector('.header-right-group .btn');
+        if (btn) btn.innerHTML = '🔄 Syncing...';
+        
+        pullGlobalData(true).then(() => {
+            if (btn) btn.innerHTML = '🔄 Refresh';
+            renderOngoing();
+            showToast('✅ Cloud Sync Complete!');
+        }).catch(err => {
+            if (btn) btn.innerHTML = '🔄 Refresh';
+            console.error("Sync Error:", err);
+            showToast('❌ Sync failed. Check connection.', 'error');
+        });
+    } else {
+        renderOngoing();
+        showToast('🔄 UI Refreshed');
+    }
 }
 
 function switchTab(tab) {
@@ -74,7 +96,10 @@ function switchTab(tab) {
     if (el) el.style.display = t === tab ? '' : 'none';
   });
   if (tab === 'live') renderLive();
-  if (tab === 'tournament') renderTournamentSelector();
+  if (tab === 'tournament') {
+    renderTournamentSelector();
+    if (selectedTournId) renderTournDetails(selectedTournId);
+  }
   if (tab === 'recent') renderRecent();
 }
 
@@ -84,10 +109,10 @@ function renderLive() {
   if (!grid) return;
 
   const matches = DB.getMatches().filter(m => {
-    const isPublic = m.publishLive !== false; // Default to true if undefined
+    const isPublic = m.publishLive !== false; 
     if (!isPublic) return false;
-    if (m.type !== 'tournament') return false;
-    return (m.status === 'live' || m.status === 'paused');
+    // Show live, paused, AND scheduled matches in this view if they are "active"
+    return (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled');
   });
 
   const uniqueMatches = Array.from(new Map(matches.map(m => [m.id, m])).values());
@@ -183,7 +208,9 @@ function buildMatchCard(m, isLive) {
 
 function goToTournament(id) {
     const tabBtn = document.getElementById('tab-tournament');
-    if (tabBtn) tabBtn.click();
+    if (tabBtn) {
+        tabBtn.click();
+    }
     
     selectedTournId = id;
     renderTournDetails(id);
@@ -224,10 +251,16 @@ function renderTournamentSelector() {
     const selector = document.getElementById('tournament-selector');
     const viewTabs = document.getElementById('tournament-view-tabs');
     if (!selector) return;
-    const tournaments = DB.getTournaments().filter(t => t.status === 'active');
+    // Show all tournaments that are active or scheduled
+    // Show all available tournaments (sync already handles deleted items)
+    const tournaments = DB.getTournaments();
 
     if (!tournaments.length) {
-        selector.innerHTML = `<p style="color:var(--c-muted); padding:20px;">No active tournaments</p>`;
+        selector.innerHTML = `<div class="empty-state" style="padding:40px; border:1px dashed rgba(255,255,255,0.1); border-radius:16px; margin:20px 0;">
+            <div style="font-size:40px; margin-bottom:15px">🏆</div>
+            <div style="font-weight:700; color:#fff">No Active Tournaments</div>
+            <div style="font-size:13px; opacity:0.6; margin-top:8px">Matches and standings will appear here once a tournament is created or synced.</div>
+        </div>`;
         const details = document.getElementById('tournament-details');
         if (details) details.innerHTML = '';
         if (viewTabs) viewTabs.style.display = 'none';
@@ -401,7 +434,9 @@ function renderTournDetails(id) {
     `;
     
     // Auto-select tab (preserve if already on tournament view)
-    let defaultTab = isKO ? 'bracket' : 'standings';
+    let defaultTab = 'fixtures'; // Default to Fixtures/Matches to show scheduled matches immediately
+    if (isKO) defaultTab = 'bracket';
+    
     if (selectedTournId === id && selectedTournSubTab) {
         // Validation to ensure it doesn't try to open 'standings' on a KO tournament if it was just changed
         if (selectedTournSubTab === 'standings' && isKO) defaultTab = 'bracket';

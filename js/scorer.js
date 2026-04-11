@@ -235,16 +235,12 @@ function selectMatchType(type) {
 
     if (type === 'tournament') {
         onTournamentSelect('new');
-        showTossConfig(false);
+        showTossConfig(false); 
+        toggleMatchConfig(false);
     } else if (type === 'instant-nrr') {
         showScreen('instant-nrr');
     } else {
         toggleMatchConfig(true);
-        // For single matches, we DO want toss by default, but user said "mewa ain krnn" (remove these) 
-        // to return to "kalin widiyata". 
-        // If kalin widiyata means NO TOSS on setup at all, I should keep it false.
-        // Let's keep it false for tournament but check if single match needs it.
-        // User specifically mentioned "tournament shedule krddi".
         showTossConfig(false); 
     }
 }
@@ -263,7 +259,7 @@ function onTournamentSelect(val) {
 function toggleMatchConfig(show) {
     const teams = document.getElementById('teams-grid');
     const toss = document.getElementById('toss-grid');
-    const btn = document.getElementById('start-btn');
+    const startBtn = document.getElementById('start-btn');
     const schedBtn = document.getElementById('schedule-btn');
     const head = document.getElementById('match-config-head');
 
@@ -272,7 +268,7 @@ function toggleMatchConfig(show) {
     if (schedBtn) schedBtn.style.display = show ? '' : 'none';
 
     if (head) head.textContent = show ? 'Match Configuration' : 'Tournament Base Settings';
-    if (btn) btn.innerHTML = show ? 'Start Match' : 'Create Tournament';
+    if (startBtn) startBtn.innerHTML = show ? '▶ Start Match' : '🏆 Create Tournament';
 }
 
 
@@ -753,6 +749,7 @@ function startOfficialMatch(mId) {
     currentMatch = m; // Set it early to avoid null issues in other handlers
     setTimeout(() => {
         document.getElementById('tournament-setup-section').style.display = 'none';
+        toggleMatchConfig(true); // Restore the teams input grid specifically for matches
         document.getElementById('team1-name').value = (m.team1 !== 'TBD' ? m.team1 : '');
         document.getElementById('team2-name').value = (m.team2 !== 'TBD' ? m.team2 : '');
         document.getElementById('setup-overs').value = m.overs;
@@ -2721,24 +2718,29 @@ function openRosterEditor(teamName) {
         const player = resolveRosterPlayer(slotValue);
         const displayName = player ? player.name : slotValue;
         const photo = player ? playerPhotoSrc(player) : DEFAULT_PLAYER_PHOTO;
+        const isRegistered = !!player;
 
         inputsHtml += `
-            <div class="roster-slot" style="display:flex;align-items:center;gap:12px;margin-bottom:12px; background:rgba(255,255,255,0.03); padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.05)">
-                <div style="width:20px;font-size:10px;opacity:0.3;font-weight:900;text-align:center">${i + 1}</div>
-                <div style="position:relative; width:40px; height:40px; flex-shrink:0; cursor:pointer;" onclick="onRosterPhotoClick(${i})">
-                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,0.1)" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'">
-                    <div style="position:absolute; bottom:-2px; right:-2px; background:var(--c-primary); width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white; border:1px solid #000">📷</div>
+            <div class="roster-slot" style="display:flex; align-items:center; gap:12px; margin-bottom:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:16px; border:1px solid ${isRegistered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}; transition:all 0.2s">
+                <div style="width:24px; font-size:11px; font-weight:900; color:rgba(255,255,255,0.2)">${(i + 1).toString().padStart(2, '0')}</div>
+                <div style="position:relative; width:48px; height:48px; flex-shrink:0; cursor:pointer;" onclick="onRosterPhotoClick(${i})">
+                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:12px; border:1px solid rgba(255,255,255,0.1)" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'">
+                    <div style="position:absolute; bottom:-4px; right:-4px; background:var(--c-primary); width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white; border:2px solid #000">📷</div>
                 </div>
-                <div style="flex:1;display:flex;align-items:center;gap:8px">
-                    <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
-                           value="${escapeHTML(displayName)}" placeholder="Type player name..." 
-                           oninput="onRosterInputChanged(${i}, this.value)"
-                           onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
-                           onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
-                           style="flex:1;background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.1); height:32px; font-size:14px; font-weight:700; padding:0; color:#fff" autocomplete="off" />
-                    <button type="button" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px" title="Edit Manually" onclick="event.stopPropagation(); onRosterSlotClick(${i})">Edit Name</button>
+                <div style="flex:1; display:flex; flex-direction:column; gap:4px">
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
+                               value="${escapeHTML(displayName)}" placeholder="Player name..." 
+                               oninput="onRosterInputChanged(${i}, this.value)"
+                               onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
+                               style="flex:1; background:transparent; border:none; border-bottom:1.5px solid rgba(255,255,255,0.1); height:28px; font-size:15px; font-weight:800; padding:0; color:#fff" autocomplete="off" />
+                        <button type="button" class="btn btn-sm btn-ghost" style="font-size:16px; padding:4px; opacity:0.5" title="Advanced Edit" onclick="event.stopPropagation(); onRosterSlotClick(${i})">⚙️</button>
+                    </div>
+                    <div id="roster-info-${i}" style="font-size:9px; font-weight:700; color:${isRegistered ? 'var(--c-blue)' : 'rgba(255,255,255,0.3)'}; text-transform:uppercase; letter-spacing:0.5px">
+                        ${isRegistered ? '✅ Linked Profile' : '🆕 New Entry'}
+                    </div>
                 </div>
-                <div id="roster-info-${i}" style="font-size:10px; color:var(--c-primary); width:80px; text-align:right; font-weight:600">${player ? '✔ Profile' : ''}</div>
             </div>
         `;
     }
@@ -2747,21 +2749,23 @@ function openRosterEditor(teamName) {
         <datalist id="roster-players-list">
             ${datalistOptions}
         </datalist>
-        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center">
+        <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; background:rgba(255,255,255,0.02); padding:15px; border-radius:20px; border:1px solid rgba(255,255,255,0.05)">
             <div>
-                <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.5; margin-bottom:2px">Editing Roster</div>
-                <div style="font-weight:950; color:var(--c-amber); font-size:18px; letter-spacing:-0.5px">${editingTeamName}</div>
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--c-primary); font-weight:900; margin-bottom:4px">Roster Editor</div>
+                <div style="font-weight:950; color:#fff; font-size:22px; letter-spacing:-0.5px">${editingTeamName}</div>
+                <div style="font-size:11px; opacity:0.5; margin-top:2px">Official Match Squad (11 Players)</div>
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="window._isEditingRoster=false; renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1)">← Back to List</button>
+            <button class="btn btn-sm btn-ghost" onclick="window._isEditingRoster=false; renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.2)">← Back</button>
         </div>
 
-        <div class="roster-container" style="padding-bottom:10px">
+        <div class="roster-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; padding-bottom:10px">
             ${inputsHtml}
-            <button class="btn btn-sm btn-ghost" style="width:100%; border:1px dashed rgba(255,255,255,0.1); border-radius:12px; height:44px; margin-top:4px" onclick="addRosterSlot()">➕ Add More Player Out of 11</button>
         </div>
+        
+        <button class="btn btn-sm btn-ghost" style="width:100%; border:1px dashed rgba(255,255,255,0.1); border-radius:18px; height:50px; margin-top:12px; font-weight:700" onclick="addRosterSlot()">➕ Add Reserve Player</button>
 
-        <div style="margin-top:20px; position:sticky; bottom:0; padding-top:10px; background:var(--c-bg)">
-            <button class="btn btn-primary btn-full" style="height:50px; font-weight:900; font-size:16px; border-radius:15px; box-shadow:0 10px 20px rgba(var(--c-primary-rgb), 0.2)" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Team Roster</button>
+        <div style="margin-top:24px; position:sticky; bottom:0; padding:15px; background:linear-gradient(0deg, rgba(7, 11, 20, 1) 0%, rgba(7, 11, 20, 0.9) 70%, rgba(7, 11, 20, 0) 100%); margin: 0 -15px; border-radius: 0 0 25px 25px">
+            <button class="btn btn-primary btn-full shadow-lg" style="height:54px; font-weight:950; font-size:16px; border-radius:18px; text-transform:uppercase; letter-spacing:1px" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Complete Roster</button>
             <input id="roster-photo-file-input" type="file" accept="image/*" style="display:none" onchange="onRosterPhotoFileSelected(event)">
         </div>
     `;
@@ -3806,3 +3810,59 @@ function renderBroadcastController(match) {
         reader.readAsDataURL(file);
     };
 }
+
+// ─── INTEGRATED HOTKEY SYSTEM ───
+// Centralized hotkey listener for production & scoring
+function setupIntegratedHotkeys() {
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+        const key = e.key.toUpperCase();
+        const code = e.code;
+        const isMasterControl = document.querySelector('.broadcast-controller-content') !== null;
+
+        // Standard Production Triggers
+        if (!e.shiftKey && !e.ctrlKey && !e.altKey) {
+            if (key === '4' || code === 'Numpad4') {
+                if (isMasterControl) triggerVisualBigEvent('FOUR');
+                else recordBall({type:'four', runs:4});
+            }
+            if (key === '6' || code === 'Numpad6') {
+                if (isMasterControl) triggerVisualBigEvent('SIX');
+                else recordBall({type:'six', runs:6});
+            }
+            if (key === 'W' || code === 'KeyW') {
+                if (isMasterControl) triggerVisualBigEvent('WICKET');
+                else openWicketModal();
+            }
+            if (key === '0' || code === 'Numpad0') {
+               if (!isMasterControl) recordBall({type:'dot', runs:0});
+            }
+            if (key === 'Escape') {
+                if (typeof Broadcast !== 'undefined') Broadcast.stopAll();
+                else sendBroadcast('STOP_OVERLAY');
+            }
+        }
+
+        // Advanced Cinematic Triggers (Shift + Key)
+        if (e.shiftKey) {
+            switch(key) {
+                case 'B': broadcastStrikerProfile(); break;
+                case 'P': broadcastCurrentBatters(); break;
+                case 'H': broadcastPartnership(); break;
+                case 'L': broadcastBowlerProfile(); break;
+                case 'K': broadcastTeamCard(1); break;
+                case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;
+                case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
+                case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
+                case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
+            }
+            e.preventDefault();
+        }
+    });
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    setupIntegratedHotkeys();
+});

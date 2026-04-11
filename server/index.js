@@ -441,6 +441,17 @@ app.post('/players', async (req, res) => {
   }
 });
 
+app.delete('/players/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    await Player.destroy({ where: { id: req.params.id } });
+    emitUpdate('player_deleted', req.params.id, null);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete player' });
+  }
+});
+
 app.get('/teams', async (req, res) => {
   try {
     const dbOk = await ensureDB();
@@ -475,6 +486,17 @@ app.get('/sync/products', async (req, res) => {
   } catch (e) {
     console.error('/sync/products error', e);
     res.status(500).json({ error: e.message || 'Failed to fetch products' });
+  }
+});
+
+app.delete('/sync/products/:id', async (req, res) => {
+  try {
+    await ensureDB();
+    await Product.destroy({ where: { id: req.params.id } });
+    emitUpdate('product_deleted', req.params.id, null);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete product' });
   }
 });
 
@@ -636,15 +658,7 @@ app.delete('/sync/matches/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await ensureDB();
-    const m = await Match.findByPk(id);
-    if (m) {
-        let matchData = m.data || m.dataValues?.data || {};
-        if (typeof matchData === 'string') try { matchData = JSON.parse(matchData); } catch(e) { matchData = {}; }
-        matchData.deleted = true;
-        matchData.status = 'deleted';
-        matchData.lastUpdated = Date.now();
-        await Match.upsert({ id, data: matchData, scoring_password: m.scoring_password });
-    }
+    await Match.destroy({ where: { id } });
     io.emit('globalUpdate', { type: 'match_deleted', id });
     res.json({ ok: true });
   } catch (e) {
@@ -656,15 +670,7 @@ app.delete('/sync/tournaments/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await ensureDB();
-    const t = await Tournament.findByPk(id);
-    if (t) {
-        let tData = t.data || t.dataValues?.data || {};
-        if (typeof tData === 'string') try { tData = JSON.parse(tData); } catch(e) { tData = {}; }
-        tData.deleted = true;
-        tData.status = 'deleted';
-        tData.lastUpdated = Date.now();
-        await Tournament.upsert({ id, data: tData, scoring_password: t.scoring_password });
-    }
+    await Tournament.destroy({ where: { id } });
     io.emit('globalUpdate', { type: 'tournament_deleted', id });
     res.json({ ok: true });
   } catch (e) {

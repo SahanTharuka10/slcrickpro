@@ -595,237 +595,13 @@ const DB = {
         arr.forEach(p => syncToDB('post', p));
     },
     addPost(post) {
-        arr = arr.filter(t => t.id !== id);
-        this.saveTournaments(arr);
-        this.deleteTournamentFromCloud(id);
-    },
-    deleteTournamentFromCloud(id) {
-        if (!BACKEND_BASE_URL) return;
-        fetch(BACKEND_BASE_URL + '/sync/tournaments/' + id, { method: 'DELETE' })
-            .catch(() => {});
-    },
-    async createTournament(cfg) {
-        const t = {
-            id: 'TOURN-' + Date.now(),
-            name: cfg.name,
-            format: cfg.format || 'league',
-            overs: cfg.overs || 20,
-            ballsPerOver: cfg.ballsPerOver || 6,
-            startDate: cfg.startDate || '',
-            teams: cfg.teams || [],
-            matches: [],
-            standings: {},
-            createdAt: Date.now(),
-            status: 'active',
-            isOfficial: cfg.isOfficial || false,
-            matchCount: cfg.matchCount || 0,
-            totalTeams: cfg.totalTeams || cfg.teams.length,
-            prizes: cfg.prizes || { first: '', second: '', third: '' },
-            scoringPassword: cfg.scoringPassword || null,
-            rosters: {},
-        };
-
-        if (t.format === 'knockout') {
-            this._generateKnockoutMatches(t);
-        } else if (cfg.matchCount > 0) {
-            for (let i = 1; i <= cfg.matchCount; i++) {
-                const match = this.createMatch({
-                    type: 'tournament',
-                    tournamentId: t.id,
-                    tournamentName: t.name,
-                    team1: "TBD", team2: "TBD",
-                    overs: t.overs, ballsPerOver: t.ballsPerOver,
-                    scoringPassword: t.scoringPassword
-                }, true); // skipCloud during initial creation
-                match.status = 'scheduled';
-                match.scheduledName = `Match ${i}`;
-                match.publishLive = true; // Tournament matches should be visible to everyone
-                this.saveMatch(match, true);
-                t.matches.push(match.id);
-            }
-        }
-        
-        // Save tournament and preserve scoring token if any
-        await this.saveTournamentWithAuth(t);
-        
-        // SEQUENTIAL SYNC: Sync matches to cloud one by one to avoid overwhelming server
-        if (t.matches.length > 0) {
-            console.log("🕒 Bulk syncing tournament matches...");
-            for (const mId of t.matches) {
-                const m = this.getMatch(mId);
-                if (m) syncToDB('match', m);
-                await new Promise(r => setTimeout(r, 100)); // Small delay
-            }
-        }
-        
-        // Force UI refresh if available
-        if (typeof renderOngoing === 'function') renderOngoing();
-        
-        return t;
-    },
-
-    _generateKnockoutMatches(t) {
-        const N = t.totalTeams;
-        const rounds = Math.ceil(Math.log2(N));
-        const totalMatches = N - 1;
-        
-        let matchIndex = 1;
-        let currentRoundTeams = [];
-        
-        // Populate initial teams (fill with 'TBD' if needed)
-        for (let i = 0; i < N; i++) {
-            currentRoundTeams.push(t.teams[i] || `Team ${i + 1}`);
-        }
-
-        let roundNodes = []; // Tracks matches in current round to link to next
-        let prevRoundMatches = currentRoundTeams.map(name => ({ type: 'team', name }));
-
-        for (let r = 1; r <= rounds; r++) {
-            const nextRoundMatches = [];
-            const roundMatchCount = Math.floor(prevRoundMatches.length / 2);
-            
-            for (let i = 0; i < roundMatchCount; i++) {
-                const node1 = prevRoundMatches[i * 2];
-                const node2 = prevRoundMatches[i * 2 + 1];
-                
-                const mName = (r === rounds) ? "Final 🏆" : 
-                             (r === rounds - 1) ? `Semi-Final ${i + 1}` : 
-                             `Round ${r} - Match ${matchIndex}`;
-                
-                const match = this.createMatch({
-                    type: 'tournament', tournamentId: t.id, tournamentName: t.name,
-                    team1: node1.type === 'team' ? node1.name : 'TBD',
-                    team2: node2.type === 'team' ? node2.name : 'TBD',
-                    overs: t.overs, ballsPerOver: t.ballsPerOver,
-                    scoringPassword: t.scoringPassword
-                });
-
-                match.status = 'scheduled';
-                match.scheduledName = mName;
-                match.publishLive = true; // Tournament matches should be visible to everyone
-                match.knockout = { round: r, matchNum: matchIndex, nextMatchIndex: null, slot: null };
-                
-                // Link predecessors to this match
-                if (node1.type === 'match') { node1.ref.knockout.nextMatchId = match.id; node1.ref.knockout.slot = 1; this.saveMatch(node1.ref); }
-                if (node2.type === 'match') { node2.ref.knockout.nextMatchId = match.id; node2.ref.knockout.slot = 2; this.saveMatch(node2.ref); }
-
-                this.saveMatch(match);
-                t.matches.push(match.id);
-                nextRoundMatches.push({ type: 'match', id: match.id, ref: match });
-                matchIndex++;
-            }
-
-            // Handle Byes (if odd numbered nodes)
-            if (prevRoundMatches.length % 2 === 1) {
-                nextRoundMatches.push(prevRoundMatches[prevRoundMatches.length - 1]);
-            }
-            prevRoundMatches = nextRoundMatches;
-        }
-    },
-
-    // ---------- PRODUCTS ----------
-    getProducts() {
-        return this._secureGet(DB_KEYS.PRODUCTS, []);
-    },
-    saveProducts(arr, options = {}) {
-        this._secureSet(DB_KEYS.PRODUCTS, arr);
-        // Skip cloud push when data came from cloud polling to avoid sync loops.
-        if (options.skipSync) return;
-        // Sync every product to MongoDB so all devices see updates
-        arr.forEach(p => syncProductToDB(p));
-    },
-    deleteProductFromCloud(id) {
-        if (!BACKEND_BASE_URL) return;
-        fetch(BACKEND_BASE_URL + '/sync/products/' + id, { method: 'DELETE' })
-            .catch(() => {});
-    },
-
-    deletePlayerFromCloud(id) {
-        if (!BACKEND_BASE_URL) return;
-        fetch(BACKEND_BASE_URL + '/players/' + id, { method: 'DELETE' })
-            .catch(() => {});
-    },
-    // ---------- ORDERS ----------
-    getOrders() {
-        return this._secureGet(DB_KEYS.ORDERS, []);
-    },
-    saveOrders(arr) {
-        this._secureSet(DB_KEYS.ORDERS, arr);
-    },
-    addOrder(order) {
-        const arr = this.getOrders();
-        order.id = 'ORD-' + Date.now();
-        order.date = Date.now();
-        order.status = 'pending';
-        arr.push(order);
-        this.saveOrders(arr);
-        
-        // Sync to MongoDB Cloud
-        if (typeof syncToDB === 'function') {
-            syncToDB('order', order);
-        }
-        return order;
-    },
-    addTeamToSheets(team) {
-        syncToDB('team', team);
-    },
-
-    // ---------- SETTINGS ----------
-    getSettings() {
-        return this._secureGet(DB_KEYS.SETTINGS, {});
-    },
-    saveSetting(key, val) {
-        const s = this.getSettings();
-        s[key] = val;
-        this._secureSet(DB_KEYS.SETTINGS, s);
-    },
-
-    // ---------- POSTS ----------
-    getPosts() {
-        return this._secureGet(DB_KEYS.POSTS, []);
-    },
-    savePosts(arr) {
-        this._secureSet(DB_KEYS.POSTS, arr);
-        // Sync to cloud if needed
-        arr.forEach(p => syncToDB('post', p));
-    },
-    addPost(post) {
         const arr = this.getPosts();
-        post.id = 'POST-' + Date.now();
-        post.createdAt = Date.now();
+        if (!post.id) post.id = 'POST-' + Date.now();
+        if (!post.createdAt) post.createdAt = Date.now();
         arr.unshift(post); // Newest first
         this.savePosts(arr);
         return post;
     },
-
-    // ---------- CLEANUP ----------
-    clearMatchData(matchId) {
-        // Clear session specific tokens
-        localStorage.removeItem('match_session_token_' + matchId);
-        sessionStorage.removeItem('hotkey_match_id');
-        console.log(`🧹 DB: Cleaned up session data for match ${matchId}`);
-    },
-
-    async handshake(id, password) {
-        try {
-            const res = await fetch(BACKEND_BASE_URL + '/api/handshake', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, password })
-            });
-            const data = await res.json();
-            if (res.ok && data.ok) {
-                const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
-                grants[id] = true;
-                localStorage.setItem('cricpro_grants', JSON.stringify(grants));
-                return { ok: true };
-            }
-            return { ok: false };
-        } catch (e) {
-            console.error('Handshake error', e);
-            return { ok: false };
-        }
-    }
 };
 
 // ============================================================
@@ -1019,7 +795,28 @@ function syncToDB(type, data) {
         return r.json();
     })
     .then(d => {
-        if (!d) return;
+        if (!d || !d.ok) return;
+        
+        // Mark as synced locally to help distinguish between "unsynced new data" and "deleted from cloud"
+        if (type === 'match') {
+            const arr = DB.getMatches();
+            const idx = arr.findIndex(m => m.id === data.id);
+            if (idx !== -1 && !arr[idx].synced) {
+                arr[idx].synced = true;
+                arr[idx].lastUpdated = Date.now();
+                DB._secureSet(DB_KEYS.MATCHES, arr);
+            }
+        }
+        if (type === 'tournament') {
+            const arr = DB.getTournaments();
+            const idx = arr.findIndex(t => t.id === data.id);
+            if (idx !== -1 && !arr[idx].synced) {
+                arr[idx].synced = true;
+                arr[idx].lastUpdated = Date.now();
+                DB._secureSet(DB_KEYS.TOURNAMENTS, arr);
+            }
+        }
+
         if (d.error === 'Unauthorized scoring session') {
             console.warn('Scoring token expired or invalid.');
             localStorage.removeItem('cricpro_token');
@@ -1256,13 +1053,19 @@ async function syncCloudData(options = {}) {
                 }
             });
 
-            // Re-add local matches not found on remote
+            // Sync local matches back to remote IF they are NOT yet synced (newly created)
+            // If they WERE synced once but are now missing from remote, we delete them locally (Cloud is source of truth)
             localMatches.forEach(lm => {
                 if (!matchMap.has(lm.id)) {
-                    matchMap.set(lm.id, lm);
-                    anyUpdated = true;
-                    // Try to push new local matches to cloud
-                    try { syncToDB('match', lm); } catch(e) {}
+                    if (!lm.synced) {
+                        matchMap.set(lm.id, lm);
+                        anyUpdated = true;
+                        try { syncToDB('match', lm); } catch(e) {}
+                    } else {
+                        // Was previously synced but now gone from cloud -> Assume hard delete
+                        anyUpdated = true;
+                        console.log(`🗑️ Sync: Removing local match ${lm.id} (deleted from cloud)`);
+                    }
                 }
             });
 
@@ -1294,8 +1097,15 @@ async function syncCloudData(options = {}) {
 
             localTournaments.forEach(lt => {
                 if (!tournMap.has(lt.id)) {
-                    tournMap.set(lt.id, lt);
-                    anyTUpdated = true;
+                    if (!lt.synced) {
+                        tournMap.set(lt.id, lt);
+                        anyTUpdated = true;
+                        try { syncToDB('tournament', lt); } catch(e) {}
+                    } else {
+                        // Previously synced but now missing -> Assume hard delete
+                        anyTUpdated = true;
+                        console.log(`🗑️ Sync: Removing local tournament ${lt.id} (deleted from cloud)`);
+                    }
                 }
             });
 

@@ -208,7 +208,7 @@ function approveRequest(reqId) {
 
 function renderSystemMatches() {
     const container = document.getElementById('matches-list');
-    const matches = DB.getMatches().filter(m => ['live', 'paused', 'setup', 'completed'].includes(m.status));
+    const matches = DB.getMatches().filter(m => ['live', 'paused', 'setup', 'completed', 'scheduled'].includes(m.status));
     if (!matches.length) {
         container.innerHTML = `<div class="empty-state">No matches found</div>`;
         return;
@@ -256,18 +256,36 @@ function renderTournamentsAdmin() {
         container.innerHTML = `<div class="empty-state">No tournaments found</div>`;
         return;
     }
-    container.innerHTML = tournaments.map(t => `
-        <div class="request-card">
+    
+    container.innerHTML = tournaments.map(t => {
+        let matchHtml = '';
+        if (t.matches && t.matches.length > 0) {
+            matchHtml = `<div style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:12px;">
+                <strong style="display:block; margin-bottom:6px;">Scheduled Matches (${t.matches.length}):</strong>
+                <ul style="padding-left:16px; margin:0; line-height:1.6">
+                    ${t.matches.map(mId => {
+                        const m = DB.getMatch(mId);
+                        if (!m) return `<li style="color:#888;">${mId} (Missing)</li>`;
+                        return `<li><b>${m.team1} vs ${m.team2}</b> <span class="badge ${m.status === 'completed' ? 'badge-blue' : m.status==='scheduled'?'badge-amber':'badge-green'}" style="font-size:9px; padding:2px 4px">${m.status.toUpperCase()}</span></li>`;
+                    }).join('')}
+                </ul>
+            </div>`;
+        } else {
+            matchHtml = `<div style="margin-top:10px; font-size:12px; color:var(--c-muted)">No matches scheduled yet.</div>`;
+        }
+        
+        return `<div class="request-card">
             <div class="req-info">
                 <h3>🏆 ${t.name}</h3>
-                <p>${t.format || 'Standard'} · ${t.status} · ${t.id}</p>
+                <p>${t.format || 'Standard'} · ${t.status} · ${t.id} · <strong style="color:var(--c-primary)">${t.scoringPassword || 'No PIN'}</strong></p>
+                ${matchHtml}
             </div>
             <div class="req-actions">
                 ${t.status === 'active' ? `<button class="btn btn-amber btn-sm" onclick="endTournamentAdmin('${t.id}')">🏁 End</button>` : ''}
                 <button class="btn btn-red btn-sm" onclick="deleteTournamentAdmin('${t.id}')">🗑️ Delete</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function endTournamentAdmin(id) {
@@ -315,6 +333,7 @@ function deletePlayerAdmin(id) {
     if (!confirm('Delete player?')) return;
     const all = DB.getPlayers().filter(p => p.playerId !== id);
     DB.savePlayers(all);
+    DB.deletePlayerFromCloud(id);
     renderPlayersAdmin();
 }
 

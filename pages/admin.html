@@ -94,6 +94,32 @@
             #admin-player-search {
                 width: 100% !important;
             }
+                /* --- Mobile UI Fixes for Admin --- */
+            @media (max-width: 768px) {
+                .admin-content {
+                    padding: 12px !important;
+                }
+                .data-table-container {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    margin: 0 -12px;
+                    padding: 0 12px;
+                }
+                .data-table {
+                    min-width: 600px; /* Force table to be wide enough to scroll */
+                }
+                .request-card {
+                    padding: 15px !important;
+                }
+                .req-actions {
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                }
+                .admin-tabs {
+                    padding-bottom: 5px; /* Add some space for the scrollbar */
+                }
+            }
         }
     </style>
 </head>
@@ -143,19 +169,18 @@
     <div id="admin-content-section" class="admin-section" style="display:none">
 
         <div class="admin-tabs"
-            style="display:flex; gap:10px; margin-bottom: 24px; border-bottom: 1px solid var(--c-border); padding-bottom: 10px;">
+            style="display:flex; gap:8px; margin-bottom: 24px; border-bottom: 1px solid var(--c-border); padding-bottom: 12px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
             <button class="btn btn-primary btn-sm" onclick="switchAdminTab('requests')"
-                id="btn-tab-requests">Inbox</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('matches')" id="btn-tab-matches">System
+                id="btn-tab-requests" style="flex: 0 0 auto; white-space: nowrap;">Inbox</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('matches')" id="btn-tab-matches" style="flex: 0 0 auto; white-space: nowrap;">System
                 Matches</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('tournaments')" id="btn-tab-tournaments">Tournaments</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players">Players</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store">Store
-                Data</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('posts')" id="btn-tab-posts">➕ Posts</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('feedback')" id="btn-tab-feedback">💬 Feedback</button>
-            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry">Match Entry</button>
-            <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto">Logout</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('tournaments')" id="btn-tab-tournaments" style="flex: 0 0 auto; white-space: nowrap;">Tournaments</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('players')" id="btn-tab-players" style="flex: 0 0 auto; white-space: nowrap;">Players</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('store')" id="btn-tab-store" style="flex: 0 0 auto; white-space: nowrap;">Store</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('posts')" id="btn-tab-posts" style="flex: 0 0 auto; white-space: nowrap;">➕ Posts</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('feedback')" id="btn-tab-feedback" style="flex: 0 0 auto; white-space: nowrap;">💬 Chat</button>
+            <button class="btn btn-ghost btn-sm" onclick="switchAdminTab('match-entry')" id="btn-tab-match-entry" style="flex: 0 0 auto; white-space: nowrap;">Input</button>
+            <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()" style="margin-left:auto; flex: 0 0 auto; white-space: nowrap; border-color: rgba(255,109,0,0.3); color: #ff6d3b;">Logout</button>
         </div>
 
         <!-- Requests Tab -->
@@ -206,13 +231,14 @@
                     <p style="color:var(--c-muted);margin-bottom:0;">Rebuild database stats or manage store
                         products.</p>
                 </div>
-                <div style="display:flex; gap:10px; align-items:center;">
+            <div style="display:flex; gap:10px; align-items:center;">
                     <button class="btn btn-amber btn-sm" onclick="reSyncAllStats()">🔄 Re-sync All Stats</button>
                     <button class="btn btn-green" onclick="openAddProduct()">➕ Add Product</button>
                 </div>
             </div>
             <div id="store-list"
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
+
         </div>
 
         <!-- Posts Tab -->
