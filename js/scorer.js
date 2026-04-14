@@ -596,7 +596,7 @@ function renderTournamentMatches() {
             <div style="font-size:11px; font-weight:900; color:#b39ddb; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px">📺 Tournament Broadcast Link</div>
             <div style="font-size:13px; opacity:0.8; color:#fff">Use this permanent link in OBS for the entire tournament.</div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="border-color:#7c4dff; color:#b39ddb; flex-shrink:0" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?tournamentId=${t.id}'); showToast('Overlay link copied!','success');">📋 Copy Link</button>
+        <button class="btn btn-ghost btn-sm" style="border-color:#7c4dff; color:#b39ddb; flex-shrink:0" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?tournament=${t.id}'); showToast('✅ Overlay link copied!','success');">📋 Copy Link</button>
     </div>`;
 
     t.matches.forEach((mId, index) => {

@@ -32,17 +32,18 @@ function showModeSelectionModal(match) {
             const dyn = document.getElementById('selection-overlay-dynamic');
             if (dyn) dyn.remove();
             
-            // Ask for overs and balls per over
-            const newOvers = prompt("Confirm/Change Total Overs:", match.overs || 20);
-            if (newOvers !== null) {
+            // Only prompt for overs on new/setup matches (not already-live resumed matches)
+            const isNewMatch = !match.status || match.status === 'setup' || match.status === 'scheduled';
+            if (isNewMatch) {
+                const newOvers = prompt("Confirm/Change Total Overs:", match.overs || 20);
+                if (newOvers === null) return; // user cancelled
                 const newBpo = prompt("Confirm/Change Balls Per Over:", match.ballsPerOver || 6);
-                if (newBpo !== null) {
-                    match.overs = parseInt(newOvers) || match.overs;
-                    match.ballsPerOver = parseInt(newBpo) || match.ballsPerOver;
-                    DB.saveMatch(match);
-                    openScorerDashboard(match.id); 
-                }
+                if (newBpo === null) return; // user cancelled
+                match.overs = parseInt(newOvers) || match.overs;
+                match.ballsPerOver = parseInt(newBpo) || match.ballsPerOver;
+                DB.saveMatch(match);
             }
+            openScorerDashboard(match.id); 
         };
         if (btnH) btnH.onclick = () => { 
             closeModal('modal-select-mode'); 

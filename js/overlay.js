@@ -1,5 +1,5 @@
 let matchId = new URLSearchParams(window.location.search).get('match') || new URLSearchParams(window.location.search).get('matchId');
-let tournId = new URLSearchParams(window.location.search).get('tournament');
+let tournId = new URLSearchParams(window.location.search).get('tournament') || new URLSearchParams(window.location.search).get('tournamentId');
 let refreshInterval;
 let currentPopupView = null;
 let latestSocketScore = null;
