@@ -1496,17 +1496,58 @@ function recordExtra(type) {
     if (!inn || inn.isDone) return;
     if (inn.currentBowlerIdx === null) { pendingExtraType = type; openNewBowlerModal(); return; }
 
-    pushHistory();
     if (type === 'wide') {
-        inn.runs++; inn.extras.wides++;
-        inn.bowlers[inn.currentBowlerIdx].runs++;
-        if (!inn.currentPartnership) inn.currentPartnership = { runs: 0, balls: 0 };
-        inn.currentPartnership.runs++;
-        inn.currentOver.push({ type: 'wide', runs: 1, wicket: false, legal: false });
+        openWideModal(); // Always use modal for wide (supports extra overthrow runs)
+        return;
     } else if (type === 'noball') {
-        openNoballModal(); // Redirect to new modal flow
+        openNoballModal();
         return;
     }
+    // fallthrough for any other extra type
+    saveAndRender();
+    checkEndOfInnings(inn, null);
+}
+
+// ---- Wide ----
+let wideExtraRuns = 0;
+
+function openWideModal() {
+    const m = currentMatch;
+    if (!m || m.status !== 'live') return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn || inn.isDone) return;
+    if (inn.currentBowlerIdx === null) { pendingExtraType = 'wide'; openNewBowlerModal(); return; }
+    wideExtraRuns = 0;
+    document.querySelectorAll('#modal-wide .wr-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+    openModal('modal-wide');
+}
+
+function selectWideRuns(btn) {
+    wideExtraRuns = parseInt(btn.dataset.val);
+    document.querySelectorAll('#modal-wide .wr-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function confirmWide() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn || inn.isDone) { closeModal('modal-wide'); return; }
+    if (inn.currentBowlerIdx === null) { closeModal('modal-wide'); pendingExtraType = 'wide'; openNewBowlerModal(); return; }
+
+    pushHistory();
+    const totalRuns = 1 + wideExtraRuns; // 1 wide penalty + overthrows
+    inn.runs += totalRuns;
+    inn.extras.wides += totalRuns;
+    inn.bowlers[inn.currentBowlerIdx].runs += totalRuns;
+    if (!inn.currentPartnership) inn.currentPartnership = { runs: 0, balls: 0 };
+    inn.currentPartnership.runs += totalRuns;
+    // Wide is NOT a legal delivery — ball count doesn't increase
+    inn.currentOver.push({ type: 'wide', runs: totalRuns, wicket: false, legal: false });
+    // On overthrows (odd extra runs), rotate strike
+    if (wideExtraRuns % 2 === 1) inn.strikerIdx = inn.strikerIdx === 0 ? 1 : 0;
+
+    closeModal('modal-wide');
     saveAndRender();
     checkEndOfInnings(inn, null);
 }

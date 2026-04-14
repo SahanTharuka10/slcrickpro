@@ -197,11 +197,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Handle tournament list vs light score payload
                 let scoreItem = data.score ? data : null;
+                let fullMatchObj = null;
+
                 if (!scoreItem && data.matches) {
-                    scoreItem = data.matches.find(m => m.id === matchId || (m.tournamentId === tournId && (m.status === 'live' || m.status === 'paused')));
-                    if (scoreItem && !scoreItem.score) {
-                        // If it's a full match object, wrap it
-                        scoreItem = { score: scoreItem.innings[scoreItem.currentInnings], fullMatch: scoreItem };
+                    // Tournament mode: find live or paused match
+                    fullMatchObj = data.matches.find(m => 
+                        m.id === matchId || 
+                        (m.tournamentId === tournId && (m.status === 'live' || m.status === 'paused'))
+                    );
+                    if (fullMatchObj) {
+                        // CRITICAL: persist to local DB so renderOverlay() can use it on OBS device
+                        if (typeof DB !== 'undefined' && DB.saveMatch) {
+                            DB.saveMatch(fullMatchObj);
+                        }
+                        // Switch overlay to track this specific match directly
+                        if (!matchId && fullMatchObj.id) {
+                            matchId = fullMatchObj.id;
+                            console.log('📡 TV: Tournament mode locked onto live match:', matchId);
+                            if (socket) socket.emit('join_match', matchId);
+                        }
+                        // Wrap for scoreItem only if innings ready
+                        const inn = fullMatchObj.innings && fullMatchObj.innings[fullMatchObj.currentInnings || 0];
+                        if (inn) {
+                            scoreItem = { score: inn, fullMatch: fullMatchObj };
+                        } else {
+                            // Match found but innings not started yet — force a re-render to update "Next Match" state
+                            renderOverlay();
+                            return;
+                        }
+                    }
+                } else if (data.fullMatch) {
+                    fullMatchObj = data.fullMatch;
+                    // Persist light payload full match too
+                    if (fullMatchObj && typeof DB !== 'undefined' && DB.saveMatch) {
+                        DB.saveMatch(fullMatchObj);
                     }
                 }
 

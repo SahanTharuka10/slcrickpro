@@ -390,7 +390,7 @@
                         <button class="ball-btn b-six" onclick="recordBall({type:'six',runs:6})">
                             <span class="ball-n">6</span><span class="ball-l">Six</span>
                         </button>
-                        <button class="ball-btn b-wide" onclick="recordExtra('wide')">
+                        <button class="ball-btn b-wide" onclick="openWideModal()">
                             <span class="ball-n">Wd</span><span class="ball-l">Wide</span>
                         </button>
                         <button class="ball-btn b-noball" onclick="openNoballModal()">
@@ -950,7 +950,32 @@
         </div>
     </div>
 
+    <!-- Wide Runs Modal -->
+    <div class="modal-overlay" id="modal-wide" style="display:none">
+        <div class="modal-box">
+            <div class="modal-title">Wide Ball</div>
+            <div class="modal-sub">Extra runs (overthrows)? <small style="opacity:0.6">+1 wide penalty auto-added</small></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
+                <button class="wr-btn active" data-val="0" onclick="selectWideRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">0</button>
+                <button class="wr-btn" data-val="1" onclick="selectWideRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">1</button>
+                <button class="wr-btn" data-val="2" onclick="selectWideRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">2</button>
+                <button class="wr-btn" data-val="3" onclick="selectWideRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">3</button>
+                <button class="wr-btn" data-val="4" onclick="selectWideRuns(this)"
+                    style="flex:1;padding:16px;font-size:20px">4</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modal-wide')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmWide()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bye/LegBye Runs Modal -->
+
     <div class="modal-overlay" id="modal-bye" style="display:none">
         <div class="modal-box">
             <div class="modal-title" id="bye-modal-title">Bye Runs</div>
