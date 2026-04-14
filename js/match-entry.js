@@ -31,7 +31,18 @@ function showModeSelectionModal(match) {
             closeModal('modal-select-mode'); 
             const dyn = document.getElementById('selection-overlay-dynamic');
             if (dyn) dyn.remove();
-            openScorerDashboard(match.id); 
+            
+            // Ask for overs and balls per over
+            const newOvers = prompt("Confirm/Change Total Overs:", match.overs || 20);
+            if (newOvers !== null) {
+                const newBpo = prompt("Confirm/Change Balls Per Over:", match.ballsPerOver || 6);
+                if (newBpo !== null) {
+                    match.overs = parseInt(newOvers) || match.overs;
+                    match.ballsPerOver = parseInt(newBpo) || match.ballsPerOver;
+                    DB.saveMatch(match);
+                    openScorerDashboard(match.id); 
+                }
+            }
         };
         if (btnH) btnH.onclick = () => { 
             closeModal('modal-select-mode'); 

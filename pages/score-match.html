@@ -435,10 +435,11 @@
                         </label>
                         <button class="btn btn-ghost btn-full btn-sm" onclick="openScorecard()">📋 Full
                             Scorecard</button>
-                        <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp;
-                            Save</button>
-                        <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End
-                            Innings</button>
+                        <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp; Save</button>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                            <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End Innings</button>
+                            <button class="btn btn-red btn-full btn-sm" style="background:#d32f2f" onclick="confirmEndMatch()">🛑 End Match</button>
+                        </div>
                     </div>
                 </div>
 

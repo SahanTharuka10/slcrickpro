@@ -21,9 +21,9 @@ body {
 
 /* ─── Main Scoreboard Bar ─────────────────────────────────── */
 .overlay-container {
-    width: calc(100% - 60px);
-    max-width: none;
-    height: 56px;
+    width: calc(100% - 20px);
+    max-width: 1400px;
+    height: 64px;
     margin: 0 auto 36px;
     display: flex;
     align-items: center;
@@ -93,8 +93,8 @@ body {
     display: flex;
     align-items: center;
     line-height: 1.25;
-    font-size: 13px;
-    margin: 1px 0;
+    font-size: 15px;
+    margin: 2px 0;
 }
 
 /* Player name — dark on white */
@@ -108,7 +108,7 @@ body {
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
-    font-size: 12.5px;
+    font-size: 14.5px;
     letter-spacing: 0.3px;
 }
 
@@ -128,12 +128,12 @@ body {
     width: 32px;
     text-align: right;
     color: #1a1a2e;
-    font-size: 14px;
+    font-size: 16px;
 }
 
 /* Balls in brackets — muted gray */
 .player-value.balls {
-    font-size: 11.5px;
+    font-size: 13.5px;
     font-weight: 600;
     width: 30px;
     text-align: right;
@@ -146,8 +146,8 @@ body {
     background: linear-gradient(160deg, #1b1642 0%, #252060 50%, #1b1642 100%);
     color: #fff;
     /* Bleeds above and below the white bar */
-    height: 72px;
-    width: 380px;
+    height: 80px;
+    width: 440px;
     flex-shrink: 0;
     border-radius: 36px;
     display: flex;
@@ -166,8 +166,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: 12px;
+    font-size: 16px;
     margin-bottom: 2px;
 }
 
@@ -176,22 +176,22 @@ body {
     color: #c8ceeb;
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
 }
 
 .score-top .teams span.v {
     text-transform: lowercase;
     margin: 0 2px;
-    font-size: 12px;
+    font-size: 14px;
     color: #6e74a0;
 }
 
 /* Score badge  0-0  */
 .score-top .total {
     background: #e32459;
-    padding: 2px 11px;
-    font-size: 16px;
+    padding: 4px 14px;
+    font-size: 18px;
     font-weight: 900;
     border-radius: 10px;
     letter-spacing: 1px;
@@ -202,7 +202,7 @@ body {
 .score-top .overs {
     color: #fff;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 /* Phase badge  P1 / P2 */
@@ -218,7 +218,7 @@ body {
 
 /* Bottom row: "TOSS: A CHOSE TO BAT" */
 .score-bottom {
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
     color: #8890b8;
     text-transform: uppercase;

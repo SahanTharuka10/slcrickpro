@@ -86,21 +86,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tId = urlParams.get('tournamentId');
 
     // ISOLATE BROADCAST CONTROLLER IMMEDIATELY
-    if (urlParams.get('hotkey') === 'true' && mId) {
+    if (urlParams.get('hotkey') === 'true' && (mId || tId)) {
         document.body.classList.add('broadcast-controller-active');
         const wrapper = document.querySelector('.page-wrapper');
         if (wrapper) wrapper.innerHTML = '<div style="text-align:center; padding:100px; color:#ffc107; font-size:24px">📡 Broadcast Remote Connecting...</div>';
         
-        let m = DB.getMatch(mId);
-        if (!m && typeof window.pullGlobalData === 'function') {
+        if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
-            m = DB.getMatch(mId);
+        }
+
+        let m = null;
+        if (mId) m = DB.getMatch(mId);
+        else if (tId) {
+            currentTournament = DB.getTournament(tId);
+            m = DB.getMatches().find(mx => mx.tournamentId === tId && (mx.status === 'live' || mx.status === 'paused'));
         }
         
         if (m) {
-           renderBroadcastController(m);
-           return; // STOP HERE
+            currentMatch = m;
+            renderBroadcastController(m);
+        } else if (tId) {
+            if (wrapper) wrapper.innerHTML = `
+                <div style="text-align:center; padding:100px; color:#fff;">
+                    <div style="font-size:48px; margin-bottom:20px">⏳</div>
+                    <div style="font-size:24px; font-weight:800; color:#ffc107; margin-bottom:10px">Waiting for Live Match</div>
+                    <div style="font-size:14px; opacity:0.6; margin-bottom: 30px">Tournament Broadcast Station is active and waiting for the next match to start.</div>
+                    <button class="btn btn-ghost" onclick="window.close()">Close</button>
+                </div>
+            `;
+            const waitInterval = setInterval(async () => {
+                if (typeof window.pullGlobalData === 'function') await window.pullGlobalData();
+                const liveMatch = DB.getMatches().find(mx => mx.tournamentId === tId && (mx.status === 'live' || mx.status === 'paused'));
+                if (liveMatch) {
+                    clearInterval(waitInterval);
+                    currentMatch = liveMatch;
+                    renderBroadcastController(liveMatch);
+                }
+            }, 5000);
+            window._broadcastWaitInterval = waitInterval;
         }
+        return; // STOP HERE
     }
 
     // SYNC FIRST: ensure we have latest cloud data before rendering or resolving direct links
@@ -284,8 +309,8 @@ function renderResumeMatchesImpl() {
 
     // 1. Get ALL matches and filter for displayable ones
     const allMatches = DB.getMatches();
-    const pausedMatches = allMatches.filter(m => m.status === 'paused');
-    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' || m.status === 'setup').sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const pausedMatches = allMatches.filter(m => m.status === 'paused' || m.status === 'live');
+    const scheduledMatches = allMatches.filter(m => (m.status === 'scheduled' || m.status === 'setup') && !m.tournamentId).sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled', 'setup'].includes(t.status));
@@ -360,9 +385,9 @@ function renderResumeMatchesImpl() {
         });
     }
 
-    // --- PAUSED MATCHES SECTION ---
+    // --- PAUSED OR LIVE MATCHES SECTION ---
     if (pausedMatches.length) {
-        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#ffc107; margin:24px 0 12px 10px; opacity:0.8">⏸ PAUSED MATCHES</div>`;
+        html += `<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#ffc107; margin:24px 0 12px 10px; opacity:0.8">⏸ IN PROGRESS / PAUSED</div>`;
         pausedMatches.forEach(m => {
             const inn = m.innings ? m.innings[m.currentInnings] : null;
             const score = inn ? `${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)})` : 'Match paused';
@@ -565,7 +590,15 @@ function renderTournamentMatches() {
     const t = currentTournament;
     if (!t) return;
     
-    let html = '';
+    let html = `
+    <div style="background:rgba(124,77,255,0.1); border:1px solid rgba(124,77,255,0.3); border-radius:12px; padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center">
+        <div>
+            <div style="font-size:11px; font-weight:900; color:#b39ddb; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px">📺 Tournament Broadcast Link</div>
+            <div style="font-size:13px; opacity:0.8; color:#fff">Use this permanent link in OBS for the entire tournament.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="border-color:#7c4dff; color:#b39ddb; flex-shrink:0" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?tournamentId=${t.id}'); showToast('Overlay link copied!','success');">📋 Copy Link</button>
+    </div>`;
+
     t.matches.forEach((mId, index) => {
         const m = DB.getMatch(mId);
         if (!m) return;
@@ -1970,6 +2003,18 @@ function confirmEndInnings() {
     finishInnings(inn, 'declared');
 }
 
+function confirmEndMatch() {
+    if (!confirm('Are you sure you want to officially end this match and record the result?')) return;
+    const inn = currentMatch.innings[currentMatch.currentInnings];
+    if (inn && !inn.isDone) {
+        inn.isDone = true;
+        _innings_ending = true;
+        inn.batsmen.forEach(b => { if (!b.dismissal) b.notOut = true; });
+    }
+    DB.saveMatch(currentMatch);
+    showMatchResult();
+}
+
 function showInningsEndModal(inn, reason) {
     const m = currentMatch;
     document.getElementById('innings-end-title').textContent =
@@ -2070,15 +2115,15 @@ function showMatchResult() {
     const mrBackBtn = document.querySelector('#modal-result .btn-ghost');
     if (mrHomeBtn && mrBackBtn) {
         if (m.tournamentId) {
-            mrHomeBtn.innerHTML = '📅 Manage Tournament Hub';
+            // Give clear option to exit the score tab entirely
+            mrHomeBtn.innerHTML = '🏠 Exit Scorecard';
             mrHomeBtn.onclick = () => { 
-                closeModal('modal-result'); 
-                openTournamentHub(m.tournamentId); 
+                location.href = '../pages/ongoing-matches.html'; 
             };
-            mrBackBtn.innerHTML = '📊 Tournament Table';
+            mrBackBtn.innerHTML = '📅 Tournament Hub';
             mrBackBtn.onclick = () => { 
                 closeModal('modal-result'); 
-                openTournamentSummary(); 
+                openTournamentHub(m.tournamentId); 
             };
         } else {
             mrHomeBtn.innerHTML = '🏠 Back to Home';
@@ -2116,8 +2161,8 @@ function showMatchResult() {
                     };
                 }
                 if (mrBackBtn) {
-                    mrBackBtn.innerHTML = '📊 View Table';
-                    mrBackBtn.onclick = () => { closeModal('modal-result'); openTournamentSummary(); };
+                    mrBackBtn.innerHTML = '🏠 Exit Scorecard';
+                    mrBackBtn.onclick = () => { location.href = '../pages/ongoing-matches.html'; };
                 }
             }
         }
@@ -2778,7 +2823,7 @@ function openRosterEditor(teamName) {
                                oninput="onRosterInputChanged(${i}, this.value)"
                                onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
                                onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
-                               style="flex:1; background:transparent; border:none; border-bottom:1.5px solid rgba(255,255,255,0.1); height:28px; font-size:15px; font-weight:800; padding:0; color:#fff" autocomplete="off" />
+                               style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; height:38px; font-size:16px; font-weight:800; padding:0 10px; color:#fff" autocomplete="off" />
                         <button type="button" class="btn btn-sm btn-ghost" style="font-size:16px; padding:4px; opacity:0.5" title="Advanced Edit" onclick="event.stopPropagation(); onRosterSlotClick(${i})">⚙️</button>
                     </div>
                     <div id="roster-info-${i}" style="font-size:9px; font-weight:700; color:${isRegistered ? 'var(--c-blue)' : 'rgba(255,255,255,0.3)'}; text-transform:uppercase; letter-spacing:0.5px">
@@ -3154,11 +3199,17 @@ function broadcastStrikerProfile() {
 
 function broadcastBowlerProfile() {
     const m = currentMatch;
-    if (!m) return;
+    if (!m) { showToast('No active match!', 'error'); return; }
     const inn = m.innings[m.currentInnings];
-    if (!inn) return;
-    const bowler = inn.bowlers[inn.currentBowlerIdx];
-    if (!bowler) return;
+    if (!inn) { showToast('No active innings!', 'error'); return; }
+    
+    let bowler = inn.bowlers[inn.currentBowlerIdx];
+    if (!bowler && inn.bowlers.length > 0) {
+        // Fallback to latest bowler if current index is invalid
+        bowler = inn.bowlers[inn.bowlers.length - 1];
+    }
+    
+    if (!bowler) { showToast('No bowler found in innings!', 'error'); return; }
     
     // Resolve profile from DB if possible
     let p = null;
@@ -3223,9 +3274,9 @@ function triggerVisualBigEvent(type) {
 
 function broadcastPartnership() {
     const m = currentMatch;
-    if (!m) return;
+    if (!m) { showToast('No active match!', 'error'); return; }
     const inn = m.innings[m.currentInnings];
-    if (!inn) return;
+    if (!inn) { showToast('No active innings!', 'error'); return; }
 
     const names = getOnCreaseBatterNames(inn); // [idx0, idx1]
     const p = inn.currentPartnership || { runs: 0, balls: 0 };
@@ -3709,46 +3760,12 @@ function renderBroadcastController(match) {
     </div>
     `;
 
-    // Remote Station Keyboard Listeners
-    const handleRemoteHotkey = (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-        const key = e.key.toUpperCase();
-        const code = e.code;
-        
-        // Instant Visual Triggers (Direct Keys & Numpad)
-        if (!e.shiftKey && !e.ctrlKey && !e.altKey) {
-            if (key === '4' || code === 'Numpad4' || code === 'Digit4') triggerVisualBigEvent('FOUR');
-            if (key === '6' || code === 'Numpad6' || code === 'Digit6') triggerVisualBigEvent('SIX');
-            if (key === 'W' || code === 'KeyW') triggerVisualBigEvent('WICKET');
-            if (key === '0' || code === 'Numpad0' || code === 'Digit0') sendBroadcast('STOP_OVERLAY');
-        }
+    // Integrated hotkey helper
+    if (typeof setupIntegratedHotkeys === 'function') {
+        // Ensure global hotkeys are active and recognize we are in Master Control mode
+        document.body.classList.add('broadcast-controller-active');
+    }
 
-        if (e.key === 'Escape' || code === 'Escape') { 
-            if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); 
-            else sendBroadcast('STOP_OVERLAY'); 
-            return; 
-        }
-        
-        if (e.shiftKey) {
-            const hotkeyUsed = true;
-            switch(key) {
-                case 'B': broadcastStrikerProfile(); break;
-                case 'P': broadcastCurrentBatters(); break;
-                case 'H': broadcastPartnership(); break;
-                case 'L': broadcastBowlerProfile(); break;
-                case 'K': broadcastTeamCard(0); break;
-                case 'J': broadcastTeamCard(1); break;
-                case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
-                case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
-                case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;
-                case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
-                default: return; // Don't prevent default if not matched
-            }
-            e.preventDefault();
-        }
-    };
-    window._handleRemoteHotkey = handleRemoteHotkey;
-    document.addEventListener('keydown', window._handleRemoteHotkey);
 
     // Dynamic Live Sync Function
     const updatePreviewSync = (m) => {
@@ -3793,11 +3810,26 @@ function renderBroadcastController(match) {
     const syncInterval = setInterval(async () => {
         if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
-            const updatedMatch = DB.getMatch(match.id);
-            if (updatedMatch) {
-                currentMatch = updatedMatch;
-                updatePreviewSync(updatedMatch);
+        }
+        
+        let activeMatch = DB.getMatch(match.id);
+        
+        // Tournament-wide auto-switch logic
+        const urlParams = new URLSearchParams(window.location.search);
+        const tId = urlParams.get('tournamentId');
+        if (tId && activeMatch && activeMatch.status === 'completed') {
+            const nextLiveMatch = DB.getMatches().find(mx => mx.tournamentId === tId && (mx.status === 'live' || mx.status === 'paused'));
+            if (nextLiveMatch && nextLiveMatch.id !== activeMatch.id) {
+                clearInterval(window._broadcastSyncInterval);
+                currentMatch = nextLiveMatch;
+                renderBroadcastController(nextLiveMatch);
+                return;
             }
+        }
+        
+        if (activeMatch) {
+            currentMatch = activeMatch;
+            updatePreviewSync(activeMatch);
         }
     }, 4000);
     window._broadcastSyncInterval = syncInterval;
@@ -3931,18 +3963,21 @@ function setupIntegratedHotkeys() {
 
         // Advanced Cinematic Triggers (Shift + Key)
         if (e.shiftKey) {
+            let handled = true;
             switch(key) {
                 case 'B': broadcastStrikerProfile(); break;
                 case 'P': broadcastCurrentBatters(); break;
                 case 'H': broadcastPartnership(); break;
                 case 'L': broadcastBowlerProfile(); break;
-                case 'K': broadcastTeamCard(1); break;
+                case 'K': broadcastTeamCard(0); break;
+                case 'J': broadcastTeamCard(1); break;
                 case 'S': if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD'); break;
                 case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
                 case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
                 case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
+                default: handled = false; break;
             }
-            e.preventDefault();
+            if (handled) e.preventDefault();
         }
     });
 }

@@ -419,7 +419,8 @@ function renderTournDetails(id) {
                 <div class="tsm-item" style="display:flex;align-items:center;margin-left:15px;gap:8px">
                     <button class="badge badge-amber" style="cursor:pointer;border:none;padding:10px 14px;font-size:12px;font-weight:800;border-radius:8px" onclick="generateTournamentPDF('${t.id}')">Report</button>
                     <a href="score-match.html?tournamentId=${t.id}" class="badge" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px; background:#673ab7; color:#fff">Tournament Hub</a>
-                    <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px">Display</a>
+                    <a href="score-match.html?tournamentId=${t.id}&hotkey=true" target="_blank" class="badge badge-red" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px; background:#e61b4d; color:#fff">Broadcast Station</a>
+                    <a href="overlay.html?tournament=${t.id}" target="_blank" class="badge badge-green" style="text-decoration:none; padding:10px 14px; font-size:12px; font-weight:800; border-radius:8px">TV Display</a>
                 </div>
             </div>
         </div>
@@ -549,7 +550,26 @@ function renderFullSchedule(id) {
     const container = document.getElementById('tournament-full-schedule');
     if (!container) return;
     const matches = t.matches.map(mId => DB.getMatch(mId)).filter(m => m);
-    container.innerHTML = `<div style="display:flex; flex-direction:column; gap:12px">` + 
+    
+    // Create persistent broadcast station entry at the top of the schedule
+    const broadcastHtml = `
+        <div class="tournament-header-card" style="margin-bottom:20px; background:linear-gradient(135deg, rgba(230,27,77,0.1), rgba(0,0,0,0.4)); border:1px solid rgba(230,27,77,0.3)">
+            <div>
+                <div class="tourn-name" style="color:#ff3366; font-size:18px"><i style="font-style:normal">📡</i> Tournament Broadcast Master</div>
+                <div class="tourn-format" style="opacity:0.8">One persistent control panel for all matches in this tournament. No need to open new links for each match.</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap">
+                <a href="score-match.html?tournamentId=${t.id}&hotkey=true" target="_blank" class="btn btn-red btn-sm" style="background:#e61b4d; color:#fff; text-decoration:none; padding:8px 16px; border-radius:8px; font-weight:800; white-space:nowrap; box-shadow: 0 4px 12px rgba(230,27,77,0.3)">
+                    ⌨️ Open Hotkey Mode
+                </a>
+                <a href="overlay.html?tournament=${t.id}" target="_blank" class="btn btn-green btn-sm" style="text-decoration:none; padding:8px 16px; border-radius:8px; font-weight:800; white-space:nowrap; color:#000">
+                    📺 TV Display
+                </a>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = broadcastHtml + `<div style="display:flex; flex-direction:column; gap:12px">` + 
         matches.map(m => buildMatchCard(m, (m.status === 'live' || m.status === 'paused'))).join('') + 
         `</div>`;
 }

@@ -1066,19 +1066,16 @@ async function syncCloudData(options = {}) {
                 }
             });
 
-            // Sync local matches back to remote IF they are NOT yet synced (newly created)
-            // If they WERE synced once but are now missing from remote, we delete them locally (Cloud is source of truth)
+            // Sync local matches back to remote.
+            // SAFETY: Never delete local data — if a match is missing from cloud
+            // (server restart, network hiccup, partial sync), re-push it to cloud.
             localMatches.forEach(lm => {
                 if (!matchMap.has(lm.id)) {
-                    if (!lm.synced) {
-                        matchMap.set(lm.id, lm);
-                        anyUpdated = true;
-                        try { syncToDB('match', lm); } catch(e) {}
-                    } else {
-                        // Was previously synced but now gone from cloud -> Assume hard delete
-                        anyUpdated = true;
-                        console.log(`🗑️ Sync: Removing local match ${lm.id} (deleted from cloud)`);
-                    }
+                    // Always keep local copy and re-push to cloud to recover
+                    matchMap.set(lm.id, lm);
+                    anyUpdated = true;
+                    console.log(`🔄 Sync: Re-pushing match ${lm.id} to cloud (was missing from remote)`);
+                    try { syncToDB('match', lm); } catch(e) {}
                 }
             });
 
@@ -1110,15 +1107,11 @@ async function syncCloudData(options = {}) {
 
             localTournaments.forEach(lt => {
                 if (!tournMap.has(lt.id)) {
-                    if (!lt.synced) {
-                        tournMap.set(lt.id, lt);
-                        anyTUpdated = true;
-                        try { syncToDB('tournament', lt); } catch(e) {}
-                    } else {
-                        // Previously synced but now missing -> Assume hard delete
-                        anyTUpdated = true;
-                        console.log(`🗑️ Sync: Removing local tournament ${lt.id} (deleted from cloud)`);
-                    }
+                    // Always keep local copy and re-push to cloud to recover
+                    tournMap.set(lt.id, lt);
+                    anyTUpdated = true;
+                    console.log(`🔄 Sync: Re-pushing tournament ${lt.id} to cloud (was missing from remote)`);
+                    try { syncToDB('tournament', lt); } catch(e) {}
                 }
             });
 

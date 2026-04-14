@@ -304,10 +304,10 @@ function handleBroadcastCommand(cmd, data = {}) {
             showNextMatchGraphic(data);
             break;
         case 'SHOW_SCORECARD':
-            toggleBroadcastScorecard();
+            toggleBroadcastScorecard(data.matchId || matchId);
             break;
         case 'SHOW_SUMMARY':
-            toggleBroadcastSummary();
+            toggleBroadcastSummary(data.tournamentId || tournId);
             break;
         case 'SHOW_CRR': 
             showCRRGraphic(data); 
@@ -454,12 +454,12 @@ function showNextMatchGraphic(data) {
 
 // Milestone Graphic Removed as per User Request
 
-function toggleBroadcastScorecard() {
+function toggleBroadcastScorecard(mId) {
     const el = document.getElementById('broadcast-full-scorecard');
     if (el.style.display === 'flex') {
         gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
-        const success = renderFullScorecardOverlay();
+        const success = renderFullScorecardOverlay(mId || matchId);
         if (success) {
             el.style.display = 'flex';
             gsap.fromTo(el, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' });
@@ -469,8 +469,8 @@ function toggleBroadcastScorecard() {
     }
 }
 
-function renderFullScorecardOverlay() {
-    const m = DB.getMatch(matchId);
+function renderFullScorecardOverlay(mId) {
+    const m = DB.getMatch(mId);
     if (!m) return false;
     
     let html = `
@@ -547,12 +547,12 @@ function renderFullScorecardOverlay() {
     return true;
 }
 
-function toggleBroadcastSummary() {
+function toggleBroadcastSummary(tId) {
     const el = document.getElementById('broadcast-summary');
     if (el.style.display === 'block') {
         gsap.to(el, { opacity: 0, y: 100, duration: 0.5, onComplete: () => el.style.display = 'none' });
     } else {
-        const success = renderTournamentSummaryOverlay();
+        const success = renderTournamentSummaryOverlay(tId || tournId);
         if (success) {
             el.style.display = 'block';
             gsap.fromTo(el, { opacity: 0, y: 100 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
@@ -562,8 +562,8 @@ function toggleBroadcastSummary() {
     }
 }
 
-function renderTournamentSummaryOverlay() {
-    const t = DB.getTournament(tournId);
+function renderTournamentSummaryOverlay(tId) {
+    const t = DB.getTournament(tId);
     if (!t) return false;
     
     const sortedTeams = Object.entries(t.standings || {}).map(([team, s]) => ({ team, ...s }))
@@ -662,7 +662,8 @@ function renderOverlay() {
     
     if (tourn) {
         title = tourn.name?.toUpperCase() || title;
-        sub = tourn.ground ? `🏟️ ${tourn.ground.toUpperCase()}` : "PREPARING FOR NEXT MATCH";
+        const venueText = tourn.ground || tourn.venue || "TBD VENUE";
+        sub = `NEXT MATCH WILL SOON • ${venueText.toUpperCase()}`;
     } else if (matchId) {
         title = "LIVE MATCH";
         sub = "MATCH STARTING SOON";
@@ -670,12 +671,12 @@ function renderOverlay() {
 
     container.style.display = 'flex';
     container.innerHTML = `
-        <div class="score-center-section" style="width: auto; padding: 10px 40px; margin: 0 auto;">
+        <div class="score-center-section" style="width: auto; padding: 10px 60px; margin: 0 auto;">
             <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top" style="justify-content: center;">
-                <span class="teams" style="font-size:22px;">${title}</span>
+                <span class="teams" style="font-size:24px;">${title}</span>
             </div>
-            <div class="score-bottom" style="font-size: 14px; text-transform:uppercase;">${sub}</div>
+            <div class="score-bottom" style="font-size: 15px; text-transform:uppercase;">${sub}</div>
         </div>
     `;
 }
