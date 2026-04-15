@@ -667,9 +667,25 @@ function renderOverlay() {
     const freshMatch = matchId ? DB.getMatch(matchId)
         : DB.getMatches().find(mt => mt.tournamentId === tournId && (mt.status === 'live' || mt.status === 'paused'));
 
+    // 🏆 AUTO-LOCKING: If in tournament mode and a live match is found, adopt it
+    if (tournId && freshMatch && (freshMatch.status === 'live' || freshMatch.status === 'paused')) {
+        if (!matchId || matchId !== freshMatch.id) {
+            const oldMatch = matchId ? DB.getMatch(matchId) : null;
+            if (!oldMatch || oldMatch.status === 'completed' || !matchId) {
+                matchId = freshMatch.id;
+                console.log('📡 TV: Tournament mode auto-locked onto active match:', matchId);
+                // Clear stale socket cache to prevent old match flashes
+                latestSocketScore = null;
+                if (window._cricproSocket) window._cricproSocket.emit('join_match', matchId);
+            }
+        }
+    }
+
     if (freshMatch && freshMatch.innings && freshMatch.innings[freshMatch.currentInnings]) {
         // We have full, fresh data — always prefer this over stale socket cache
-        latestSocketScore = null; // clear stale socket cache
+        if (latestSocketScore && latestSocketScore.id && latestSocketScore.id !== freshMatch.id) {
+            latestSocketScore = null; // clear stale socket cache for a different match
+        }
         return _renderOverlayFromMatch(freshMatch);
     }
 

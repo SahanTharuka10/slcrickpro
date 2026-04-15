@@ -613,7 +613,10 @@ function renderTournamentMatches() {
 
         if (m.status === 'live' || m.status === 'paused') {
             statusBadge = `<span class="badge badge-green" style="font-size:10px">🔴 LIVE</span>`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">Resume</button>`;
+            btn = `<div style="display:flex; gap:6px">
+                <button class="btn btn-primary btn-sm" style="flex:2" onclick="onResumeOrStart('${m.id}', '${m.tournamentId || ''}', false)">Resume</button>
+                <button class="btn btn-red btn-sm" style="flex:1; background:rgba(211,47,47,0.1); color:#d32f2f; min-width:60px" onclick="forceEndMatchInHub('${m.id}')">🛑 End</button>
+            </div>`;
             subInfo = `Match ${index + 1} · ${m.overs} ov`;
             cardStyle = 'border-left: 4px solid #00e676;';
         } else if (m.status === 'completed') {
@@ -1363,6 +1366,12 @@ function renderScoring() {
     document.getElementById('redo-btn').disabled = !(m.redoStack && m.redoStack.length);
     const lastBall = m.history && m.history.length ? m.history[m.history.length - 1] : null;
     document.getElementById('last-ball-info').textContent = lastBall ? 'Last action can be undone' : '';
+
+    // CRITICAL: Ensure Match Controls are visible if match is active
+    const controls = document.getElementById('card-controls');
+    if (controls) {
+        controls.style.display = (m.status === 'live' || m.status === 'paused') ? 'block' : 'none';
+    }
 }
 
 function getPartnership(inn) {
@@ -1539,12 +1548,19 @@ function confirmWide() {
     const totalRuns = 1 + wideExtraRuns; // 1 wide penalty + overthrows
     inn.runs += totalRuns;
     inn.extras.wides += totalRuns;
-    inn.bowlers[inn.currentBowlerIdx].runs += totalRuns;
+    
+    // Bowler's runs increase by the total runs (Wide + any overthrows)
+    const bowler = inn.bowlers[inn.currentBowlerIdx];
+    if (bowler) bowler.runs += totalRuns;
+
     if (!inn.currentPartnership) inn.currentPartnership = { runs: 0, balls: 0 };
     inn.currentPartnership.runs += totalRuns;
+    
     // Wide is NOT a legal delivery — ball count doesn't increase
     inn.currentOver.push({ type: 'wide', runs: totalRuns, wicket: false, legal: false });
+    
     // On overthrows (odd extra runs), rotate strike
+    // Note: Wide penalty itself doesn't rotate strike, overthrow runs do.
     if (wideExtraRuns % 2 === 1) inn.strikerIdx = inn.strikerIdx === 0 ? 1 : 0;
 
     closeModal('modal-wide');
@@ -4027,3 +4043,23 @@ function setupIntegratedHotkeys() {
 document.addEventListener('DOMContentLoaded', () => {
     setupIntegratedHotkeys();
 });
+
+function forceEndMatchInHub(mId) {
+    if (!confirm('🛑 Danger: Officially end this match NOW? This will freeze the score and update standings.')) return;
+    const m = DB.getMatch(mId);
+    if (!m) return;
+    m.status = 'completed';
+    if (!m.result) m.result = 'End Match forced via Hub';
+    DB.saveMatch(m);
+    
+    // Recalculate tournament standings
+    if (m.tournamentId) {
+        const t = DB.getTournament(m.tournamentId);
+        if (t && t.format !== 'knockout' && typeof computeStandings === 'function') {
+            computeStandings(t);
+            DB.saveTournament(t);
+        }
+    }
+    if (typeof renderTournamentMatches === 'function') renderTournamentMatches();
+    showToast('🛑 Match marked as completed.', 'success');
+}

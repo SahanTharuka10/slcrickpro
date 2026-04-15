@@ -955,17 +955,25 @@
         <div class="modal-box">
             <div class="modal-title">Wide Ball</div>
             <div class="modal-sub">Extra runs (overthrows)? <small style="opacity:0.6">+1 wide penalty auto-added</small></div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
-                <button class="wr-btn active" data-val="0" onclick="selectWideRuns(this)"
-                    style="flex:1;padding:16px;font-size:20px">0</button>
-                <button class="wr-btn" data-val="1" onclick="selectWideRuns(this)"
-                    style="flex:1;padding:16px;font-size:20px">1</button>
-                <button class="wr-btn" data-val="2" onclick="selectWideRuns(this)"
-                    style="flex:1;padding:16px;font-size:20px">2</button>
-                <button class="wr-btn" data-val="3" onclick="selectWideRuns(this)"
-                    style="flex:1;padding:16px;font-size:20px">3</button>
-                <button class="wr-btn" data-val="4" onclick="selectWideRuns(this)"
-                    style="flex:1;padding:16px;font-size:20px">4</button>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin:16px 0">
+                <button class="wr-btn active" data-val="0" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">ONLY</div>WD
+                </button>
+                <button class="wr-btn" data-val="1" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">WD+</div>1
+                </button>
+                <button class="wr-btn" data-val="2" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">WD+</div>2
+                </button>
+                <button class="wr-btn" data-val="3" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">WD+</div>3
+                </button>
+                <button class="wr-btn" data-val="4" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">WD+</div>4
+                </button>
+                <button class="wr-btn" data-val="6" onclick="selectWideRuns(this)">
+                    <div style="font-size:10px;opacity:0.6">WD+</div>6
+                </button>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-ghost" onclick="closeModal('modal-wide')">Cancel</button>

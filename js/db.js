@@ -689,8 +689,10 @@ if (typeof io !== 'undefined') {
             if (typeof renderOngoing === 'function') renderOngoing();
             if (typeof updateTicker === 'function') updateTicker();
             if (typeof renderLive === 'function') renderLive();
+            // Trigger overlay re-render (covers overlay.html on same machine)
+            if (typeof renderOverlay === 'function') renderOverlay();
             
-            // Notify other tabs
+            // Notify other tabs (overlay.html listens to this)
             localStorage.setItem('cricpro_force_update', Date.now().toString());
         }
     });
