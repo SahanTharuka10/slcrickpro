@@ -57,7 +57,6 @@ const MatchReportEngine = {
             }))
         };
         return report;
-    }
     },
 
     /**
