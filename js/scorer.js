@@ -803,12 +803,19 @@ function startOfficialMatch(mId) {
 
     closeModal('modal-tournament-matches');
 
-    // If this is a prepared schedule, start scoring immediately
+    // If this is a prepared schedule, we MUST ask for Toss results first
     if (m.status === 'scheduled') {
-        m.status = 'live';
-        m.isScheduledTemplate = false;
-        DB.saveMatch(m);
-        loadMatch(m);
+        currentMatch = m;
+        document.getElementById('toss-match-teams').textContent = `${m.team1} vs ${m.team2}`;
+        document.getElementById('toss-winner-t1').textContent = m.team1;
+        document.getElementById('toss-winner-t2').textContent = m.team2;
+        
+        // Reset modal state
+        _selectedTossWinner = null;
+        _selectedTossDecision = null;
+        document.querySelectorAll('.toss-team-btn, .toss-dec-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
+        
+        openModal('modal-toss-result');
         return;
     }
 
@@ -2252,23 +2259,17 @@ function proceedAfterInnings() {
     } else {
         const nextInningsIdx = m.currentInnings + 1;
         
-        // Follow-On Logic (End of Innings 1, i.e., after Team B bats once)
+        // Test Match 3rd Innings Choice (Standard vs Follow-On)
         if (isTest && maxInns === 4 && m.currentInnings === 1) {
             const inn0 = m.innings[0];
             const inn1 = m.innings[1];
             const lead = inn0.runs - inn1.runs;
-            if (lead >= 200) {
-                const followOn = confirm(`🏏 FOLLOW-ON THRESHOLD REACHED!\n\n${inn0.battingTeam} leads by ${lead} runs.\n\nEnforce Follow-On for ${inn1.battingTeam}?`);
-                if (followOn) {
-                    // Team B bats AGAIN (Innings 2) - but technically our index 2 is for Team A usually.
-                    // ICC Rules: Innings 2 is Team B's 1st innings. If follow-on, Team B bats again as Innings 3.
-                    m.innings[2] = DB.createInnings(inn1.battingTeam, inn1.bowlingTeam);
-                    m.currentInnings = 2;
-                    saveAndRender();
-                    showToast(`${inn1.battingTeam} is following on!`, 'default');
-                    return;
-                }
-            }
+            
+            // Setup Test Modal
+            document.getElementById('test-btn-followon').style.display = (lead >= 100) ? 'block' : 'none';
+            document.getElementById('test-innings-hint').textContent = `${inn0.battingTeam} leads by ${lead} runs.`;
+            openModal('modal-test-innings-select');
+            return;
         }
 
         // Standard rotation
@@ -2280,6 +2281,78 @@ function proceedAfterInnings() {
         setTimeout(() => openOpenBatsmenModal(), 300);
     }
 }
+
+// ========== TOSS HELPERS ==========
+let _selectedTossWinner = null;
+let _selectedTossDecision = null;
+
+window.selectTossWinner = function(side) {
+    _selectedTossWinner = side;
+    document.querySelectorAll('.toss-team-btn').forEach(b => b.classList.remove('btn-primary', 'active'));
+    document.getElementById(side === 'team1' ? 'toss-winner-t1' : 'toss-winner-t2').classList.add('btn-primary', 'active');
+};
+
+window.selectTossDecision = function(dec) {
+    _selectedTossDecision = dec;
+    document.querySelectorAll('.toss-dec-btn').forEach(b => b.classList.remove('btn-primary', 'active'));
+    document.getElementById(dec === 'bat' ? 'toss-dec-bat' : 'toss-dec-bowl').classList.add('btn-primary', 'active');
+};
+
+window.finalizeTossAndStartLive = function() {
+    if (!_selectedTossWinner || !_selectedTossDecision) {
+        showToast('Please select both Toss Winner and Decision!', 'error');
+        return;
+    }
+    const m = currentMatch;
+    const t1 = m.team1;
+    const t2 = m.team2;
+    
+    const tossWinnerName = _selectedTossWinner === 'team1' ? t1 : t2;
+    const dec = _selectedTossDecision;
+    const battingFirst = dec === 'bat' ? tossWinnerName : (tossWinnerName === t1 ? t2 : t1);
+    const fieldingFirst = battingFirst === t1 ? t2 : t1;
+
+    m.status = 'live';
+    m.isScheduledTemplate = false;
+    m.tossWinner = tossWinnerName;
+    m.tossDecision = dec;
+    m.battingFirst = battingFirst;
+    m.fieldingFirst = fieldingFirst;
+    
+    // Test match or Limited Overs
+    const totalInns = m.matchFormat === 'test' ? 4 : 2;
+    m.innings = new Array(totalInns).fill(null);
+    m.innings[0] = DB.createInnings(battingFirst, fieldingFirst);
+    m.currentInnings = 0;
+
+    DB.saveMatch(m);
+    closeModal('modal-toss-result');
+    loadMatch(m);
+    showToast('Match Started! Setting up openers...', 'success');
+};
+
+// ========== TEST INNINGS HELPERS ==========
+window.finalizeTestInningsSelection = function(isFollowOn) {
+    const m = currentMatch;
+    const nextIdx = 2; // Always 3rd innings in 4-innings test
+    const inn0 = m.innings[0];
+    const inn1 = m.innings[1];
+
+    if (isFollowOn) {
+        // Team B bats AGAIN
+        m.innings[nextIdx] = DB.createInnings(inn1.battingTeam, inn1.bowlingTeam);
+        showToast(`${inn1.battingTeam} is following on!`, 'default');
+    } else {
+        // Standard: Team A bats 2nd time
+        m.innings[nextIdx] = DB.createInnings(inn0.battingTeam, inn0.bowlingTeam);
+        showToast(`2nd Innings for ${inn0.battingTeam} started.`, 'default');
+    }
+
+    m.currentInnings = nextIdx;
+    saveAndRender();
+    closeModal('modal-test-innings-select');
+    setTimeout(() => openOpenBatsmenModal(), 400);
+};
 
 // ========== MATCH RESULT ==========
 function showMatchResult() {
@@ -2459,7 +2532,36 @@ function showMatchResult() {
         }
     }
     
+    // ─── NEW: High-Detail Report Archival ───────────────────
+    if (typeof archiveMatchReport === 'function') {
+        console.log('📄 Archiving high-detail match report...');
+        archiveMatchReport(m);
+    }
+    // ────────────────────────────────────────────────────────
+
     openModal('modal-result');
+}
+
+/**
+ * Capture a snapshot of the current match for historical reporting.
+ */
+function archiveMatchReport(m) {
+    if (!m) return;
+    try {
+        const report = {
+            id: 'RE-SNAP-' + Date.now(),
+            matchId: m.id,
+            matchData: JSON.parse(JSON.stringify(m)), // Full snapshot
+            generatedAt: Date.now(),
+            status: m.status
+        };
+        DB.saveMatchReport(report);
+        
+        // Show subtle notification
+        console.log('✅ Match report snapshot archived to DB.');
+    } catch (e) {
+        console.error('Failed to archive match report snapshot:', e);
+    }
 }
 
 function openTournamentSummary() {
@@ -2735,12 +2837,12 @@ function openModal(id) { const e = document.getElementById(id); if (e) e.style.d
 function closeModal(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
 function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
 
-function printScorecard() {
-    closeModal('modal-result');
-    openScorecard();
-    setTimeout(() => {
-        window.print();
-    }, 500);
+async function printScorecard() {
+    if (typeof MatchReportEngine !== 'undefined' && MatchReportEngine.generatePDF) {
+        await MatchReportEngine.generatePDF(currentMatch.id);
+    } else {
+        alert('Report Engine not loaded. Please refresh or check scripts.');
+    }
 }
 
 // ========== NEW OPEN BATSMEN ==========

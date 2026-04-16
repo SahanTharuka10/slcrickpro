@@ -11,6 +11,7 @@ const DB_KEYS = {
     ORDERS: 'cricpro_orders',
     SETTINGS: 'cricpro_settings',
     POSTS: 'cricpro_posts',
+    REPORTS: 'cricpro_reports',
 };
 
 // SLCRICKPRO – Theme Logic (Global)
@@ -332,6 +333,22 @@ const DB = {
         this.saveMatch(match);
         return match;
     },
+
+    // ---------- REPORTS ----------
+    getMatchReports(matchId) {
+        const all = this._secureGet(DB_KEYS.REPORTS, []);
+        return all.filter(r => r.matchId === matchId).sort((a,b) => b.generatedAt - a.generatedAt);
+    },
+
+    saveMatchReport(report) {
+        const all = this._secureGet(DB_KEYS.REPORTS, []);
+        all.push(report);
+        this._secureSet(DB_KEYS.REPORTS, all);
+        if (typeof syncToDB === 'function') {
+            syncToDB('report', report);
+        }
+    },
+
     createInnings(battingTeam, bowlingTeam) {
         return {
             battingTeam,
@@ -602,6 +619,16 @@ const DB = {
         this.savePosts(arr);
         return post;
     },
+    clearMatchData(id) {
+        if (!id) return;
+        localStorage.removeItem('hotkey_match_id');
+        localStorage.removeItem('hotkey_mode');
+        // Clear local grants for this specific match
+        const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
+        delete grants[id];
+        localStorage.setItem('cricpro_grants', JSON.stringify(grants));
+        console.log(`🧹 Session data cleared for match: ${id}`);
+    }
 };
 
 // ============================================================
@@ -759,6 +786,10 @@ function syncToDB(type, data) {
     else if (type === 'tournament') endpoint = '/sync/tournament';
     else if (type === 'order') endpoint = '/sync/order';
     else if (type === 'post') endpoint = '/sync/post';
+    else if (type === 'report') {
+        const id = data.matchId || 'unknown';
+        endpoint = `/api/matches/${id}/report`;
+    }
 
     console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
     let token = localStorage.getItem('cricpro_token');

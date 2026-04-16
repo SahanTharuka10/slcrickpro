@@ -216,6 +216,14 @@ function defineModels(seq) {
     status: { type: DataTypes.STRING, defaultValue: 'unread' },
     createdAt: DataTypes.BIGINT,
   }, { timestamps: true, tableName: 'feedback' });
+
+  MatchReport = seq.define('MatchReport', {
+    id: { type: DataTypes.STRING, primaryKey: true },
+    matchId: { type: DataTypes.STRING, allowNull: false },
+    data: { type: DataTypes.JSON, allowNull: false },
+    generatedAt: { type: DataTypes.BIGINT, allowNull: false },
+    version: { type: DataTypes.STRING, defaultValue: '1.0' }
+  }, { timestamps: true, tableName: 'match_reports' });
 }
 
 
@@ -596,6 +604,28 @@ app.post('/sync/feedback', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'Failed to sync feedback' });
+  }
+});
+
+app.get('/api/matches/:id/reports', async (req, res) => {
+  try {
+    await ensureDB();
+    const reports = await MatchReport.findAll({ where: { matchId: req.params.id }, order: [['generatedAt', 'DESC']] });
+    res.json(reports.map(r => r.dataValues || r));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch match reports' });
+  }
+});
+
+app.post('/api/matches/:id/report', async (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.id) return res.status(400).json({ error: 'Missing report id' });
+  try {
+    await ensureDB();
+    await MatchReport.upsert({ ...data, matchId: req.params.id });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to save match report' });
   }
 });
 

@@ -1178,12 +1178,59 @@
         </div>
     </div>
 
+    <!-- Toss Result Modal (Mandatory for Scheduled Matches) -->
+    <div class="modal-overlay" id="modal-toss-result" style="display:none">
+        <div class="modal-box" style="max-width:440px; text-align:center">
+            <div style="font-size:64px; margin-bottom:12px">🪙</div>
+            <div class="modal-title">Match Toss Result</div>
+            <div class="modal-sub" id="toss-match-teams">Team A vs Team B</div>
+
+            <div style="margin:24px 0; text-align:left">
+                <label class="form-label">Who won the toss?</label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px">
+                    <button class="btn btn-ghost toss-team-btn" id="toss-winner-t1" onclick="selectTossWinner('team1')">Team 1</button>
+                    <button class="btn btn-ghost toss-team-btn" id="toss-winner-t2" onclick="selectTossWinner('team2')">Team 2</button>
+                </div>
+
+                <label class="form-label">Decision?</label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                    <button class="btn btn-ghost toss-dec-btn" id="toss-dec-bat" onclick="selectTossDecision('bat')">🏏 Bat First</button>
+                    <button class="btn btn-ghost toss-dec-btn" id="toss-dec-bowl" onclick="selectTossDecision('field')">⚽ Bowl First</button>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" style="height:54px" onclick="finalizeTossAndStartLive()">▶ Start Match Scoring</button>
+        </div>
+    </div>
+
+    <!-- Test Match 3rd Innings Selection Modal -->
+    <div class="modal-overlay" id="modal-test-innings-select" style="display:none">
+        <div class="modal-box" style="max-width:440px; text-align:center">
+            <div style="font-size:56px; margin-bottom:12px">🏏</div>
+            <div class="modal-title">3rd Innings Selection</div>
+            <div class="modal-sub">End of 2nd Innings. Choose who bats next.</div>
+
+            <div style="display:grid; grid-template-columns:1fr; gap:12px; margin:24px 0">
+                <button class="btn btn-primary" style="height:60px" id="test-btn-standard" onclick="finalizeTestInningsSelection(false)">
+                    Standard Rotation
+                </button>
+                <button class="btn btn-secondary" style="height:60px; display:none" id="test-btn-followon" onclick="finalizeTestInningsSelection(true)">
+                    Enforce Follow-On
+                </button>
+            </div>
+            <p style="font-size:12px; opacity:0.6" id="test-innings-hint"></p>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <datalist id="db-players-list"></datalist>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="../js/db.js"></script>
+    <script src="../js/match-report.js"></script>
     <script src="../js/broadcast.js"></script>
     <script src="../js/scorer.js"></script>
     <script src="../js/instant-nrr.js"></script>
