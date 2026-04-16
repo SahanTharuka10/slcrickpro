@@ -891,8 +891,9 @@ async function generateMatchPDF(matchId) {
     showToast('⏳ Generating High-Fidelity Match Report...', 'default');
     
     const container = document.createElement('div');
-    // Using deep off-screen positioning with full opacity for higher capture reliability
-    container.style = `position:absolute; top:0; left:-5000px; width:1000px; padding:60px 50px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:-1; opacity:1; pointer-events:none;`;
+    // FIXED: Using position:fixed with z-index:-9999 and opacity:0 to ensure it's "visible" to html2canvas 
+    // but hidden from the user without being "off-screen" in a way that causes blank captures.
+    container.style = `position:fixed; top:0; left:0; width:1000px; padding:60px 50px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:-9999; opacity:0; pointer-events:none;`;
     
     const inn0 = m.innings ? m.innings[0] : null;
     const inn1 = m.innings ? m.innings[1] : null;
@@ -905,11 +906,16 @@ async function generateMatchPDF(matchId) {
         const wkts = inn.wickets || 0;
         const balls = inn.balls || 0;
         const extras = inn.extras || { total: 0, wides: 0, noBalls: 0, byes: 0, legByes: 0 };
+        const bpo = m.ballsPerOver || 6;
 
         let contentHtml = '';
         if (!hasBatsmen) {
             contentHtml = `<div style="padding:60px; text-align:center; color:#999; font-style:italic; font-size:15px; background:#fafafa">Innings data will appear once play commences.</div>`;
         } else {
+            // Partnerships extraction from history or dedicated array
+            // Assuming scorer.js saves partnerships to inn.partnerships
+            const activePartnerships = inn.partnerships || [];
+            
             contentHtml = `
                 <div style="padding:35px">
                     <div style="font-size:12px; font-weight:900; color:#1a237e; margin-bottom:18px; letter-spacing:3px; border-bottom:2px solid #f0f0f0; padding-bottom:10px; text-transform:uppercase">I. Batting Performance</div>
@@ -928,7 +934,7 @@ async function generateMatchPDF(matchId) {
                             ${inn.batsmen.map(b => `
                             <tr style="border-bottom:1px solid #f8f8f8">
                                 <td style="padding:15px 5px; color:#333">
-                                    <div style="font-weight:800; font-size:16px">${b.name || 'Professional Batter'}</div>
+                                    <div style="font-weight:800; font-size:16px">${b.name || 'Batter'}</div>
                                     <div style="font-size:10px; color:${b.dismissal ? '#c62828' : '#2e7d32'}; font-weight:700; text-transform:uppercase; margin-top:3px; letter-spacing:0.5px">${b.dismissal || (b.notOut ? 'not out' : 'yet to bat')}</div>
                                 </td>
                                 <td style="padding:15px 5px; font-weight:950; color:#1a237e; text-align:center; font-size:16px">${b.runs || 0}</td>
@@ -960,26 +966,47 @@ async function generateMatchPDF(matchId) {
                         <tbody>
                             ${(inn.bowlers || []).map(b => `
                             <tr style="border-bottom:1px solid #f8f8f8">
-                                <td style="padding:15px 5px; font-weight:800; color:#333; font-size:16px">${b.name || 'Professional Bowler'}</td>
-                                <td style="padding:15px 5px; text-align:center; color:#555">${formatOvers(b.balls || 0, m.ballsPerOver)}</td>
+                                <td style="padding:15px 5px; font-weight:800; color:#333; font-size:16px">${b.name || 'Bowler'}</td>
+                                <td style="padding:15px 5px; text-align:center; color:#555">${formatOvers(b.balls || 0, bpo)}</td>
                                 <td style="padding:15px 5px; text-align:center; color:#555">${b.maidens || 0}</td>
                                 <td style="padding:15px 5px; text-align:center; color:#555">${b.runs || 0}</td>
                                 <td style="padding:15px 5px; font-weight:950; color:#c62828; text-align:center; font-size:16px">${b.wickets || 0}</td>
-                                <td style="padding:15px 5px; text-align:right; color:#777; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:13px">${formatEcon(b.runs || 0, b.balls || 0, m.ballsPerOver)}</td>
+                                <td style="padding:15px 5px; text-align:right; color:#777; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:13px">${formatEcon(b.runs || 0, b.balls || 0, bpo)}</td>
                             </tr>`).join('')}
                         </tbody>
                     </table>
 
-                    ${inn.fallOfWickets && inn.fallOfWickets.length > 0 ? `
-                    <div style="font-size:11px; font-weight:900; color:#455a64; margin-bottom:10px; letter-spacing:2px; text-transform:uppercase">III. Fall of Wickets</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#546e7a; line-height:1.6">
-                        ${inn.fallOfWickets.map((fw, i) => `
-                            <div style="background:#f5f7f9; padding:6px 14px; border-radius:20px; border:1px solid #edf2f7">
-                                <span style="font-weight:900; color:#2c3e50">${i+1}-${fw.runs}</span> 
-                                <span style="margin-left:6px">${fw.batsmanName} (${formatOvers(fw.balls, m.ballsPerOver)})</span>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:30px; margin-top:20px">
+                        <div>
+                            <div style="font-size:11px; font-weight:900; color:#455a64; margin-bottom:15px; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #eee; padding-bottom:5px">III. Fall of Wickets</div>
+                            ${inn.fallOfWickets && inn.fallOfWickets.length > 0 ? `
+                            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:#546e7a">
+                                ${inn.fallOfWickets.map((fw, i) => `
+                                    <div style="background:#fcfcfc; padding:8px 12px; border-radius:8px; border:1px solid #f0f0f0; display:flex; justify-content:space-between">
+                                        <span><b style="color:#2c3e50">${i+1}-${fw.runs}</b> (${fw.batsmanName})</span>
+                                        <span style="opacity:0.7">${formatOvers(fw.balls, bpo)} ov</span>
+                                    </div>
+                                `).join('')}
+                            </div>` : '<div style="color:#bbb; font-style:italic">No wickets fallen.</div>'}
+                        </div>
+                        <div>
+                            <div style="font-size:11px; font-weight:900; color:#2e7d32; margin-bottom:15px; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #eee; padding-bottom:5px">IV. Notable Partnerships</div>
+                            ${activePartnerships && activePartnerships.length > 0 ? `
+                            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:#546e7a">
+                                ${activePartnerships.map((p, i) => `
+                                    <div style="background:#fcfcfc; padding:8px 12px; border-radius:8px; border:1px solid #f0f0f0; display:flex; justify-content:space-between">
+                                        <span><b style="color:#2e7d32">${p.runs} runs</b> (${p.balls} balls)</span>
+                                        <span style="opacity:0.7">${p.batsman1} & ${p.batsman2}</span>
+                                    </div>
+                                `).join('')}
+                            </div>` : (inn.currentPartnership ? `
+                            <div style="background:#f5faf6; padding:12px; border-radius:8px; border:1px solid #e0ede2">
+                                <div style="font-weight:700; color:#2e7d32; margin-bottom:4px">Current Partnership</div>
+                                <div style="font-size:16px; font-weight:900; color:#1b5e20">${inn.currentPartnership.runs}* <span style="font-size:12px; font-weight:400; color:#666">off ${inn.currentPartnership.balls} balls</span></div>
                             </div>
-                        `).join('')}
-                    </div>` : ''}
+                            ` : '<div style="color:#bbb; font-style:italic">No partnership data.</div>')}
+                        </div>
+                    </div>
                 </div>`;
         }
 
@@ -992,23 +1019,31 @@ async function generateMatchPDF(matchId) {
                     </div>
                     <div style="text-align:right">
                         <div style="font-size:42px; font-weight:950; color:#ffc107; line-height:1">${runs}/${wkts}</div>
-                        <div style="font-size:14px; font-weight:800; opacity:0.8; margin-top:8px">${formatOvers(balls, m.ballsPerOver)} Overs <span style="margin:0 12px; opacity:0.3">|</span> ${formatCRR(runs, balls)} CRR</div>
+                        <div style="font-size:14px; font-weight:800; opacity:0.8; margin-top:8px">
+                            ${formatOvers(balls, bpo)} Overs <span style="margin:0 12px; opacity:0.3">|</span> ${formatCRR(runs, balls)} CRR
+                            ${(m.currentInnings === 1 && teamName.toUpperCase() === (m.fieldingFirst || m.team2 || '').toUpperCase()) ? 
+                                `<br><span style="color:#ffc107; font-size:12px; font-weight:900">RRR: ${formatRRR(inn0?inn0.runs+1:0, runs, (m.overs*bpo)-balls, bpo)}</span>` : ''}
+                        </div>
                     </div>
                 </div>
                 ${contentHtml}
             </div>`;
     };
 
-    let inningsHtml = renderInningsTablePDF(inn0, m.battingFirst || m.team1 || 'Team A', 'Initial Innings');
-    if (m.matchFormat === 'test') {
-        const inn1t = m.innings[1];
-        const inn2 = m.innings[2];
-        const inn3 = m.innings[3];
-        inningsHtml += renderInningsTablePDF(inn1t, m.fieldingFirst || m.team2 || 'Team B', 'Second Innings');
-        if (inn2) inningsHtml += renderInningsTablePDF(inn2, m.battingFirst || m.team1, 'Third Innings');
-        if (inn3) inningsHtml += renderInningsTablePDF(inn3, m.fieldingFirst || m.team2, 'Final Innings');
-    } else if (inn1) {
-        inningsHtml += renderInningsTablePDF(inn1, m.fieldingFirst || m.team2 || 'Team B', 'Target Innings');
+    let inningsHtml = '';
+    const totalInns = m.totalInnings || (m.matchFormat === 'test' ? 4 : 2);
+    
+    for (let i = 0; i < totalInns; i++) {
+        const inn = m.innings[i];
+        if (!inn && i > m.currentInnings) continue; 
+        
+        let label = (i+1) + (i===0?'st':i===1?'nd':i===2?'rd':'th') + ' Innings';
+        if (m.matchFormat !== 'test') {
+            label = i === 0 ? 'Initial Innings' : 'Target Chase';
+        }
+        
+        const tName = i % 2 === 0 ? (m.battingFirst || m.team1) : (m.fieldingFirst || m.team2);
+        inningsHtml += renderInningsTablePDF(inn, tName, label);
     }
 
     const tossText = m.tossWinner ? `TOSS: ${(m.tossWinner || 'TBD').toUpperCase()} WON & CHOSE TO ${(m.tossDecision || 'BAT').toUpperCase()}` : 'TOSS DATA NOT AVAILABLE';
@@ -1054,14 +1089,16 @@ async function generateMatchPDF(matchId) {
                  </div>
             </div>
 
-            <div style="text-align:center; margin-bottom:60px">
+            <div style="text-align:center; margin-bottom:60px; display:flex; flex-direction:column; align-items:center; gap:10px">
                 <span style="background:#ffc107; color:#000; padding:8px 24px; border-radius:30px; font-size:13px; font-weight:900; letter-spacing:1px">${tossText}</span>
+                <span style="color:#777; font-size:14px; font-weight:600">${m.overs} Overs Match | Format: ${String(m.matchFormat || 'Limited Overs').toUpperCase()}</span>
+                ${m.scorerName ? `<span style="color:#bbb; font-size:11px; font-weight:700; letter-spacing:1px">SCORER: ${m.scorerName.toUpperCase()}</span>` : ''}
             </div>
 
             ${inningsHtml}
 
             <div style="margin-top:120px; padding-top:40px; border-top:2px solid #f8f9fa; display:flex; justify-content:space-between; align-items:center">
-                <div style="font-size:12px; color:#ddd; font-weight:700; letter-spacing:2px">PRODUCED BY SLCRICKPRO v4.2 ANALYTICS SUITE</div>
+                <div style="font-size:12px; color:#ddd; font-weight:700; letter-spacing:2px">PRODUCED BY SLCRICKPRO v4.5 ANALYTICS SUITE</div>
                 <div style="font-size:11px; color:#eee; font-family:monospace; background:#fafafa; padding:5px 15px; border-radius:5px">${m.id}</div>
             </div>
         </div>
@@ -1069,8 +1106,8 @@ async function generateMatchPDF(matchId) {
 
     document.body.appendChild(container);
     
-    // Extended timeout for complex rendering and fonts
-    await new Promise(r => setTimeout(r, 3000));
+    // Wait for fonts/layout
+    await new Promise(r => setTimeout(r, 2000));
 
     const opt = {
         margin: [5, 0, 5, 0],
@@ -1081,7 +1118,9 @@ async function generateMatchPDF(matchId) {
             useCORS: true, 
             logging: false,
             letterRendering: true,
-            allowTaint: false
+            allowTaint: false,
+            scrollY: 0,
+            windowWidth: 1000
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };

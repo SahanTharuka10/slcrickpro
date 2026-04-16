@@ -1846,6 +1846,20 @@ function confirmWicket() {
         wicketType,
     });
 
+    // Save to historical partnerships
+    if (!inn.partnerships) inn.partnerships = [];
+    if (inn.currentPartnership) {
+        const batA = inn.batsmen[inn.currentBatsmenIdx[0]];
+        const batB = inn.batsmen[inn.currentBatsmenIdx[1]];
+        inn.partnerships.push({
+            runs: inn.currentPartnership.runs,
+            balls: inn.currentPartnership.balls,
+            batsman1: batA ? batA.name : 'Unknown',
+            batsman2: batB ? batB.name : 'Unknown',
+            wicket: dismissedBat ? dismissedBat.name : 'Retired'
+        });
+    }
+
     // Reset partnership for new pair
     inn.currentPartnership = { runs: 0, balls: 0 };
 
@@ -2130,6 +2144,21 @@ function finishInnings(inn, reason) {
     const m = currentMatch;
     // Mark all not-dismissed batsmen as not out
     inn.batsmen.forEach(b => { if (!b.dismissal) b.notOut = true; });
+
+    // Save final partnership
+    if (!inn.partnerships) inn.partnerships = [];
+    if (inn.currentPartnership && (inn.currentPartnership.runs > 0 || inn.currentPartnership.balls > 0)) {
+        const batA = inn.batsmen[inn.currentBatsmenIdx[0]];
+        const batB = inn.batsmen[inn.currentBatsmenIdx[1]];
+        inn.partnerships.push({
+            runs: inn.currentPartnership.runs,
+            balls: inn.currentPartnership.balls,
+            batsman1: batA ? batA.name : 'Unknown',
+            batsman2: batB ? batB.name : 'Unknown',
+            wicket: 'Not Out / Innings End'
+        });
+    }
+
     DB.saveMatch(m);
 
     const isTest = m.matchFormat === 'test';

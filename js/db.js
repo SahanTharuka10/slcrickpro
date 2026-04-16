@@ -958,6 +958,13 @@ function formatEcon(runs, balls, bpo = 6) {
     return ((r / b) * bpo).toFixed(1); 
 }
 
+function formatRRR(target, currentRuns, ballsLeft, bpo = 6) {
+    const need = target - currentRuns;
+    if (need <= 0) return '0.00';
+    if (ballsLeft <= 0) return '∞';
+    return ((need / ballsLeft) * bpo).toFixed(2);
+}
+
 // Global Image Error Handler
 window.addEventListener('error', function(e) {
     if (e.target.tagName && e.target.tagName.toLowerCase() === 'img') {
