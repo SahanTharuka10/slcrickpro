@@ -281,6 +281,26 @@ function onTournamentSelect(val) {
     toggleMatchConfig(val !== 'new');
 }
 
+let selectedFormat = 't20';
+window.setMatchFormat = function(fmt) {
+    selectedFormat = fmt;
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('format-' + fmt).classList.add('active');
+    
+    const oversGrid = document.getElementById('overs-grid');
+    const setupOvers = document.getElementById('setup-overs');
+    
+    if (fmt === 't20') {
+        oversGrid.style.display = 'none';
+        setupOvers.value = 20;
+    } else if (fmt === 'custom') {
+        oversGrid.style.display = 'grid';
+    } else if (fmt === 'test') {
+        oversGrid.style.display = 'none';
+        setupOvers.value = 1000;
+    }
+}
+
 function toggleMatchConfig(show) {
     const teams = document.getElementById('teams-grid');
     const toss = document.getElementById('toss-grid');
@@ -1136,6 +1156,7 @@ async function startNewMatch() {
                 battingFirst, 
                 fieldingFirst 
             });
+            match.matchFormat = selectedFormat;
         }
     }
 
@@ -1296,9 +1317,21 @@ function renderScoring() {
     document.getElementById('sb-overs').textContent = `${formatOvers(inn.balls, m.ballsPerOver)} ov`;
     document.getElementById('sb-crr').textContent = formatCRR(inn.runs, inn.balls);
 
-    // Target info
+    // Target/Lead info
     const tbArea = document.getElementById('sb-target-area');
-    if (m.currentInnings === 1 && m.innings[0]) {
+    const isTest = m.matchFormat === 'test';
+    
+    // Innings label
+    const innsLabel = document.getElementById('sb-inns-label');
+    if (innsLabel) {
+        if (isTest) {
+            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/4)`;
+        } else {
+            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/2)`;
+        }
+    }
+
+    if (!isTest && m.currentInnings === 1 && m.innings[0]) {
         const target = m.innings[0].runs + 1;
         const need = target - inn.runs;
         const ballsLeft = (m.overs * m.ballsPerOver) - inn.balls;
@@ -1306,6 +1339,25 @@ function renderScoring() {
         tbArea.innerHTML = `
       <div class="sb-target-text">Target: ${target}</div>
       <div class="sb-need-text">${need > 0 ? `Need ${need} off ${ballsLeft} balls` : '🎉 Won!'} · RRR: ${rrr}</div>`;
+    } else if (isTest) {
+        const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
+        const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
+        const diff = Math.abs(totalA - totalB);
+        let leader = totalA > totalB ? m.battingFirst : m.fieldingFirst;
+        if (totalA === totalB) leader = 'Scores Level';
+        else leader = leader + ' leads by ' + diff;
+        
+        let subText = '';
+        if (m.currentInnings === 3) {
+            const target = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0) - (m.innings[1]?.runs || 0) + 1;
+            const need = target - (m.innings[3]?.runs || 0);
+            subText = need > 0 ? `Target: ${target} (Need ${need})` : '🎉 Won!';
+        }
+
+        tbArea.innerHTML = `
+            <div class="sb-target-text" style="font-size:12px; color:var(--c-amber)">${leader}</div>
+            <div class="sb-need-text" style="font-size:11px">${subText}</div>
+        `;
     } else { tbArea.innerHTML = ''; }
 
     // Current over balls strip
@@ -1371,6 +1423,11 @@ function renderScoring() {
     const controls = document.getElementById('card-controls');
     if (controls) {
         controls.style.display = (m.status === 'live' || m.status === 'paused') ? 'block' : 'none';
+        
+        const decBtn = document.getElementById('btn-declare');
+        if (decBtn) {
+            decBtn.style.display = (m.matchFormat === 'test' && m.status === 'live') ? 'block' : 'none';
+        }
     }
 }
 
@@ -2001,8 +2058,15 @@ function checkEndOfOver(inn) {
         showToast(`Over ${overNum} complete!`);
 
         // Check if innings ended to prevent showing bowler modal
+        const isTest = m.matchFormat === 'test';
         let isEnd = (inn.balls >= m.overs * bpo) || (inn.wickets >= (m.playersPerSide - 1));
-        if (m.currentInnings === 1 && m.innings[0] && inn.runs >= m.innings[0].runs + 1) isEnd = true;
+        
+        if (!isTest && m.currentInnings === 1 && m.innings[0] && inn.runs >= m.innings[0].runs + 1) isEnd = true;
+        if (isTest && m.currentInnings === 3) {
+            const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
+            const totalB = (m.innings[1]?.runs || 0) + (inn.runs || 0);
+            if (totalB >= totalA + 1) isEnd = true;
+        }
 
         if (!isEnd) {
             setTimeout(() => openNewBowlerModal(), 400);
@@ -2020,9 +2084,20 @@ function checkEndOfInnings(inn, callback) {
     const maxBalls = m.overs * m.ballsPerOver;
 
     // Chase complete
-    if (m.currentInnings === 1 && m.innings[0]) {
+    const isTest = m.matchFormat === 'test';
+    if (!isTest && m.currentInnings === 1 && m.innings[0]) {
         const target = m.innings[0].runs + 1;
         if (inn.runs >= target) {
+            _innings_ending = true;
+            inn.isDone = true;
+            finishInnings(inn, 'chase_won');
+            return;
+        }
+    }
+    if (isTest && m.currentInnings === 3) {
+        const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
+        const totalB = (m.innings[1]?.runs || 0) + (inn.runs || 0);
+        if (totalB >= totalA + 1) {
             _innings_ending = true;
             inn.isDone = true;
             finishInnings(inn, 'chase_won');
@@ -2045,8 +2120,26 @@ function finishInnings(inn, reason) {
     inn.batsmen.forEach(b => { if (!b.dismissal) b.notOut = true; });
     DB.saveMatch(m);
 
-    if (m.currentInnings === 0) {
-        showInningsEndModal(inn, reason);
+    const isTest = m.matchFormat === 'test';
+    const maxInnings = isTest ? 3 : 1;
+
+    // Test match special: check for innings win at end of 3rd innings (m.currentInnings === 2)
+    if (isTest && m.currentInnings === 2) {
+        const totalA = (m.innings[0]?.runs || 0) + (inn.runs || 0);
+        const totalB = (m.innings[1]?.runs || 0);
+        if (totalA < totalB) {
+            showMatchResult();
+            return;
+        }
+    }
+
+    if (m.currentInnings < maxInnings) {
+        // Test match result check: if it's 4th innings and target reached
+        if (isTest && m.currentInnings === 3) {
+            showMatchResult();
+        } else {
+            showInningsEndModal(inn, reason);
+        }
     } else {
         showMatchResult();
     }
@@ -2074,20 +2167,40 @@ function confirmEndMatch() {
 
 function showInningsEndModal(inn, reason) {
     const m = currentMatch;
-    document.getElementById('innings-end-title').textContent =
-        reason === 'declared' ? '📢 Innings Declared!' : '1st Innings Complete!';
+    const isTest = m.matchFormat === 'test';
+    let title = (m.currentInnings + 1) + (m.currentInnings === 0 ? 'st' : m.currentInnings === 1 ? 'nd' : m.currentInnings === 2 ? 'rd' : 'th') + ' Innings Complete!';
+    if (reason === 'declared') title = '📢 Innings Declared!';
+    
+    document.getElementById('innings-end-title').textContent = title;
+
+    let targetHtml = '';
+    if (!isTest) {
+        targetHtml = `<div style="margin-top:10px;font-size:14px">Target for ${inn.bowlingTeam}: <strong style="color:#00e676">${inn.runs + 1}</strong></div>`;
+    } else {
+        // Calculate lead/trail for test
+        const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
+        const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
+        const diff = Math.abs(totalA - totalB);
+        const leader = totalA > totalB ? m.battingFirst : m.fieldingFirst;
+        targetHtml = `<div style="margin-top:10px;font-size:14px">${leader} leads by <strong style="color:#00e676">${diff}</strong> runs</div>`;
+    }
+
     document.getElementById('innings-end-summary').innerHTML = `
     <div style="font-size:22px;font-weight:900;color:#ffc107;margin:8px 0">${inn.battingTeam}: ${inn.runs}/${inn.wickets}</div>
     <div style="color:var(--c-muted)">${formatOvers(inn.balls, m.ballsPerOver)} overs · CRR: ${formatCRR(inn.runs, inn.balls)}</div>
-    <div style="margin-top:10px;font-size:14px">Target for ${inn.bowlingTeam}: <strong style="color:#00e676">${inn.runs + 1}</strong></div>`;
+    ${targetHtml}`;
     openModal('modal-innings-end');
 }
 
 function proceedAfterInnings() {
     const m = currentMatch;
     closeModal('modal-innings-end');
-    m.currentInnings = 1;
-    m.innings[1] = DB.createInnings(m.fieldingFirst, m.battingFirst);
+    
+    m.currentInnings++;
+    const nextBattingTeam = (m.currentInnings % 2 === 0) ? m.battingFirst : m.fieldingFirst;
+    const nextBowlingTeam = (nextBattingTeam === m.team1) ? m.team2 : m.team1;
+    
+    m.innings[m.currentInnings] = DB.createInnings(nextBattingTeam, nextBowlingTeam);
     _innings_ending = false;
     saveAndRender();
     setTimeout(() => openOpenBatsmenModal(), 300);
@@ -2096,22 +2209,51 @@ function proceedAfterInnings() {
 // ========== MATCH RESULT ==========
 function showMatchResult() {
     const m = currentMatch;
-    const inn0 = m.innings[0];
-    const inn1 = m.innings[1];
+    const isTest = m.matchFormat === 'test';
+    
     m.status = 'completed';
 
     let winner, resultText;
-    if (m.currentInnings === 1 && inn1 && inn1.runs >= inn0.runs + 1) {
-        winner = inn1.battingTeam;
-        const wicketsLeft = (m.playersPerSide - 1) - inn1.wickets;
-        resultText = `${winner} won by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`;
-    } else if (!inn1 || inn1.runs < inn0.runs + 1) {
-        winner = inn0.battingTeam;
-        const diff = inn0.runs - (inn1 ? inn1.runs : 0);
-        resultText = `${winner} won by ${diff} run${diff !== 1 ? 's' : ''}`;
+    
+    if (isTest) {
+        const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
+        const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
+        
+        if (totalA > totalB) {
+            winner = m.battingFirst;
+            const diff = totalA - totalB;
+            if (m.currentInnings < 2) {
+                resultText = `${winner} won by an innings and ${totalA - (m.innings[1]?.runs || 0)} runs`;
+            } else {
+                resultText = `${winner} won by ${diff} runs`;
+            }
+        } else if (totalB > totalA) {
+            winner = m.fieldingFirst;
+            if (m.currentInnings === 3) {
+                const wicketsLeft = (m.playersPerSide - 1) - m.innings[3].wickets;
+                resultText = `${winner} won by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`;
+            } else {
+                resultText = `${winner} won by ${totalB - totalA} runs`;
+            }
+        } else {
+            winner = null;
+            resultText = 'Match Drawn!';
+        }
     } else {
-        winner = null;
-        resultText = 'Match Tied!';
+        const inn0 = m.innings[0];
+        const inn1 = m.innings[1];
+        if (m.currentInnings === 1 && inn1 && inn1.runs >= inn0.runs + 1) {
+            winner = inn1.battingTeam;
+            const wicketsLeft = (m.playersPerSide - 1) - inn1.wickets;
+            resultText = `${winner} won by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`;
+        } else if (!inn1 || inn1.runs < inn0.runs + 1) {
+            winner = inn0.battingTeam;
+            const diff = inn0.runs - (inn1 ? inn1.runs : 0);
+            resultText = `${winner} won by ${diff} run${diff !== 1 ? 's' : ''}`;
+        } else {
+            winner = null;
+            resultText = 'Match Tied!';
+        }
     }
 
     m.result = resultText;
@@ -2197,24 +2339,32 @@ function showMatchResult() {
         sendBroadcast('SHOW_SCORECARD');
     }
 
-    // Check if tournament is fully complete – show End Tournament button
+    // Check if tournament is fully complete – show End Tournament button prominentally
     if (m.tournamentId) {
         const t = DB.getTournament(m.tournamentId);
         if (t) {
-            const allMatchIds = t.matches || [];
-            const allMatches = allMatchIds.map(id => DB.getMatch(id)).filter(Boolean);
-            // Count matches excluding this one (it's just been marked completed)
+            const allMatches = (t.matches || []).map(id => DB.getMatch(id)).filter(Boolean);
             const allDone = allMatches.every(mx => mx.status === 'completed' || mx.id === m.id);
             if (allDone && t.status !== 'completed') {
-                // All matches done – prompt End Tournament
-                const mrHomeBtn = document.querySelector('#modal-result .btn-primary');
-                const mrBackBtn = document.querySelector('#modal-result .btn-ghost');
-                if (mrHomeBtn) {
-                    mrHomeBtn.innerHTML = '🏆 End Tournament';
-                    mrHomeBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
-                    mrHomeBtn.onclick = () => {
-                        closeModal('modal-result');
+                // All matches done – prompt End Tournament with a delay for visual comfort
+                setTimeout(() => {
+                    const confirmEnd = confirm(`🏆 ALL MATCHES IN "${t.name}" ARE COMPLETED!\n\nWould you like to END the Tournament and finalize the results now?`);
+                    if (confirmEnd) {
                         endTournamentManually(m.tournamentId);
+                    }
+                }, 1200);
+
+                if (mrHomeBtn) {
+                    mrHomeBtn.innerHTML = '🏆 FINISH TOURNAMENT';
+                    mrHomeBtn.classList.remove('btn-primary');
+                    mrHomeBtn.style.background = '#ffc107';
+                    mrHomeBtn.style.color = '#000';
+                    mrHomeBtn.style.fontWeight = '900';
+                    mrHomeBtn.style.boxShadow = '0 0 25px rgba(255,193,7,0.4)';
+                    mrHomeBtn.style.border = 'none';
+                    mrHomeBtn.onclick = () => {
+                         closeModal('modal-result');
+                         endTournamentManually(m.tournamentId);
                     };
                 }
                 if (mrBackBtn) {
@@ -2224,7 +2374,7 @@ function showMatchResult() {
             }
         }
     }
-
+    
     openModal('modal-result');
 }
 
@@ -2469,6 +2619,14 @@ function pauseAndExit(noConfirm) {
             location.href = '../index.html';
         }
     }, 1200);
+}
+
+window.declareInnings = function() {
+    if (!confirm('Are you sure you want to DECLARE this innings?')) return;
+    const inn = currentMatch.innings[currentMatch.currentInnings];
+    inn.isDone = true;
+    _innings_ending = true;
+    finishInnings(inn, 'declared');
 }
 
 // ========== HELPERS ==========

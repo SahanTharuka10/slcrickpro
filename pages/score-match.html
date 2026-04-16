@@ -154,10 +154,18 @@
                     <input type="password" class="form-input" id="match-scoring-password" placeholder="Set a scoring password..." />
                 </div>
             </div>
-            <div class="grid-2" id="overs-grid">
+            <div class="form-group">
+                <label class="form-label">Match Format</label>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:15px">
+                    <button type="button" class="btn btn-ghost btn-sm format-btn active" id="format-t20" onclick="setMatchFormat('t20')">T20</button>
+                    <button type="button" class="btn btn-ghost btn-sm format-btn" id="format-custom" onclick="setMatchFormat('custom')">Custom Overs</button>
+                    <button type="button" class="btn btn-ghost btn-sm format-btn" id="format-test" onclick="setMatchFormat('test')">Test Match</button>
+                </div>
+            </div>
+            <div class="grid-2" id="overs-grid" style="display:none">
                 <div class="form-group">
                     <label class="form-label">Total Overs</label>
-                    <input type="number" class="form-input" id="setup-overs" value="20" min="1" max="50" />
+                    <input type="number" class="form-input" id="setup-overs" value="20" min="1" max="1000" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Balls per Over</label>
@@ -236,7 +244,7 @@
             <div class="score-banner-inner">
                 <div class="sb-team">
                     <div class="sb-team-name" id="sb-batting-team">Team 1</div>
-                    <div class="sb-score" id="sb-score">0/0</div>
+                    <div class="sb-score" id="sb-score">0/0 <span id="sb-inns-label" style="font-size:12px; font-weight:400; opacity:0.7"></span></div>
                     <div class="sb-overs" id="sb-overs">0.0 ov</div>
                 </div>
                 <div class="sb-center">
@@ -436,10 +444,11 @@
                         <button class="btn btn-ghost btn-full btn-sm" onclick="openScorecard()">📋 Full
                             Scorecard</button>
                         <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp; Save</button>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px" id="match-end-buttons">
                             <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End Innings</button>
                             <button class="btn btn-red btn-full btn-sm" style="background:#d32f2f" onclick="confirmEndMatch()">🛑 End Match</button>
                         </div>
+                        <button class="btn btn-amber btn-full btn-sm" id="btn-declare" style="display:none; background:#ff8f00; font-weight:800" onclick="declareInnings()">📢 Declare Innings</button>
                     </div>
                 </div>
 
