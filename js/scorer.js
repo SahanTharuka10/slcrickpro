@@ -288,16 +288,20 @@ window.setMatchFormat = function(fmt) {
     document.getElementById('format-' + fmt).classList.add('active');
     
     const oversGrid = document.getElementById('overs-grid');
+    const testGrid = document.getElementById('test-settings-grid');
     const setupOvers = document.getElementById('setup-overs');
     
     if (fmt === 't20') {
-        oversGrid.style.display = 'none';
+        if (oversGrid) oversGrid.style.display = 'none';
+        if (testGrid) testGrid.style.display = 'none';
         setupOvers.value = 20;
     } else if (fmt === 'custom') {
-        oversGrid.style.display = 'grid';
+        if (oversGrid) oversGrid.style.display = 'grid';
+        if (testGrid) testGrid.style.display = 'none';
     } else if (fmt === 'test') {
-        oversGrid.style.display = 'none';
-        setupOvers.value = 1000;
+        if (oversGrid) oversGrid.style.display = 'none';
+        if (testGrid) testGrid.style.display = 'block';
+        setupOvers.value = 2000; // Large number for Test
     }
 }
 
@@ -1132,31 +1136,39 @@ async function startNewMatch() {
                 }
             }
 
-             let scoringPassword = document.getElementById('match-scoring-password').value.trim() || null;
-             
+             let scoringPassword = document.getElementById('match-scoring-password') ? document.getElementById('match-scoring-password').value.trim() : null;
              if (currentMatchType === 'tournament' && !scoringPassword && tournamentId) {
                  const t = DB.getTournament(tournamentId);
                  if (t && t.scoringPassword) scoringPassword = t.scoringPassword;
              }
 
-            match = DB.createMatch({ 
-                type: currentMatchType, 
-                tournamentId, 
-                tournamentName, 
-                scoringPassword, 
-                scorerName,
-                team1: t1, 
-                team2: t2, 
-                overs, 
-                ballsPerOver: bpo, 
-                playersPerSide: pps, 
-                venue, 
-                tossWinner, 
-                tossDecision: dec, 
-                battingFirst, 
-                fieldingFirst 
-            });
-            match.matchFormat = selectedFormat;
+             const testStructure = document.getElementById('setup-test-structure') ? parseInt(document.getElementById('setup-test-structure').value) : (selectedFormat === 'test' ? 4 : 2);
+             const testMaxOvers = document.getElementById('setup-test-max-overs') ? parseInt(document.getElementById('setup-test-max-overs').value) : 1000;
+
+             match = DB.createMatch({ 
+                 type: currentMatchType, 
+                 tournamentId, 
+                 tournamentName, 
+                 scoringPassword, 
+                 team1: t1, 
+                 team2: t2, 
+                 overs, 
+                 ballsPerOver: bpo, 
+                 playersPerSide: pps, 
+                 venue, 
+                 scorerName, 
+                 matchFormat: selectedFormat,
+                 tossWinner, 
+                 tossDecision: dec,
+                 battingFirst, 
+                 fieldingFirst,
+                 totalInnings: testStructure,
+                 maxInningsOvers: testMaxOvers
+             });
+             
+             // Properly initialize all innings based on structure
+             match.innings = Array(testStructure).fill(null);
+             match.innings[0] = DB.createInnings(battingFirst, fieldingFirst);
         }
     }
 
@@ -1311,8 +1323,8 @@ function renderScoring() {
     if (!inn) return;
 
     // Banner
-    document.getElementById('sb-batting-team').textContent = inn.battingTeam;
-    document.getElementById('sb-bowling-team').textContent = inn.bowlingTeam;
+    document.getElementById('sb-batting-team').textContent = inn.battingTeam || 'Team';
+    document.getElementById('sb-bowling-team').textContent = inn.bowlingTeam || 'Team';
     document.getElementById('sb-score').textContent = `${inn.runs}/${inn.wickets}`;
     document.getElementById('sb-overs').textContent = `${formatOvers(inn.balls, m.ballsPerOver)} ov`;
     document.getElementById('sb-crr').textContent = formatCRR(inn.runs, inn.balls);
@@ -1325,7 +1337,7 @@ function renderScoring() {
     const innsLabel = document.getElementById('sb-inns-label');
     if (innsLabel) {
         if (isTest) {
-            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/4)`;
+            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/${m.totalInnings || 4})`;
         } else {
             innsLabel.textContent = `(Inn ${m.currentInnings + 1}/2)`;
         }
@@ -1343,7 +1355,7 @@ function renderScoring() {
         const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
         const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
         const diff = Math.abs(totalA - totalB);
-        let leader = totalA > totalB ? m.battingFirst : m.fieldingFirst;
+        let leader = (totalA > totalB ? m.battingFirst : m.fieldingFirst) || '—';
         if (totalA === totalB) leader = 'Scores Level';
         else leader = leader + ' leads by ' + diff;
         
@@ -2121,7 +2133,7 @@ function finishInnings(inn, reason) {
     DB.saveMatch(m);
 
     const isTest = m.matchFormat === 'test';
-    const maxInnings = isTest ? 3 : 1;
+    const maxInnings = m.totalInnings || (isTest ? 4 : 2);
 
     // Test match special: check for innings win at end of 3rd innings (m.currentInnings === 2)
     if (isTest && m.currentInnings === 2) {
@@ -2133,7 +2145,7 @@ function finishInnings(inn, reason) {
         }
     }
 
-    if (m.currentInnings < maxInnings) {
+    if (m.currentInnings < maxInnings - 1) {
         // Test match result check: if it's 4th innings and target reached
         if (isTest && m.currentInnings === 3) {
             showMatchResult();
@@ -2194,16 +2206,50 @@ function showInningsEndModal(inn, reason) {
 
 function proceedAfterInnings() {
     const m = currentMatch;
+    const inn = m.innings[m.currentInnings];
     closeModal('modal-innings-end');
     
-    m.currentInnings++;
-    const nextBattingTeam = (m.currentInnings % 2 === 0) ? m.battingFirst : m.fieldingFirst;
-    const nextBowlingTeam = (nextBattingTeam === m.team1) ? m.team2 : m.team1;
+    const isTest = m.matchFormat === 'test';
+    const maxInns = m.totalInnings || (isTest ? 4 : 2);
     
-    m.innings[m.currentInnings] = DB.createInnings(nextBattingTeam, nextBowlingTeam);
-    _innings_ending = false;
-    saveAndRender();
-    setTimeout(() => openOpenBatsmenModal(), 300);
+    // Innings Limit (Max Overs per innings for Test)
+    if (isTest && m.maxInningsOvers && formatOvers(inn.balls, m.ballsPerOver) >= m.maxInningsOvers) {
+        finishInnings(inn, 'overs_limit');
+        return;
+    }
+
+    if (m.currentInnings >= maxInns - 1) {
+        showMatchResult();
+    } else {
+        const nextInningsIdx = m.currentInnings + 1;
+        
+        // Follow-On Logic (End of Innings 1, i.e., after Team B bats once)
+        if (isTest && maxInns === 4 && m.currentInnings === 1) {
+            const inn0 = m.innings[0];
+            const inn1 = m.innings[1];
+            const lead = inn0.runs - inn1.runs;
+            if (lead >= 200) {
+                const followOn = confirm(`🏏 FOLLOW-ON THRESHOLD REACHED!\n\n${inn0.battingTeam} leads by ${lead} runs.\n\nEnforce Follow-On for ${inn1.battingTeam}?`);
+                if (followOn) {
+                    // Team B bats AGAIN (Innings 2) - but technically our index 2 is for Team A usually.
+                    // ICC Rules: Innings 2 is Team B's 1st innings. If follow-on, Team B bats again as Innings 3.
+                    m.innings[2] = DB.createInnings(inn1.battingTeam, inn1.bowlingTeam);
+                    m.currentInnings = 2;
+                    saveAndRender();
+                    showToast(`${inn1.battingTeam} is following on!`, 'default');
+                    return;
+                }
+            }
+        }
+
+        // Standard rotation
+        const prevInn = m.innings[m.currentInnings];
+        m.innings[nextInningsIdx] = DB.createInnings(prevInn.bowlingTeam, prevInn.battingTeam);
+        m.currentInnings = nextInningsIdx;
+        saveAndRender();
+        showToast(`Innings ${nextInningsIdx + 1} Started!`, 'success');
+        setTimeout(() => openOpenBatsmenModal(), 300);
+    }
 }
 
 // ========== MATCH RESULT ==========
@@ -2219,25 +2265,34 @@ function showMatchResult() {
         const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
         const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
         
-        if (totalA > totalB) {
-            winner = m.battingFirst;
-            const diff = totalA - totalB;
-            if (m.currentInnings < 2) {
-                resultText = `${winner} won by an innings and ${totalA - (m.innings[1]?.runs || 0)} runs`;
-            } else {
-                resultText = `${winner} won by ${diff} runs`;
+        // Special case: Innings Win (Match ended before 4th innings)
+        if (m.currentInnings < 3) {
+            if (totalA > totalB) {
+                winner = m.battingFirst;
+                const diff = totalA - totalB;
+                resultText = `${winner} won by an innings and ${diff} run${diff !== 1 ? 's' : ''}`;
+            } else if (totalB > totalA) {
+                winner = m.fieldingFirst;
+                const diff = totalB - totalA;
+                resultText = `${winner} won by an innings and ${diff} run${diff !== 1 ? 's' : ''}`;
             }
-        } else if (totalB > totalA) {
-            winner = m.fieldingFirst;
-            if (m.currentInnings === 3) {
-                const wicketsLeft = (m.playersPerSide - 1) - m.innings[3].wickets;
-                resultText = `${winner} won by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`;
+        } else if (m.currentInnings === 3) {
+            // 4th Innings Result
+            if (totalB > totalA) {
+                winner = m.fieldingFirst;
+                const wkLeft = (m.playersPerSide - 1) - m.innings[3].wickets;
+                resultText = `${winner} won by ${wkLeft} wicket${wkLeft !== 1 ? 's' : ''}`;
+            } else if (m.innings[3].isDone && totalA > totalB) {
+                winner = m.battingFirst;
+                const diff = totalA - totalB;
+                resultText = `${winner} won by ${diff} run${diff !== 1 ? 's' : ''}`;
+            } else if (m.innings[3].isDone && totalA === totalB) {
+                winner = null;
+                resultText = 'Match Tied!';
             } else {
-                resultText = `${winner} won by ${totalB - totalA} runs`;
+                winner = null;
+                resultText = 'Match Drawn!';
             }
-        } else {
-            winner = null;
-            resultText = 'Match Drawn!';
         }
     } else {
         const inn0 = m.innings[0];
