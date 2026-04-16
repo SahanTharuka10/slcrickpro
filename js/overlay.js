@@ -748,10 +748,10 @@ function _renderOverlayFromMatch(m) {
     const siIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx] : null;
     const nsiIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx === 0 ? 1 : 0] : null;
 
-    const striker    = (typeof siIdx === 'number' && curInn.batsmen && curInn.batsmen[siIdx]) ? curInn.batsmen[siIdx] : { name:'Batsman 1', runs:0, balls:0 };
-    const nonStriker = (typeof nsiIdx === 'number' && curInn.batsmen && curInn.batsmen[nsiIdx]) ? curInn.batsmen[nsiIdx] : { name:'Batsman 2', runs:0, balls:0 };
+    const striker    = (typeof siIdx === 'number' && curInn.batsmen && curInn.batsmen[siIdx]) ? curInn.batsmen[siIdx] : { name:'Batter 1', runs:0, balls:0, fours:0, sixes:0 };
+    const nonStriker = (typeof nsiIdx === 'number' && curInn.batsmen && curInn.batsmen[nsiIdx]) ? curInn.batsmen[nsiIdx] : { name:'Batter 2', runs:0, balls:0, fours:0, sixes:0 };
     
-    const bowler     = (curInn.bowlers && typeof curInn.currentBowlerIdx !== 'undefined' && curInn.bowlers[curInn.currentBowlerIdx]) ? curInn.bowlers[curInn.currentBowlerIdx] : { name:'Bowler', wickets:0, runs:0, balls:0 };
+    const bowler     = (curInn.bowlers && typeof curInn.currentBowlerIdx !== 'undefined' && curInn.bowlers[curInn.currentBowlerIdx]) ? curInn.bowlers[curInn.currentBowlerIdx] : { name:'Bowler', wickets:0, runs:0, balls:0, maidens:0 };
     const b_overs    = formatOvers(bowler.balls || 0, m.ballsPerOver);
 
     const ballsToShow = (curInn.currentOver || []).slice(Math.max(0, (curInn.currentOver || []).length - 6));
@@ -1484,11 +1484,11 @@ function showPartnershipGraphicCinema(data) {
                 ${wicketNum || '3RD'} WICKET PARTNERSHIP
             </div>
             <div style="display:flex; align-items:center; justify-content:center; gap:30px">
-                <div style="font-size:72px; font-weight:950; color:#fff; line-height:1">${runs}</div>
+                <div style="font-size:72px; font-weight:950; color:#fff; line-height:1">${runs || 0}</div>
                 <div style="width:1px; height:50px; background:rgba(255,255,255,0.1)"></div>
                 <div style="text-align:left">
-                    <div style="font-size:24px; font-weight:950; color:#fff">${balls} <span style="font-size:14px; opacity:0.5; font-weight:700">BALLS</span></div>
-                    <div style="font-size:14px; font-weight:800; color:#00e676; letter-spacing:1px">${teamName.toUpperCase()}</div>
+                    <div style="font-size:24px; font-weight:950; color:#fff">${balls || 0} <span style="font-size:14px; opacity:0.5; font-weight:700">BALLS</span></div>
+                    <div style="font-size:14px; font-weight:800; color:#00e676; letter-spacing:1px">${(teamName || 'BATTING TEAM').toUpperCase()}</div>
                 </div>
             </div>
         </div>

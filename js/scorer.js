@@ -1337,9 +1337,9 @@ function renderScoring() {
     const innsLabel = document.getElementById('sb-inns-label');
     if (innsLabel) {
         if (isTest) {
-            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/${m.totalInnings || 4})`;
+            innsLabel.textContent = `(Inn ${(m.currentInnings || 0) + 1}/${m.totalInnings || 4})`;
         } else {
-            innsLabel.textContent = `(Inn ${m.currentInnings + 1}/2)`;
+            innsLabel.textContent = `(Inn ${(m.currentInnings || 0) + 1}/2)`;
         }
     }
 
@@ -1386,9 +1386,9 @@ function renderScoring() {
 
     // Batting stats
     [0, 1].forEach(i => {
-        const batIdx = inn.currentBatsmenIdx[i];
-        const bat = (batIdx !== undefined && batIdx !== null) ? inn.batsmen[batIdx] : null;
-        document.getElementById(`bat${i}-name`).textContent = bat ? bat.name : '-';
+        const batIdx = inn.currentBatsmenIdx ? inn.currentBatsmenIdx[i] : null;
+        const bat = (batIdx !== undefined && batIdx !== null) ? (inn.batsmen ? inn.batsmen[batIdx] : null) : null;
+        document.getElementById(`bat${i}-name`).textContent = bat ? (bat.name || '-') : '-';
         document.getElementById(`bat${i}-runs`).textContent = bat ? (bat.runs || 0) : 0;
         document.getElementById(`bat${i}-balls`).textContent = bat ? (bat.balls || 0) : 0;
         document.getElementById(`bat${i}-4s`).textContent = bat ? (bat.fours || 0) : 0;
@@ -1412,9 +1412,9 @@ function renderScoring() {
 
     // Partnership – track per partnership object
     const p = getPartnership(inn);
-    document.getElementById('partner-runs').textContent = p.runs;
-    document.getElementById('partner-balls').textContent = p.balls;
-    document.getElementById('partner-sr').textContent = formatSR(p.runs, p.balls);
+    document.getElementById('partner-runs').textContent = p.runs || 0;
+    document.getElementById('partner-balls').textContent = p.balls || 0;
+    document.getElementById('partner-sr').textContent = formatSR(p.runs || 0, p.balls || 0);
 
     // Fall of wickets
     const fowEl = document.getElementById('fow-list');

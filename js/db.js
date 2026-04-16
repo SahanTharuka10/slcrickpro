@@ -933,10 +933,30 @@ function showToast(msg, type = 'default') {
     t._timer = setTimeout(() => { t.className = 'toast'; }, 3200);
 }
 
-function formatCRR(runs, balls) { if (!balls) return '0.00'; return ((runs / balls) * 6).toFixed(2); }
-function formatOvers(balls, bpo = 6) { const ov = Math.floor(balls/bpo); const b = balls%bpo; return `${ov}.${b}`; }
-function formatSR(runs, balls) { if (!balls) return '0.0'; return ((runs/balls)*100).toFixed(1); }
-function formatEcon(runs, balls, bpo = 6) { if (!balls) return '0.0'; return ((runs/balls)*bpo).toFixed(1); }
+function formatCRR(runs, balls) { 
+    const r = parseFloat(runs) || 0;
+    const b = parseFloat(balls) || 0;
+    if (!b) return '0.00'; 
+    return ((r / b) * 6).toFixed(2); 
+}
+function formatOvers(balls, bpo = 6) { 
+    const bls = parseInt(balls) || 0;
+    const ov = Math.floor(bls/bpo); 
+    const b = bls%bpo; 
+    return `${ov}.${b}`; 
+}
+function formatSR(runs, balls) { 
+    const r = parseFloat(runs) || 0;
+    const b = parseFloat(balls) || 0;
+    if (!b) return '0.0'; 
+    return ((r / b) * 100).toFixed(1); 
+}
+function formatEcon(runs, balls, bpo = 6) { 
+    const r = parseFloat(runs) || 0;
+    const b = parseFloat(balls) || 0;
+    if (!b) return '0.0'; 
+    return ((r / b) * bpo).toFixed(1); 
+}
 
 // Global Image Error Handler
 window.addEventListener('error', function(e) {

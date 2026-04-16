@@ -891,77 +891,81 @@ async function generateMatchPDF(matchId) {
     showToast('⏳ Generating Professional Match Report...', 'default');
     
     const container = document.createElement('div');
-    container.style = `position:fixed; top:0; left:-10000px; width:900px; padding:60px 50px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:9999; opacity:1; pointer-events:none; border-radius:0; line-height:1.6;`;
+    // Using position absolute with 0 opacity instead of huge negative left to ensure better rendering on some browsers
+    container.style = `position:absolute; top:0; left:0; width:1000px; padding:60px 40px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:-1; opacity:0; pointer-events:none;`;
     
     const inn0 = m.innings ? m.innings[0] : null;
     const inn1 = m.innings ? m.innings[1] : null;
 
     const renderInningsTablePDF = (inn, teamName, innLabel) => {
-        const hasBatsmen = inn && inn.batsmen && inn.batsmen.length > 0;
-        const runs = (inn && inn.runs) || 0;
-        const wkts = (inn && inn.wickets) || 0;
-        const balls = (inn && inn.balls) || 0;
+        if (!inn) return `<div style="margin-bottom:30px; padding:20px; border:1px dashed #ddd; text-align:center; color:#999; border-radius:12px">No data for ${innLabel}</div>`;
+        
+        const hasBatsmen = inn.batsmen && inn.batsmen.length > 0;
+        const runs = inn.runs || 0;
+        const wkts = inn.wickets || 0;
+        const balls = inn.balls || 0;
 
         let contentHtml = '';
         if (!hasBatsmen) {
-            contentHtml = `<div style="padding:30px; text-align:center; color:#999; font-style:italic">Detailed player statistics not yet recorded for this innings.</div>`;
+            contentHtml = `<div style="padding:40px; text-align:center; color:#999; font-style:italic; font-size:14px">Detailed player statistics not yet available for this innings.</div>`;
         } else {
             const extras = inn.extras || { total: 0, wd: 0, nb: 0, b: 0, lb: 0 };
             contentHtml = `
-                    <div style="padding:20px">
-                        <div style="font-size:12px; font-weight:800; color:#1a237e; margin-bottom:12px; letter-spacing:1px; border-bottom:1px solid #eee; padding-bottom:5px">BATTING</div>
-                        <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px">
+                    <div style="padding:25px">
+                        <div style="font-size:11px; font-weight:800; color:#1a237e; margin-bottom:15px; letter-spacing:2px; border-bottom:2px solid #f0f0f0; padding-bottom:8px">BATTING SCORECARD</div>
+                        <table style="width:100%; border-collapse:collapse; margin-bottom:25px; font-size:13px">
                             <thead>
-                                <tr style="text-align:left; color:#1a237e; font-size:11px">
-                                    <th style="padding:8px 5px">BATSMAN</th>
-                                    <th style="padding:8px 5px">R</th>
-                                    <th style="padding:8px 5px">B</th>
-                                    <th style="padding:8px 5px">4s</th>
-                                    <th style="padding:8px 5px">6s</th>
-                                    <th style="padding:8px 5px">SR</th>
+                                <tr style="text-align:left; color:#1a237e; font-size:10px; border-bottom:1px solid #eee">
+                                    <th style="padding:10px 5px">BATSMAN</th>
+                                    <th style="padding:10px 5px; text-align:center">R</th>
+                                    <th style="padding:10px 5px; text-align:center">B</th>
+                                    <th style="padding:10px 5px; text-align:center">4s</th>
+                                    <th style="padding:10px 5px; text-align:center">6s</th>
+                                    <th style="padding:10px 5px; text-align:right">SR</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${inn.batsmen.map(b => `
-                                <tr style="border-bottom:1px solid #f9f9f9">
-                                    <td style="padding:10px 5px; color:#333">
-                                        <div style="font-weight:700">${b.name}</div>
-                                        <div style="font-size:10px; color:#c62828">${b.dismissal || (b.notOut ? 'not out' : 'dnb')}</div>
+                                <tr style="border-bottom:1px solid #f5f5f5">
+                                    <td style="padding:12px 5px; color:#333">
+                                        <div style="font-weight:700; font-size:14px">${b.name || 'Unknown'}</div>
+                                        <div style="font-size:10px; color:#c62828; font-weight:600; text-transform:uppercase">${b.dismissal || (b.notOut ? 'not out' : 'did not bat')}</div>
                                     </td>
-                                    <td style="padding:10px 5px; font-weight:800; color:#1a237e">${b.runs || 0}</td>
-                                    <td style="padding:10px 5px">${b.balls || 0}</td>
-                                    <td style="padding:10px 5px">${b.fours || 0}</td>
-                                    <td style="padding:10px 5px">${b.sixes || 0}</td>
-                                    <td style="padding:10px 5px; color:#888">${formatSR(b.runs, b.balls)}</td>
+                                    <td style="padding:12px 5px; font-weight:900; color:#1a237e; text-align:center; font-size:15px">${b.runs || 0}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${b.balls || 0}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${b.fours || 0}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${b.sixes || 0}</td>
+                                    <td style="padding:12px 5px; text-align:right; color:#888; font-family:'JetBrains Mono', monospace; font-weight:700">${formatSR(b.runs || 0, b.balls || 0)}</td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
                         
-                        <div style="padding:10px 15px; background:#f5f7f9; border-radius:8px; font-size:11px; margin-bottom:25px; border-left:4px solid #1a237e">
-                            <b>EXTRAS: ${extras.total || 0}</b> &nbsp;|&nbsp; Wides: ${extras.wd || 0}, No Balls: ${extras.nb || 0}, Byes: ${extras.b || 0}, Leg Byes: ${extras.lb || 0}
+                        <div style="padding:12px 20px; background:#f8f9fa; border-radius:10px; font-size:12px; margin-bottom:30px; border-left:5px solid #1a237e; color:#444">
+                            <span style="font-weight:800; color:#1a237e">EXTRAS: ${extras.total || 0}</span> 
+                            <span style="margin-left:15px; opacity:0.7">(Wides: ${extras.wd || 0}, No Balls: ${extras.nb || 0}, Byes: ${extras.b || 0}, Leg Byes: ${extras.lb || 0})</span>
                         </div>
 
-                        <div style="font-size:12px; font-weight:800; color:#7b1fa2; margin-bottom:12px; letter-spacing:1px; border-bottom:1px solid #eee; padding-bottom:5px">BOWLING</div>
+                        <div style="font-size:11px; font-weight:800; color:#c62828; margin-bottom:15px; letter-spacing:2px; border-bottom:2px solid #f0f0f0; padding-bottom:8px">BOWLING ANALYSIS</div>
                         <table style="width:100%; border-collapse:collapse; font-size:13px">
                             <thead>
-                                <tr style="text-align:left; color:#7b1fa2; font-size:11px">
-                                    <th style="padding:8px 5px">BOWLER</th>
-                                    <th style="padding:8px 5px">O</th>
-                                    <th style="padding:8px 5px">M</th>
-                                    <th style="padding:8px 5px">R</th>
-                                    <th style="padding:8px 5px">W</th>
-                                    <th style="padding:8px 5px">ECON</th>
+                                <tr style="text-align:left; color:#c62828; font-size:10px; border-bottom:1px solid #eee">
+                                    <th style="padding:10px 5px">BOWLER</th>
+                                    <th style="padding:10px 5px; text-align:center">O</th>
+                                    <th style="padding:10px 5px; text-align:center">M</th>
+                                    <th style="padding:10px 5px; text-align:center">R</th>
+                                    <th style="padding:10px 5px; text-align:center">W</th>
+                                    <th style="padding:10px 5px; text-align:right">ECON</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${(inn.bowlers || []).map(b => `
-                                <tr style="border-bottom:1px solid #f9f9f9">
-                                    <td style="padding:10px 5px; font-weight:700; color:#333">${b.name}</td>
-                                    <td style="padding:10px 5px">${formatOvers(b.balls || 0, m.ballsPerOver)}</td>
-                                    <td style="padding:10px 5px">${b.maidens || 0}</td>
-                                    <td style="padding:10px 5px">${b.runs || 0}</td>
-                                    <td style="padding:10px 5px; font-weight:800; color:#c62828">${b.wickets || 0}</td>
-                                    <td style="padding:10px 5px; color:#888">${formatEcon(b.runs, b.balls, m.ballsPerOver)}</td>
+                                <tr style="border-bottom:1px solid #f5f5f5">
+                                    <td style="padding:12px 5px; font-weight:700; color:#333; font-size:14px">${b.name || 'Unknown'}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${formatOvers(b.balls || 0, m.ballsPerOver)}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${b.maidens || 0}</td>
+                                    <td style="padding:12px 5px; text-align:center; color:#666">${b.runs || 0}</td>
+                                    <td style="padding:12px 5px; font-weight:900; color:#c62828; text-align:center; font-size:15px">${b.wickets || 0}</td>
+                                    <td style="padding:12px 5px; text-align:right; color:#888; font-family:'JetBrains Mono', monospace; font-weight:700">${formatEcon(b.runs || 0, b.balls || 0, m.ballsPerOver)}</td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
@@ -969,97 +973,112 @@ async function generateMatchPDF(matchId) {
         }
 
         return `
-            <div style="margin-bottom:40px; border:1px solid #e8eaf6; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.03)">
-                <div style="background:linear-gradient(90deg, #1a237e, #311b92); padding:18px 25px; display:flex; justify-content:space-between; align-items:center; color:#fff">
+            <div style="margin-bottom:45px; border:1px solid #e0e0e0; border-radius:20px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,0.06); background:#fff">
+                <div style="background:linear-gradient(90deg, #1a237e, #311b92); padding:22px 30px; display:flex; justify-content:space-between; align-items:center; color:#fff">
                     <div>
-                        <div style="font-size:11px; font-weight:800; opacity:0.7; letter-spacing:1px; margin-bottom:2px">${innLabel.toUpperCase()}</div>
-                        <div style="font-size:20px; font-weight:900">${teamName.toUpperCase()}</div>
+                        <div style="font-size:11px; font-weight:800; opacity:0.8; letter-spacing:2px; margin-bottom:4px; text-transform:uppercase">${innLabel}</div>
+                        <div style="font-size:24px; font-weight:950; letter-spacing:-0.5px">${teamName.toUpperCase()}</div>
                     </div>
                     <div style="text-align:right">
-                        <div style="font-size:26px; font-weight:950; color:#ffc107">${runs}/${wkts}</div>
-                        <div style="font-size:12px; font-weight:600; opacity:0.8">${formatOvers(balls, m.ballsPerOver)} Overs (${formatCRR(runs, balls)} CRR)</div>
+                        <div style="font-size:32px; font-weight:950; color:#ffc107; line-height:1">${runs}/${wkts}</div>
+                        <div style="font-size:13px; font-weight:700; opacity:0.9; margin-top:5px">${formatOvers(balls, m.ballsPerOver)} Overs <span style="margin:0 8px; opacity:0.3">|</span> ${formatCRR(runs, balls)} CRR</div>
                     </div>
                 </div>
                 ${contentHtml}
             </div>`;
     };
 
-    let inningsHtml = renderInningsTablePDF(inn0, m.battingFirst || m.team1, '1st Innings');
+    let inningsHtml = renderInningsTablePDF(inn0, m.battingFirst || m.team1 || 'Team 1', '1st Innings');
     if (m.matchFormat === 'test') {
+        const inn1t = m.innings[1];
         const inn2 = m.innings[2];
         const inn3 = m.innings[3];
-        inningsHtml += renderInningsTablePDF(inn1, m.fieldingFirst || m.team2, '2nd Innings');
+        inningsHtml += renderInningsTablePDF(inn1t, m.fieldingFirst || m.team2 || 'Team 2', '2nd Innings');
         if (inn2) inningsHtml += renderInningsTablePDF(inn2, m.battingFirst || m.team1, '3rd Innings');
         if (inn3) inningsHtml += renderInningsTablePDF(inn3, m.fieldingFirst || m.team2, '4th Innings');
     } else if (inn1) {
-        inningsHtml += renderInningsTablePDF(inn1, m.fieldingFirst || m.team2, '2nd Innings');
+        inningsHtml += renderInningsTablePDF(inn1, m.fieldingFirst || m.team2 || 'Team 2', '2nd Innings');
     }
 
     container.innerHTML = `
-        <div style="background:linear-gradient(135deg, #1a237e 0%, #000 100%); color:#fff; padding:45px 50px; text-align:center; border-radius:16px 16px 0 0; position:relative; overflow:hidden">
-            <div style="position:absolute; top:-50px; right:-50px; width:200px; height:200px; background:rgba(255,193,7,0.1); border-radius:50%"></div>
-            <div style="font-size:42px; font-weight:950; letter-spacing:-2px; margin-bottom:5px">SLCRICK<span style="color:#ffc107">PRO</span></div>
-            <div style="font-size:12px; letter-spacing:5px; font-weight:800; opacity:0.8; text-transform:uppercase">Official Professional Match Report</div>
-            <div style="margin-top:25px; display:flex; justify-content:center; gap:30px">
+        <div style="background:linear-gradient(135deg, #0a0e27 0%, #1a237e 100%); color:#fff; padding:60px 50px; text-align:center; border-radius:20px 20px 0 0; position:relative; overflow:hidden">
+            <div style="position:absolute; top:-60px; right:-60px; width:220px; height:220px; background:radial-gradient(circle, rgba(255,193,7,0.15) 0%, transparent 70%); border-radius:50%"></div>
+            <div style="font-size:52px; font-weight:950; letter-spacing:-2px; margin-bottom:5px; line-height:1">SLCRICK<span style="color:#ffc107">PRO</span></div>
+            <div style="font-size:13px; letter-spacing:6px; font-weight:800; opacity:0.7; text-transform:uppercase; margin-top:10px">Premier Cricket Management Suite</div>
+            
+            <div style="margin-top:40px; display:flex; justify-content:center; gap:40px">
                 <div style="text-align:left">
-                    <div style="font-size:10px; opacity:0.6; font-weight:800">VENUE</div>
-                    <div style="font-size:15px; font-weight:700">${m.venue || 'Standard Pitch'}</div>
+                    <div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:1px">MATCH VENUE</div>
+                    <div style="font-size:16px; font-weight:700; color:#fff">${m.venue || 'NOT SPECIFIED'}</div>
                 </div>
-                <div style="width:1px; background:rgba(255,255,255,0.2)"></div>
+                <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
                 <div style="text-align:left">
-                    <div style="font-size:10px; opacity:0.6; font-weight:800">MATCH DATE</div>
-                    <div style="font-size:15px; font-weight:700">${new Date(m.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</div>
+                    <div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:1px">MATCH DATE</div>
+                    <div style="font-size:16px; font-weight:700; color:#fff">${new Date(m.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</div>
                 </div>
-                <div style="width:1px; background:rgba(255,255,255,0.2)"></div>
+                <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
                 <div style="text-align:left">
-                    <div style="font-size:10px; opacity:0.6; font-weight:800">FORMAT</div>
-                    <div style="font-size:15px; font-weight:700">${m.matchFormat?.toUpperCase() || 'LIMITED OVERS'}</div>
+                    <div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:1px">COMPETITION NAME</div>
+                    <div style="font-size:16px; font-weight:700; color:#ffc107">${(m.tournamentName || 'SINGLE MATCH').toUpperCase()}</div>
                 </div>
             </div>
         </div>
         
-        <div style="padding:40px 50px; background:#fff; border:1px solid #e8eaf6; border-top:none; border-radius:0 0 16px 16px">
-            <div style="background:rgba(0,230,118,0.05); border:1px solid rgba(0,230,118,0.2); padding:22px; border-radius:12px; text-align:center; font-weight:950; color:#1b5e20; font-size:22px; margin-bottom:45px; box-shadow: 0 4px 20px rgba(0,0,0,0.04)">
-                🏆 ${m.status === 'live' ? 'MATCH IN PROGRESS (LIVE)' : (m.status === 'paused' ? 'MATCH PAUSED' : (m.result || 'MATCH COMPLETED'))}
+        <div style="padding:50px; background:#fff; border:1px solid #e0e0e0; border-top:none; border-radius:0 0 20px 20px">
+            <div style="background:linear-gradient(90deg, #f1f8e9, #e8f5e9); border:1px solid #c8e6c9; padding:25px; border-radius:15px; text-align:center; font-weight:950; color:#1b5e20; font-size:24px; margin-bottom:50px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-transform:uppercase; letter-spacing:1px">
+                🏆 ${m.status === 'live' ? 'Match Currently Live' : (m.status === 'paused' ? 'Match Paused' : (m.result || 'Match Completed'))}
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:35px">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:50px; padding:0 20px">
                  <div style="text-align:center; flex:1">
-                    <div style="font-size:32px; font-weight:900; color:#1a237e">${m.team1.toUpperCase()}</div>
-                    <div style="font-size:12px; color:#888; font-weight:700">HOME TEAM</div>
+                    <div style="font-size:36px; font-weight:950; color:#1a237e; line-height:1.1">${(m.team1 || 'Team A').toUpperCase()}</div>
+                    <div style="font-size:11px; color:#aaa; font-weight:800; letter-spacing:2px; margin-top:8px">HOST TEAM</div>
                  </div>
-                 <div style="font-size:24px; font-weight:400; color:#ddd; padding:0 30px">VS</div>
+                 <div style="font-size:24px; font-weight:900; color:#eee; padding:0 40px; font-style:italic">VS</div>
                  <div style="text-align:center; flex:1">
-                    <div style="font-size:32px; font-weight:900; color:#1a237e">${m.team2.toUpperCase()}</div>
-                    <div style="font-size:12px; color:#888; font-weight:700">AWAY TEAM</div>
+                    <div style="font-size:36px; font-weight:950; color:#1a237e; line-height:1.1">${(m.team2 || 'Team B').toUpperCase()}</div>
+                    <div style="font-size:11px; color:#aaa; font-weight:800; letter-spacing:2px; margin-top:8px">VISITOR TEAM</div>
                  </div>
             </div>
 
             ${inningsHtml}
 
-            <div style="margin-top:60px; padding-top:25px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center">
-                <div style="font-size:11px; color:#bbb; font-weight:600">Generated by SLCRICKPRO Performance Management Suite &copy; 2026</div>
-                <div style="font-size:10px; color:#ddd; letter-spacing:1px">${m.id}</div>
+            <div style="margin-top:80px; padding-top:30px; border-top:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center">
+                <div style="font-size:11px; color:#ccc; font-weight:600">This report was automatically generated by SLCRICKPRO v4.0 Professional Analytics.</div>
+                <div style="font-size:10px; color:#eee; font-family:monospace">${m.id}</div>
             </div>
         </div>
     `;
 
     document.body.appendChild(container);
-    await new Promise(r => setTimeout(r, 1500));
+    
+    // Allow more time for local images and components to render
+    await new Promise(r => setTimeout(r, 2000));
 
     const opt = {
-        margin: [10, 5, 10, 5],
-        filename: `SLCRICKPRO_Report_${m.team1}_vs_${m.team2}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1.8, useCORS: true, logging: false },
+        margin: [10, 10, 10, 10],
+        filename: `SLCRICKPRO_Report_${(m.team1||'T1').replace(/\s+/g, '_')}_vs_${(m.team2||'T2').replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 1.0 },
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true,
+            allowTaint: false
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     try {
         await html2pdf().set(opt).from(container).save();
-        showToast('✅ Premium Report Exported!', 'success');
+        showToast('✅ Full Detail Report Generated!', 'success');
     } catch (err) {
-        console.error("PDF Export Fail", err);
+        console.error("PDF Production Error:", err);
+        showToast('❌ Report Generation Failed', 'error');
+    } finally {
+        container.remove();
+    }
+}"PDF Export Fail", err);
         showToast('❌ PDF Generation Failed', 'error');
     } finally {
         container.remove();
@@ -1262,10 +1281,10 @@ async function generateFinalStatsCard() {
         document.getElementById('stats-card-modal').style.display = 'none';
         
     } catch (err) {
-        console.error(err);
-        showToast('❌ Failed to generate image', 'error');
+        console.error("Stats Preview Generation Error:", err);
+        showToast('❌ Failed to generate preview', 'error');
     } finally {
-        document.body.removeChild(card);
+        if (card.parentElement) document.body.removeChild(card);
     }
 }
 
@@ -1273,7 +1292,7 @@ async function generateTournamentPDF(tournId) {
     const t = DB.getTournament(tournId);
     if (!t) return showToast('Tournament not found', 'error');
 
-    showToast('📊 Generating Tournament Season Review...', 'default');
+    showToast('📊 Generating Season Analytics Review...', 'default');
     computeTournamentStandings(t);
 
     const sortedStandings = t.teams
@@ -1287,79 +1306,88 @@ async function generateTournamentPDF(tournId) {
     const generatedAt = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
 
     const container = document.createElement('div');
-    container.style = `position:fixed; top:0; left:-10000px; width:950px; background:#fff; font-family:'Outfit',sans-serif; z-index:9999;`;
+    // Using absolute with 0 opacity for stability
+    container.style = `position:absolute; top:0; left:0; width:1000px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:-1; opacity:0; pointer-events:none;`;
 
     let html = `
-    <div style="padding:60px; background:linear-gradient(135deg, #1a237e, #000); color:#fff; text-align:center; border-radius:0 0 24px 24px; position:relative">
-        <div style="font-size:52px; font-weight:950; letter-spacing:-2px; margin-bottom:5px">SLCRICK<span style="color:#ffc107">PRO</span></div>
-        <div style="font-size:14px; letter-spacing:6px; font-weight:400; opacity:0.7; margin-bottom:35px">SEASON PERFORMANCE REVIEW</div>
-        <div style="font-size:48px; font-weight:900; color:#ffc107; margin-bottom:10px">${t.name.toUpperCase()}</div>
-        <div style="font-size:16px; opacity:0.8; font-weight:500">${capitalize(t.format)} · ${t.overs} Overs · ${t.teams.length} Teams</div>
+    <div style="padding:60px 50px; background:linear-gradient(135deg, #0a0e27 0%, #1a237e 100%); color:#fff; text-align:center; border-radius:0 0 30px 30px; position:relative; overflow:hidden">
+        <div style="position:absolute; top:-40px; right:-40px; width:180px; height:180px; background:rgba(255,193,7,0.1); border-radius:50%"></div>
+        <div style="font-size:56px; font-weight:950; letter-spacing:-3px; margin-bottom:5px; line-height:1">SLCRICK<span style="color:#ffc107">PRO</span></div>
+        <div style="font-size:13px; letter-spacing:8px; font-weight:400; opacity:0.6; margin-bottom:40px; text-transform:uppercase">Season Performance Analytics</div>
         
-        <div style="margin-top:50px; display:flex; justify-content:center; gap:60px">
-            <div style="text-align:center"><div style="font-size:40px; font-weight:900">${completed.length}</div><div style="font-size:11px; opacity:0.6; font-weight:800; letter-spacing:1px">FINISHED</div></div>
-            <div style="width:1px; background:rgba(255,255,255,0.1)"></div>
-            <div style="text-align:center"><div style="font-size:40px; font-weight:900">${allMatches.length}</div><div style="font-size:11px; opacity:0.6; font-weight:800; letter-spacing:1px">TOTAL MATCHES</div></div>
-            <div style="width:1px; background:rgba(255,255,255,0.1)"></div>
-            <div style="text-align:center"><div style="font-size:40px; font-weight:900">${t.teams.length}</div><div style="font-size:11px; opacity:0.6; font-weight:800; letter-spacing:1px">COMPETING TEAMS</div></div>
+        <div style="font-size:42px; font-weight:900; color:#ffc107; margin-bottom:10px; line-height:1.2">${(t.name || 'Tournament').toUpperCase()}</div>
+        <div style="font-size:16px; opacity:0.8; font-weight:500; letter-spacing:1px">${capitalize(t.format || 'League')} Format · ${t.overs || 0} Overs · ${t.teams?.length || 0} Professional Teams</div>
+        
+        <div style="margin-top:60px; display:flex; justify-content:center; gap:80px">
+            <div style="text-align:center"><div style="font-size:44px; font-weight:950">${completed.length}</div><div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:2px">MATCHES FINISHED</div></div>
+            <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
+            <div style="text-align:center"><div style="font-size:44px; font-weight:950">${allMatches.length}</div><div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:2px">SCHEDULED TOTAL</div></div>
+            <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
+            <div style="text-align:center"><div style="font-size:44px; font-weight:950">${t.teams?.length || 0}</div><div style="font-size:10px; opacity:0.5; font-weight:900; letter-spacing:2px">PARTICIPATING TEAMS</div></div>
         </div>
     </div>
 
-    <div style="padding:60px">
-        <div style="font-size:20px; font-weight:900; color:#1a237e; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:25px; letter-spacing:1px">LEAGUE STANDINGS</div>
-        <table style="width:100%; border-collapse:collapse; margin-bottom:60px; font-size:14px; box-shadow:0 10px 40px rgba(0,0,0,0.02)">
-            <thead><tr style="background:#f5f7f9; text-align:left; color:#1a237e">
-                <th style="padding:15px; border-radius:8px 0 0 0">POS</th><th style="padding:15px">TEAM</th><th style="padding:15px">P</th><th style="padding:15px">W</th><th style="padding:15px">L</th><th style="padding:15px">PTS</th><th style="padding:15px; border-radius:0 8px 0 0">NRR</th>
+    <div style="padding:60px 50px">
+        <div style="font-size:22px; font-weight:900; color:#1a237e; border-left:6px solid #ffc107; padding-left:20px; margin-bottom:30px; letter-spacing:1px">OFFICIAL LEAGUE STANDINGS</div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:60px; font-size:15px; box-shadow:0 15px 45px rgba(0,0,0,0.03); border-radius:15px; overflow:hidden">
+            <thead><tr style="background:#f1f3f8; text-align:left; color:#1a237e">
+                <th style="padding:18px">POS</th><th style="padding:18px">TEAM ENTITY</th><th style="padding:18px; text-align:center">P</th><th style="padding:18px; text-align:center">W</th><th style="padding:18px; text-align:center">L</th><th style="padding:18px; text-align:center">PTS</th><th style="padding:18px; text-align:right">NRR</th>
             </tr></thead>
             <tbody>
                 ${sortedStandings.map((s, i) => `
                 <tr style="border-bottom:1px solid #f0f0f0; ${i < 4 ? 'background:rgba(255,193,7,0.03)' : ''}">
-                    <td style="padding:15px; font-weight:900; color:${i < 3 ? '#ffc107' : '#999'}">${i + 1}</td>
-                    <td style="padding:15px; font-weight:800; color:#333">${s.name}</td>
-                    <td style="padding:15px">${s.played || 0}</td>
-                    <td style="padding:15px; font-weight:700; color:#2e7d32">${s.won || 0}</td>
-                    <td style="padding:15px">${s.lost || 0}</td>
-                    <td style="padding:15px; font-weight:900; color:#1a237e">${s.points || 0}</td>
-                    <td style="padding:15px; font-weight:700; color:${(s.nrr || 0) >= 0 ? '#2e7d32' : '#c62828'}">${(s.nrr || 0).toFixed(3)}</td>
+                    <td style="padding:18px; font-weight:900; color:${i < 3 ? '#ffc107' : '#aaa'}; font-size:16px">${i + 1}</td>
+                    <td style="padding:18px; font-weight:800; color:#333">${s.name || 'Unknown Team'}</td>
+                    <td style="padding:18px; text-align:center">${s.played || 0}</td>
+                    <td style="padding:18px; font-weight:700; color:#2e7d32; text-align:center">${s.won || 0}</td>
+                    <td style="padding:18px; text-align:center">${s.lost || 0}</td>
+                    <td style="padding:18px; font-weight:950; color:#1a237e; text-align:center">${s.points || 0}</td>
+                    <td style="padding:18px; font-weight:800; text-align:right; color:${(s.nrr || 0) >= 0 ? '#2e7d32' : '#c62828'}; font-family:monospace">${(s.nrr || 0).toFixed(3)}</td>
                 </tr>`).join('')}
             </tbody>
         </table>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-bottom:60px">
-            <div>
-                <div style="font-size:18px; font-weight:900; color:#1a237e; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:15px">TOP RUN SCORERS</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:45px; margin-bottom:65px">
+            <div style="background:#fcfdff; border:1px solid #eef2f7; border-radius:20px; padding:30px">
+                <div style="font-size:18px; font-weight:900; color:#1a237e; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:20px; letter-spacing:1px">BATTING LEADERS</div>
                 <table style="width:100%; border-collapse:collapse; font-size:13px">
-                    <tr style="background:#1a237e; color:#fff"><th style="padding:10px">PLAYER</th><th style="padding:10px">RUNS</th><th style="padding:10px">SR</th></tr>
-                    ${batsmen.map(b => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:10px; font-weight:700">${b.name}</td><td style="padding:10px; font-weight:900; color:#1a237e">${b.runs}</td><td style="padding:10px; color:#888">${b.sr}</td></tr>`).join('')}
+                    <thead><tr style="background:#1a237e; color:#fff"><th style="padding:12px; border-radius:8px 0 0 8px">PLAYER</th><th style="padding:12px; text-align:center">RUNS</th><th style="padding:12px; text-align:right; border-radius:0 8px 8px 0">SR</th></tr></thead>
+                    <tbody>
+                    ${batsmen.length ? batsmen.map(b => `<tr style="border-bottom:1px solid #eef2f7"><td style="padding:12px; font-weight:700; color:#333">${b.name || 'Unknown'}</td><td style="padding:12px; font-weight:900; color:#1a237e; text-align:center">${b.runs || 0}</td><td style="padding:12px; color:#888; text-align:right; font-family:monospace">${b.sr || '0.0'}</td></tr>`).join('') : '<tr><td colspan="3" style="padding:20px; text-align:center; color:#999">No batting data available</td></tr>'}
+                    </tbody>
                 </table>
             </div>
-            <div>
-                <div style="font-size:18px; font-weight:900; color:#7b1fa2; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:15px">LEADING WICKETS</div>
+            <div style="background:#fffcfc; border:1px solid #f7eeee; border-radius:20px; padding:30px">
+                <div style="font-size:18px; font-weight:900; color:#c62828; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:20px; letter-spacing:1px">BOWLING LEADERS</div>
                 <table style="width:100%; border-collapse:collapse; font-size:13px">
-                    <tr style="background:#7b1fa2; color:#fff"><th style="padding:10px">BOWLER</th><th style="padding:10px">WKTS</th><th style="padding:10px">ECON</th></tr>
-                    ${bowlers.map(b => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:10px; font-weight:700">${b.name}</td><td style="padding:10px; font-weight:900; color:#c62828">${b.wickets}</td><td style="padding:10px; color:#888">${b.econ}</td></tr>`).join('')}
+                    <thead><tr style="background:#c62828; color:#fff"><th style="padding:12px; border-radius:8px 0 0 8px">PLAYER</th><th style="padding:12px; text-align:center">WKTS</th><th style="padding:12px; text-align:right; border-radius:0 8px 8px 0">ECON</th></tr></thead>
+                    <tbody>
+                    ${bowlers.length ? bowlers.map(b => `<tr style="border-bottom:1px solid #f7eeee"><td style="padding:12px; font-weight:700; color:#333">${b.name || 'Unknown'}</td><td style="padding:12px; font-weight:900; color:#c62828; text-align:center">${b.wickets || 0}</td><td style="padding:12px; color:#888; text-align:right; font-family:monospace">${b.econ || '0.0'}</td></tr>`).join('') : '<tr><td colspan="3" style="padding:20px; text-align:center; color:#999">No bowling data available</td></tr>'}
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <div style="font-size:18px; font-weight:900; color:#1a237e; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:20px">SEASON MATCH LOG</div>
-        <table style="width:100%; border-collapse:collapse; font-size:12px">
-            <tr style="background:#f5f7f9; text-align:left; color:#1a237e"><th style="padding:10px">MATCH</th><th style="padding:10px">RESULT / SUMMARY</th></tr>
+        <div style="font-size:18px; font-weight:900; color:#1a237e; border-left:5px solid #ffc107; padding-left:15px; margin-bottom:25px; letter-spacing:1px">FULL TOURNAMENT MATCH LOG</div>
+        <table style="width:100%; border-collapse:collapse; font-size:14px; background:#fff; border-radius:15px; overflow:hidden; border:1px solid #f0f0f0">
+            <thead><tr style="background:#f8f9fa; text-align:left; color:#1a237e"><th style="padding:18px">MATCH FIXTURE</th><th style="padding:18px; text-align:right">OFFICIAL STATUS / RESULT</th></tr></thead>
+            <tbody>
             ${allMatches.map((m, i) => `
-                <tr style="border-bottom:1px solid #f9f9f9">
-                    <td style="padding:10px">
-                        <div style="font-weight:700">${m.team1} vs ${m.team2}</div>
-                        <div style="font-size:10px; opacity:0.5">${m.knockout ? 'Knockout Match' : 'League Match'}</div>
+                <tr style="border-bottom:1px solid #f5f5f5">
+                    <td style="padding:18px">
+                        <div style="font-weight:800; color:#333; font-size:16px">${m.team1 || 'TBD'} <span style="color:#ccc; font-weight:300; margin:0 5px">vs</span> ${m.team2 || 'TBD'}</div>
+                        <div style="font-size:11px; color:#999; margin-top:4px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px">${m.scheduledName || (m.knockout ? 'Knockout Stage' : 'Group Stage')}</div>
                     </td>
-                    <td style="padding:10px">
-                         <div style="font-weight:700; color:${m.status === 'completed' ? '#2e7d32' : '#ff9800'}">${m.status === 'completed' ? (m.result || 'Completed') : (m.status === 'live' ? '⚡ LIVE' : '🗓 Scheduled')}</div>
+                    <td style="padding:18px; text-align:right">
+                         <div style="font-weight:900; font-size:15px; color:${m.status === 'completed' ? '#1b5e20' : (m.status === 'live' ? '#d32f2f' : '#666')}">${m.status === 'completed' ? (m.result || 'Match Finalized') : (m.status === 'live' ? '⚡ LIVE NOW' : '🗓 Scheduled')}</div>
                     </td>
                 </tr>`).join('')}
+            </tbody>
         </table>
 
-        <div style="margin-top:80px; text-align:center; padding-top:20px; border-top:1px solid #eee">
-            <div style="font-size:12px; font-weight:800; color:#bbb; letter-spacing:3px">GENERATED BY SLCRICKPRO SEASON ANALYTICS MANAGER</div>
-            <div style="font-size:10px; color:#ddd; margin-top:5px">Data captured on ${generatedAt}</div>
+        <div style="margin-top:100px; text-align:center; padding-top:30px; border-top:1px solid #eee">
+            <div style="font-size:13px; font-weight:900; color:#ccc; letter-spacing:4px; text-transform:uppercase">SLCRICKPRO Season Management v4.0</div>
+            <div style="font-size:11px; color:#ddd; margin-top:8px; font-weight:600">Confidential Report Generated on ${generatedAt}</div>
         </div>
     </div>
     `;
@@ -1368,18 +1396,30 @@ async function generateTournamentPDF(tournId) {
     document.body.appendChild(container);
 
     const opt = {
-        margin: [5, 0, 5, 0],
-        filename: `SLCRICKPRO_Tournament_${t.name.replace(/\s+/g,'_')}_Season_Report.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1.5, useCORS: true, logging: false },
+        margin: [10, 0, 10, 0],
+        filename: `SLCRICKPRO_Season_${(t.name || 'Tournament').replace(/\s+/g,'_')}.pdf`,
+        image: { type: 'jpeg', quality: 1.0 },
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true,
+            allowTaint: false 
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     try {
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2500));
         await html2pdf().set(opt).from(container).save();
-        showToast('🔥 Tournament Report Ready!', 'success');
+        showToast('📈 Season Analytics Exported!', 'success');
     } catch (err) {
+        console.error('Tournament PDF Export Error:', err);
+        showToast('❌ PDF Export Failed', 'error');
+    } finally {
+        container.remove();
+    }
+}
         console.error('PDF Error:', err);
         showToast('❌ Report Generation Failed', 'error');
     } finally {
