@@ -2173,9 +2173,19 @@ function finishInnings(inn, reason) {
 
     // Test match special: check for innings win at end of 3rd innings (m.currentInnings === 2)
     if (isTest && m.currentInnings === 2) {
-        const totalA = (m.innings[0]?.runs || 0) + (inn.runs || 0);
-        const totalB = (m.innings[1]?.runs || 0);
-        if (totalA < totalB) {
+        const teamA = m.battingFirst;
+        const teamB = m.fieldingFirst;
+        const scoreA = m.innings.filter((_, idx) => idx <= 2).filter(i => i && i.battingTeam === teamA).reduce((s, i) => s + (i.runs || 0), 0);
+        const scoreB = m.innings.filter((_, idx) => idx <= 2).filter(i => i && i.battingTeam === teamB).reduce((s, i) => s + (i.runs || 0), 0);
+        
+        // If team who batted twice is still behind team who batted once
+        const bfInns = m.innings.filter((_, idx) => idx <= 2 && m.innings[idx]?.battingTeam === teamA).length;
+        const ffInns = m.innings.filter((_, idx) => idx <= 2 && m.innings[idx]?.battingTeam === teamB).length;
+
+        if (bfInns === 2 && scoreA < scoreB) { // Team A batted 1st and 3rd
+            showMatchResult();
+            return;
+        } else if (ffInns === 2 && scoreB < scoreA) { // Team B followed on
             showMatchResult();
             return;
         }
@@ -2320,8 +2330,9 @@ window.finalizeTossAndStartLive = function() {
     m.fieldingFirst = fieldingFirst;
     
     // Test match or Limited Overs
-    const totalInns = m.matchFormat === 'test' ? 4 : 2;
-    m.innings = new Array(totalInns).fill(null);
+    const limit = m.matchFormat === 'test' ? 4 : 2;
+    m.totalInnings = limit;
+    m.innings = new Array(limit).fill(null);
     m.innings[0] = DB.createInnings(battingFirst, fieldingFirst);
     m.currentInnings = 0;
 
@@ -2372,36 +2383,42 @@ function showMatchResult() {
     let winner, resultText;
     
     if (isTest) {
-        const totalA = (inn0?.runs || 0) + (m.innings[2]?.runs || 0);
-        const totalB = (inn1?.runs || 0) + (m.innings[3]?.runs || 0);
+        const teamA = m.battingFirst;
+        const teamB = m.fieldingFirst;
+        const scoreA = m.innings.filter(i => i && i.battingTeam === teamA).reduce((s, i) => s + (i.runs || 0), 0);
+        const scoreB = m.innings.filter(i => i && i.battingTeam === teamB).reduce((s, i) => s + (i.runs || 0), 0);
         
-        // Special case: Innings Win (Match ended before 4th innings)
+        // Check if all 4 innings are done or match ended early
+        const lastInn = m.innings[m.currentInnings];
+        const targetReached = (m.currentInnings === 3 && lastInn && scoreB > scoreA); // This assumes standard target chase in 4th
+
+        // Special case: Innings Win (Match ended before or during 3rd innings completion)
         if (m.currentInnings < 3) {
-            if (totalA > totalB) {
-                winner = m.battingFirst;
-                const diff = totalA - totalB;
+            if (scoreA > scoreB) {
+                winner = teamA;
+                const diff = scoreA - scoreB;
                 resultText = `${winner} won by an innings and ${diff} run${diff !== 1 ? 's' : ''}`;
-            } else if (totalB > totalA) {
-                winner = m.fieldingFirst;
-                const diff = totalB - totalA;
+            } else if (scoreB > scoreA) {
+                winner = teamB;
+                const diff = scoreB - scoreA;
                 resultText = `${winner} won by an innings and ${diff} run${diff !== 1 ? 's' : ''}`;
-            }
-        } else if (m.currentInnings === 3) {
-            // 4th Innings Result
-            if (totalB > totalA) {
-                winner = m.fieldingFirst;
-                const wkLeft = (m.playersPerSide - 1) - m.innings[3].wickets;
-                resultText = `${winner} won by ${wkLeft} wicket${wkLeft !== 1 ? 's' : ''}`;
-            } else if (m.innings[3].isDone && totalA > totalB) {
-                winner = m.battingFirst;
-                const diff = totalA - totalB;
-                resultText = `${winner} won by ${diff} run${diff !== 1 ? 's' : ''}`;
-            } else if (m.innings[3].isDone && totalA === totalB) {
-                winner = null;
-                resultText = 'Match Tied!';
             } else {
                 winner = null;
-                resultText = 'Match Drawn!';
+                resultText = "Match Drawn!";
+            }
+        } else {
+            // 4th Innings Result
+            if (scoreB > scoreA) {
+                winner = teamB;
+                const wkLeft = (m.playersPerSide - 1) - m.innings[3].wickets;
+                resultText = `${winner} won by ${wkLeft} wicket${wkLeft !== 1 ? 's' : ''}`;
+            } else if (scoreA > scoreB) {
+                winner = teamA;
+                const diff = scoreA - scoreB;
+                resultText = `${winner} won by ${diff} run${diff !== 1 ? 's' : ''}`;
+            } else {
+                winner = null;
+                resultText = 'Match Tied!';
             }
         }
     } else {

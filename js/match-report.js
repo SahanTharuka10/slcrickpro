@@ -48,7 +48,7 @@ const MatchReportEngine = {
                 toss: match.tossWinner ? `${match.tossWinner} won & elected to ${match.tossDecision}` : 'N/A'
             },
             innings: (match.innings || []).map((inn, idx) => ({
-                team: idx % 2 === 0 ? (match.battingFirst || match.team1) : (match.fieldingFirst || match.team2),
+                team: inn.battingTeam || (idx % 2 === 0 ? (match.battingFirst || match.team1) : (match.fieldingFirst || match.team2)),
                 score: `${inn.runs}/${inn.wickets}`,
                 overs: `${Math.floor(inn.balls/6)}.${inn.balls%6}`,
                 overByOver: this.getOverSummary(inn, match.ballsPerOver),
@@ -146,7 +146,7 @@ const MatchReportEngine = {
             if (!inn && i > m.currentInnings) continue;
             let label = (i+1) + (i===0?'st':i===1?'nd':i===2?'rd':'th') + ' Innings';
             if (m.matchFormat !== 'test') label = i === 0 ? 'Initial Innings' : 'Target Chase';
-            const tName = i % 2 === 0 ? (m.battingFirst || m.team1) : (m.fieldingFirst || m.team2);
+            const tName = inn ? inn.battingTeam : (i % 2 === 0 ? (m.battingFirst || m.team1) : (m.fieldingFirst || m.team2));
             inningsHtml += renderInningsTablePDF(inn, tName, label);
         }
 

@@ -322,7 +322,9 @@ const DB = {
             battingFirst: config.battingFirst || config.team1,
             fieldingFirst: config.fieldingFirst || config.team2,
             // innings data
-            innings: [null, null],
+            matchFormat: config.matchFormat || 'limited',
+            totalInnings: config.matchFormat === 'test' ? 4 : 2,
+            innings: new Array(config.matchFormat === 'test' ? 4 : 2).fill(null),
             currentInnings: 0,
             // history stack for undo/redo
             history: [],
