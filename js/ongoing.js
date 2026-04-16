@@ -1078,11 +1078,6 @@ async function generateMatchPDF(matchId) {
     } finally {
         container.remove();
     }
-}"PDF Export Fail", err);
-        showToast('❌ PDF Generation Failed', 'error');
-    } finally {
-        container.remove();
-    }
 }
 
 // ========== PLAYER STATS CARD GENERATOR ==========
@@ -1416,12 +1411,6 @@ async function generateTournamentPDF(tournId) {
     } catch (err) {
         console.error('Tournament PDF Export Error:', err);
         showToast('❌ PDF Export Failed', 'error');
-    } finally {
-        container.remove();
-    }
-}
-        console.error('PDF Error:', err);
-        showToast('❌ Report Generation Failed', 'error');
     } finally {
         container.remove();
     }
