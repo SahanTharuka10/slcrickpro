@@ -2334,38 +2334,46 @@ window.finalizeTossAndStartLive = function() {
 // ========== TEST INNINGS HELPERS ==========
 window.finalizeTestInningsSelection = function(isFollowOn) {
     const m = currentMatch;
-    const nextIdx = 2; // Always 3rd innings in 4-innings test
+    const nextIdx = 2; // Index 2 is the 3rd innings
     const inn0 = m.innings[0];
     const inn1 = m.innings[1];
 
+    if (!inn0 || !inn1) return showToast('Critical Error: Innings data missing', 'error');
+
     if (isFollowOn) {
-        // Team B bats AGAIN
+        // Team B bats AGAIN (Follow-on)
         m.innings[nextIdx] = DB.createInnings(inn1.battingTeam, inn1.bowlingTeam);
-        showToast(`${inn1.battingTeam} is following on!`, 'default');
+        showToast(`🔥 ${inn1.battingTeam} is FOLLOWING ON!`, 'default');
     } else {
         // Standard: Team A bats 2nd time
         m.innings[nextIdx] = DB.createInnings(inn0.battingTeam, inn0.bowlingTeam);
-        showToast(`2nd Innings for ${inn0.battingTeam} started.`, 'default');
+        showToast(`🏏 2nd Innings for ${inn0.battingTeam} started.`, 'default');
     }
 
     m.currentInnings = nextIdx;
-    saveAndRender();
+    DB.saveMatch(m);
     closeModal('modal-test-innings-select');
-    setTimeout(() => openOpenBatsmenModal(), 400);
+    
+    // Crucial: Render then open modal with a slightly longer delay to avoid UI conflict
+    saveAndRender();
+    setTimeout(() => {
+        openOpenBatsmenModal();
+    }, 600);
 };
 
 // ========== MATCH RESULT ==========
 function showMatchResult() {
     const m = currentMatch;
     const isTest = m.matchFormat === 'test';
+    const inn0 = m.innings[0];
+    const inn1 = m.innings[1];
     
     m.status = 'completed';
-
     let winner, resultText;
     
     if (isTest) {
-        const totalA = (m.innings[0]?.runs || 0) + (m.innings[2]?.runs || 0);
-        const totalB = (m.innings[1]?.runs || 0) + (m.innings[3]?.runs || 0);
+        const totalA = (inn0?.runs || 0) + (m.innings[2]?.runs || 0);
+        const totalB = (inn1?.runs || 0) + (m.innings[3]?.runs || 0);
         
         // Special case: Innings Win (Match ended before 4th innings)
         if (m.currentInnings < 3) {
@@ -2457,10 +2465,14 @@ function showMatchResult() {
     document.getElementById('result-winner').textContent = winner ? `${winner}` : 'Tie!';
     document.getElementById('result-summary').textContent = resultText;
 
-    // Player of Match
-    const allBats = [...(inn0.batsmen || []), ...(inn1 ? inn1.batsmen || [] : [])]
-        .sort((a, b) => (b.runs || 0) - (a.runs || 0));
-    const mom = allBats[0];
+    // Player of Match (Aggregated from all innings)
+    let allBatsmen = [];
+    m.innings.forEach(inn => {
+        if (inn && inn.batsmen) allBatsmen.push(...inn.batsmen);
+    });
+    
+    const sortedBats = [...allBatsmen].sort((a, b) => (b.runs || 0) - (a.runs || 0));
+    const mom = sortedBats[0];
     if (mom) {
         document.getElementById('result-mom').innerHTML = `
       <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:0.08em;mb:6px">Player of the Match</div>
