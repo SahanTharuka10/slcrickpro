@@ -82,7 +82,9 @@ const MatchReportEngine = {
         setTimeout(() => { const p = document.getElementById('pdf-progress'); if(p) p.style.width = '100%'; }, 50);
 
         const container = document.createElement('div');
-        container.style = `position:absolute; top:200%; left:0; width:1000px; background:#fff; color:#111; font-family:'Outfit',sans-serif; visibility:visible;`;
+        // FIXED: Using position:fixed at top:0 with z-index:-9999 ensures it's in the viewport for html2canvas
+        // but hidden behind the main UI. Far-off absolute positions can cause blank captures.
+        container.style = `position:fixed; top:0; left:0; width:1000px; background:#fff; color:#111; font-family:'Outfit',sans-serif; z-index:-9999;`;
 
         const renderInningsTablePDF = (inn, teamName, innLabel) => {
             if (!inn) return `<div style="margin-bottom:40px; padding:40px; border:2px dashed #eee; text-align:center; color:#bbb; border-radius:20px; font-weight:600">Waiting for ${innLabel} Data...</div>`;
