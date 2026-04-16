@@ -792,7 +792,7 @@ function renderMatchDetailContent(m) {
         let batsmenHtml = inn.batsmen.map(b => `
             <tr style="${b.status === 'Batting' ? 'background:rgba(0,230,118,0.05)' : ''}">
                 <td>
-                    <div style="font-weight:700; color:#fff; ${m.tournamentId ? 'cursor:pointer; text-decoration:underline' : ''}" ${m.tournamentId ? `onclick="handlePlayerStatsClick('${b.name}', '${m.tournamentId}', '${m.tournamentName || ''}')"` : ''}>${b.name} ${b.status === 'Batting' ? '<span style="color:#00e676; font-size:10px">★</span>' : ''}</div>
+                    <div style="font-weight:700; color:#fff; cursor:pointer; text-decoration:underline" onclick="handlePlayerStatsClick('${b.name.replace(/'/g, "\\'")}', '${m.tournamentId || ''}', '${(m.tournamentName || 'Single Match').replace(/'/g, "\\'")}')">${b.name} ${b.status === 'Batting' ? '<span style="color:#00e676; font-size:10px">★</span>' : ''}</div>
                     <div style="font-size:10px; opacity:0.6">${b.status || 'Yet to Bat'}</div>
                 </td>
                 <td style="font-weight:800; color:var(--c-primary)">${b.runs}</td>
@@ -805,7 +805,7 @@ function renderMatchDetailContent(m) {
  
         let bowlersHtml = inn.bowlers.map(b => `
             <tr>
-                <td style="font-weight:700; color:#fff; ${m.tournamentId ? 'cursor:pointer; text-decoration:underline' : ''}" ${m.tournamentId ? `onclick="handlePlayerStatsClick('${b.name}', '${m.tournamentId}', '${m.tournamentName || ''}')"` : ''}>${b.name}</td>
+                <td style="font-weight:700; color:#fff; cursor:pointer; text-decoration:underline" onclick="handlePlayerStatsClick('${b.name.replace(/'/g, "\\'")}', '${m.tournamentId || ''}', '${(m.tournamentName || 'Single Match').replace(/'/g, "\\'")}')">${b.name}</td>
                 <td style="opacity:0.7">${formatOvers(b.balls, m.ballsPerOver)}</td>
                 <td style="opacity:0.7">${b.maidens || 0}</td>
                 <td style="opacity:0.7">${b.runs}</td>

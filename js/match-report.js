@@ -89,9 +89,13 @@ const MatchReportEngine = {
             if (!inn) return `<div style="margin-bottom:40px; padding:40px; border:2px dashed #eee; text-align:center; color:#bbb; border-radius:20px; font-weight:600">Waiting for ${innLabel} Data...</div>`;
             const bpo = m.ballsPerOver || 6;
             
-            // Calculate extras total
-            const ex = inn.extras || { wides: 0, noBalls: 0, byes: 0, legByes: 0 };
-            const exTotal = (ex.wides || 0) + (ex.noBalls || 0) + (ex.byes || 0) + (ex.legByes || 0);
+            // Calculate extras total - Supporting both long and short naming conventions
+            const ex = inn.extras || { wides: 0, noBalls: 0, byes: 0, legByes: 0, wd: 0, nb: 0, b:0, lb: 0 };
+            const w = ex.wides || ex.wd || 0;
+            const nb = ex.noBalls || ex.nb || 0;
+            const b = ex.byes || ex.b || 0;
+            const lb = ex.legByes || ex.lb || 0;
+            const exTotal = w + nb + b + lb;
 
             return `
                 <div style="margin-bottom:60px; border:1px solid #f0f0f0; border-radius:30px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,0.04); background:#fff">
@@ -127,7 +131,7 @@ const MatchReportEngine = {
 
                         <!-- Extras Row -->
                         <div style="background:#fcfcfc; padding:15px 25px; border-radius:15px; display:flex; justify-content:space-between; align-items:center; margin-bottom:40px; border:1px solid #f0f0f0">
-                            <span style="font-size:13px; font-weight:800; color:#666">EXTRAS: <span style="color:#1a237e">${exTotal}</span> (w ${ex.wides}, nb ${ex.noBalls}, b ${ex.byes}, lb ${ex.legByes})</span>
+                            <span style="font-size:13px; font-weight:800; color:#666">EXTRAS: <span style="color:#1a237e">${exTotal}</span> (Wd ${w}, Nb ${nb}, B ${b}, Lb ${lb})</span>
                             <span style="font-size:13px; font-weight:800; color:#666">TOTAL: <strong style="color:#1a237e; font-size:16px">${inn.runs}/${inn.wickets}</strong> (${Math.floor(inn.balls/bpo)}.${inn.balls%bpo} ov)</span>
                         </div>
 
