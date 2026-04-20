@@ -4073,7 +4073,7 @@ function renderBroadcastController(match) {
                 <!-- LIVE PREVIEW AREA -->
                 <div>
                     <div style="background:#000; border:2px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
-                        <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}" style="width:100%; height:100%; border:none; pointer-events:none;" scrolling="no"></iframe>
+                        <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}&preview=true" style="width:100%; height:100%; border:none; pointer-events:none; transform-origin:0 0;" scrolling="no"></iframe>
                     </div>
                     <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview</div>
                 </div>

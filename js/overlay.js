@@ -51,6 +51,22 @@ function closeOverlayPopup() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if running as a preview thumbnail
+    const isPreview = new URLSearchParams(window.location.search).get('preview');
+    if (isPreview) {
+        const scaleToFit = () => {
+            const scale = window.innerWidth / 1920;
+            document.body.style.width = '1920px';
+            document.body.style.height = '1080px';
+            document.body.style.transform = `scale(${scale})`;
+            document.body.style.transformOrigin = 'top left';
+            document.body.style.overflow = 'hidden';
+            document.body.style.margin = '0';
+        };
+        window.addEventListener('resize', scaleToFit);
+        setTimeout(scaleToFit, 10);
+    }
+
     // Instant same-device cross-tab communication
     if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('cricpro_live');
@@ -376,10 +392,12 @@ function handleBroadcastCommand(cmd, data = {}) {
             break;
         case 'SET_SCOREBAR_VISIBILITY':
             isScorebarVisible = !!data.visible;
+            window._lastOverlayFingerprint = null;
             renderOverlay();
             break;
         case 'SET_OVERLAY_MODE':
             currentOverlayMode = parseInt(data.mode) || 1;
+            window._lastOverlayFingerprint = null;
             renderOverlay();
             break;
         case 'STOP_OVERLAY': 
