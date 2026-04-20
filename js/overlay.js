@@ -6,6 +6,7 @@ let latestSocketScore = null;
 let latestSocketScoreTime = 0; // track when socket data was received
 let isScorebarVisible = true;
 let currentOverlayMode = 1;
+let forceRefresh = false; // Used in _renderOverlayFromMatch to bypass fingerprint cache
 
 if (typeof OVERLAY_DEFAULT_PLAYER_PHOTO === 'undefined') {
     var OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
@@ -786,6 +787,7 @@ function _renderOverlayClassic(m) {
     const container = document.getElementById('overlay-container');
     container.className = 'overlay-container';
     const curInn = m.innings[m.currentInnings];
+    const t1Short = getShortName((curInn.battingTeam && curInn.battingTeam !== 'TBD') ? curInn.battingTeam : (m.team1 || 'T1'));
     const t2Short = getShortName((curInn.bowlingTeam && curInn.bowlingTeam !== 'TBD') ? curInn.bowlingTeam : (m.team2 || 'T2'));
     const score   = curInn.runs + '-' + curInn.wickets;
     const ov      = formatOvers(curInn.balls, m.ballsPerOver);
@@ -1725,7 +1727,11 @@ function hideBroadcastOverlay() {
     if (activeBroadcastOverlayId) clearTimeout(activeBroadcastOverlayId);
     const el = document.getElementById('active-broadcast-wrapper');
     if (el) {
-        gsap.to(el, { opacity:0, duration:0.5, onComplete: () => el.remove() });
+        if (typeof gsap !== 'undefined') {
+            gsap.to(el, { opacity:0, duration:0.5, onComplete: () => el.remove() });
+        } else {
+            el.remove();
+        }
     }
 }
 

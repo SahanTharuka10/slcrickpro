@@ -129,7 +129,7 @@ let dbType = 'sqlite';
 let sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
 
 // Let's define models in a way that allows us to re-bind them if we switch to Postgres
-let Player, Team, Match, Tournament, Product, Order, Post, Feedback;
+let Player, Team, Match, Tournament, Product, Order, Post, Feedback, MatchReport;
 
 function defineModels(seq) {
   Player = seq.define('Player', {
@@ -642,47 +642,8 @@ app.delete('/sync/feedback/:id', async (req, res) => {
 
 app.get('/test', (req, res) => res.json({ test: 'ok' }));
 
-app.post('/api/handshake', async (req, res) => {
-  const { id, password } = req.body;
-  if (!id || !password) return res.status(400).json({ error: 'Missing credentials' });
-  try {
-    await ensureDB();
-    const match = await Match.findByPk(id);
-    let matchPassword = null;
+// NOTE: /api/handshake is defined below (with bcrypt + token generation)
 
-    if (match) {
-        if (match.scoring_password) matchPassword = match.scoring_password;
-        else {
-            let mData = match.data || match.dataValues?.data || {};
-            if (typeof mData === 'string') try { mData = JSON.parse(mData); } catch(e){}
-            matchPassword = mData.scoringPassword || mData.password;
-        }
-    } else {
-        const tourn = await Tournament.findByPk(id);
-        if (tourn) {
-            if (tourn.scoring_password) matchPassword = tourn.scoring_password;
-            else {
-                let tData = tourn.data || tourn.dataValues?.data || {};
-                if (typeof tData === 'string') try { tData = JSON.parse(tData); } catch(e){}
-                matchPassword = tData.scoringPassword || tData.password;
-            }
-        }
-    }
-
-    // fallback for admin pin
-    if (password === process.env.ADMIN_PIN) return res.json({ ok: true, message: 'Admin override' });
-
-    if (!matchPassword) return res.json({ ok: true, message: 'No password set' });
-
-    if (password === matchPassword) {
-      res.json({ ok: true });
-    } else {
-      res.status(401).json({ error: 'Incorrect password' });
-    }
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
 
 app.delete('/sync/matches/:id', async (req, res) => {
   try {
@@ -1084,14 +1045,23 @@ app.get('/api/tournaments/:id/stats', async (req, res) => {
 
 app.post('/sync/broadcast', (req, res) => {
     const data = parseBody(req);
-    if (data && data.matchId) {
-        console.log(`[HTTP Broadcast] Command '${data.cmd}' for ${data.matchId}`);
-        // Relay to all matching sockets
-        io.to(data.matchId).emit('broadcast_command', data);
-        return res.json({ ok: true });
+    if (!data || !data.cmd) {
+        return res.status(400).json({ error: 'Missing cmd in broadcast payload' });
     }
-    res.status(400).json({ error: 'Missing matchId or data' });
+    if (data.matchId) {
+        console.log(`[HTTP Broadcast] Command '${data.cmd}' for match ${data.matchId}`);
+        // Relay to the specific match room
+        io.to(data.matchId).emit('broadcast_command', data);
+    }
+    if (data.tournamentId) {
+        console.log(`[HTTP Broadcast] Command '${data.cmd}' for tournament ${data.tournamentId}`);
+        io.to(data.tournamentId).emit('broadcast_command', data);
+    }
+    // Always emit globally so all clients (OBS overlays) receive it
+    io.emit('broadcast_command', data);
+    res.json({ ok: true });
 });
+
 
 app.get('/health', async (req, res) => {
   try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
