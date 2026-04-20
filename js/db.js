@@ -667,29 +667,42 @@ window.BACKEND_BASE_URL = BACKEND_BASE_URL;
 let _serverAwake = false;
 let _wakePromise = null;
 
-async function wakeUpServer(maxAttempts = 4) {
+async function wakeUpServer(maxAttempts = 5) {
     if (_serverAwake) return true;
     if (_wakePromise) return _wakePromise;
 
     _wakePromise = (async () => {
         for (let i = 0; i < maxAttempts; i++) {
             try {
-                const r = await fetch(`${BACKEND_BASE_URL}/api/ping`, { method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(8000) });
-                if (r.ok) {
-                    console.log('🟢 Server is awake and responding.');
-                    _serverAwake = true;
-                    // Keep-alive: ping every 9 minutes to prevent Render sleep
-                    setInterval(() => fetch(`${BACKEND_BASE_URL}/api/ping`, { cache: 'no-store' }).catch(() => {}), 9 * 60 * 1000);
-                    return true;
-                }
+                // Use no-cors so CORS policy NEVER blocks the wake-up ping.
+                // With no-cors we get an opaque response — we just need to know
+                // if the request resolves (server alive) vs rejects (server down/sleeping).
+                const r = await fetch(`${BACKEND_BASE_URL}/api/ping`, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    mode: 'no-cors',           // Bypass CORS — we don't read the body
+                    signal: AbortSignal.timeout(10000)
+                });
+                // If we reach here without throwing → server is responding
+                console.log('🟢 Server is awake and responding.');
+                _serverAwake = true;
+                // Keep-alive: silent ping every 9 minutes to prevent Render sleep
+                setInterval(() => fetch(`${BACKEND_BASE_URL}/api/ping`, {
+                    cache: 'no-store', mode: 'no-cors'
+                }).catch(() => {}), 9 * 60 * 1000);
+                return true;
             } catch (e) {
-                const delay = (i + 1) * 3000; // 3s, 6s, 9s backoff
-                console.warn(`⏳ Server warming up... retry ${i + 1}/${maxAttempts} in ${delay / 1000}s`);
-                await new Promise(res => setTimeout(res, delay));
+                const delay = (i + 1) * 3000; // 3s → 6s → 9s → 12s → 15s
+                if (i < maxAttempts - 1) {
+                    console.warn(`⏳ Server warming up... retry ${i + 1}/${maxAttempts} in ${delay / 1000}s`);
+                    await new Promise(res => setTimeout(res, delay));
+                }
             }
         }
-        console.warn('⚠️ Server did not respond after wake-up attempts. Using local cache.');
+        console.warn('⚠️ Server did not respond. App will use local cache and retry in background.');
         _wakePromise = null;
+        // Schedule a background retry in 30s
+        setTimeout(() => { _wakePromise = null; wakeUpServer(); }, 30000);
         return false;
     })();
 

@@ -19,53 +19,25 @@ console.log('🚀 [STARTUP] Server process started');
 console.log('🚀 [STARTUP] Node version:', process.version);
 console.log('🚀 [STARTUP] Port:', process.env.PORT);
 
-app.use((req, res, next) => {
-    console.log(`📡 [HTTP] ${req.method} ${req.url} (Origin: ${req.headers.origin || 'none'})`);
-    next();
-});
-
-app.get('/api/ping', (req, res) => res.json({ status: 'alive', time: new Date().toISOString() }));
-app.get('/api/status', (req, res) => res.send('SLCRICKPRO_SERVER_UP'));
-
 // Accept any origin and reflect it back to fully bypass strict CORS limitations
 const io = socketIo(server, {
   cors: {
-    origin: true, // Reflects the request origin
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
   }
 });
 
-// Using standard cors to apply CORS universally
+// ── CORS: Allow all origins (reflects request origin back) ───────────────────
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps)
-    if (!origin) return callback(null, true);
-    
-    // Whitelist for production and development
-    const allowedPatterns = [
-      'slcrickpro.live',
-      'railway.app',
-      'localhost',
-      '127.0.0.1'
-    ];
-    
-    const isAllowed = allowedPatterns.some(pattern => origin.includes(pattern));
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      // Fallback: reflect the origin anyway but log it (for now to resolve user issues)
-      callback(null, true);
-    }
-  },
+  origin: true, // Reflect ANY origin — simplest and most reliable cross-domain fix
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
 }));
 
-// A fallback middleware strictly for cases where `cors()` might be skipped
+// Hardcoded CORS safety net (catches any edge cases cors() misses)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && !res.headersSent) {
@@ -74,21 +46,31 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
   }
-  
-  // Handle OPTIONS preflight directly if not handled by cors()
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
+
+app.use((req, res, next) => {
+    console.log(`📡 [HTTP] ${req.method} ${req.url} (Origin: ${req.headers.origin || 'none'})`);
+    next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.text({ type: 'text/plain', limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
+// Health & ping — AFTER cors middleware so headers are set properly
+app.get('/api/ping', (req, res) => res.json({ status: 'alive', time: new Date().toISOString() }));
+app.get('/api/status', (req, res) => res.send('SLCRICKPRO_SERVER_UP'));
+app.get('/health', async (req, res) => {
+  try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
+});
+
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res.redirect('/admin'));
+
 
 // ─── Admin Login ─────────────────────────────────────────────────
 // Simple PIN-based login. Username can be anything. 
