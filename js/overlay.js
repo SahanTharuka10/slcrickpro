@@ -4,6 +4,9 @@ let refreshInterval;
 let currentPopupView = null;
 let latestSocketScore = null;
 let latestSocketScoreTime = 0; // track when socket data was received
+let isScorebarVisible = true;
+let currentOverlayMode = 1;
+
 if (typeof OVERLAY_DEFAULT_PLAYER_PHOTO === 'undefined') {
     var OVERLAY_DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
 }
@@ -371,6 +374,14 @@ function handleBroadcastCommand(cmd, data = {}) {
         case 'SHOW_PARTNERSHIP':
             showPartnershipGraphicCinema(data);
             break;
+        case 'SET_SCOREBAR_VISIBILITY':
+            isScorebarVisible = !!data.visible;
+            renderOverlay();
+            break;
+        case 'SET_OVERLAY_MODE':
+            currentOverlayMode = parseInt(data.mode) || 1;
+            renderOverlay();
+            break;
         case 'STOP_OVERLAY': 
             hideAllBroadcastOverlays(); 
             break;
@@ -716,12 +727,12 @@ function renderOverlay() {
 
     container.style.display = 'flex';
     container.innerHTML = `
-        <div class="score-center-section" style="width: auto; padding: 10px 60px; margin: 0 auto;">
+        <div class="score-center-section" style="width: auto; padding: 15px 80px; margin: 0 auto;">
             <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top" style="justify-content: center;">
-                <span class="teams" style="font-size:24px;">${title}</span>
+                <span class="teams" style="font-size:32px;">${title}</span>
             </div>
-            <div class="score-bottom" style="font-size: 15px; text-transform:uppercase;">${sub}</div>
+            <div class="score-bottom" style="font-size: 20px; text-transform:uppercase;">${sub}</div>
         </div>
     `;
 }
@@ -735,12 +746,28 @@ function _renderOverlayFromMatch(m) {
     
     // Performance optimization: prevent unnecessary DOM re-renders
     const matchFingerprint = JSON.stringify(m);
-    if (window._lastOverlayFingerprint === matchFingerprint && container.style.display !== 'none' && container.innerHTML !== '') return;
+    if (matchFingerprint === window._lastOverlayFingerprint && !forceRefresh) return;
     window._lastOverlayFingerprint = matchFingerprint;
 
+    if (!isScorebarVisible) {
+        container.style.display = 'none';
+        return;
+    }
     container.style.display = 'flex';
 
-    const t1Short = getShortName((curInn.battingTeam && curInn.battingTeam !== 'TBD') ? curInn.battingTeam : (m.team1 || 'T1'));
+    if (currentOverlayMode === 2) {
+        _renderOverlayMode2(m);
+    } else if (currentOverlayMode === 3) {
+        _renderOverlayMode3(m);
+    } else {
+        _renderOverlayClassic(m);
+    }
+}
+
+function _renderOverlayClassic(m) {
+    const container = document.getElementById('overlay-container');
+    container.className = 'overlay-container';
+    const curInn = m.innings[m.currentInnings];
     const t2Short = getShortName((curInn.bowlingTeam && curInn.bowlingTeam !== 'TBD') ? curInn.bowlingTeam : (m.team2 || 'T2'));
     const score   = curInn.runs + '-' + curInn.wickets;
     const ov      = formatOvers(curInn.balls, m.ballsPerOver);
@@ -774,13 +801,13 @@ function _renderOverlayFromMatch(m) {
 
     let bottomText;
     if (m.status === 'completed') {
-        bottomText = `<span style="color:#fff; font-weight: 800; font-size: 15px;">🎉 ${m.result || 'MATCH COMPLETED'}</span>`;
+        bottomText = `<span style="color:#fff; font-weight: 800; font-size: 20px;">🎉 ${m.result || 'MATCH COMPLETED'}</span>`;
     } else if (m.currentInnings===1 && m.innings[0]) {
         const need      = m.innings[0].runs + 1 - curInn.runs;
         const ballsLeft = (m.overs * m.ballsPerOver) - curInn.balls;
         bottomText = need>0  ? `NEED <span style="color:#fff">${need}</span> FROM <span style="color:#fff">${ballsLeft}</span> BALLS`
                    : need===0? `<span style="color:#fff">SCORES LEVEL</span>`
-                             : `<span style="color:#fff; font-weight: 800; font-size: 15px;">🎉 WON BY ${m.playersPerSide-curInn.wickets-1} WICKETS</span>`;
+                             : `<span style="color:#fff; font-weight: 800; font-size: 20px;">🎉 WON BY ${m.playersPerSide-curInn.wickets-1} WICKETS</span>`;
     } else {
         bottomText = `TOSS: ${m.tossWinner||'TBD'} CHOSE TO ${(m.tossDecision||'bat').toUpperCase()}`;
     }
@@ -838,7 +865,7 @@ function _renderOverlayFromMatch(m) {
             ${rrrText ? `<span class="score-rrr">${rrrText}</span>` : ''}
         </div>
         <div class="bowler-section">
-            <div class="player-row" style="margin-bottom: 2px;">
+            <div class="player-row" style="margin-bottom: 4px;">
                 <div class="player-name" style="color: #1a1a2e;">${bowler.name}</div>
                 <div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div>
                 <div class="player-value balls">${b_overs}</div>
@@ -864,6 +891,142 @@ function _renderOverlayFromMatch(m) {
             pill.addEventListener('animationend', () => pill.classList.remove('wicket-flash'), { once: true });
         }
     }
+}
+
+/**
+ * Overlay Mode 2: Modern Photo Bar (Based on user image)
+ */
+function _renderOverlayMode2(m) {
+    const container = document.getElementById('overlay-container');
+    const curInn = m.innings[m.currentInnings];
+    
+    // Set class for styling
+    container.className = 'overlay-container mode-2';
+
+    const t1Name = (curInn.battingTeam && curInn.battingTeam !== 'TBD') ? curInn.battingTeam : (m.team1 || 'T1');
+    const t2Name = (curInn.bowlingTeam && curInn.bowlingTeam !== 'TBD') ? curInn.bowlingTeam : (m.team2 || 'T2');
+    const t1Short = getShortName(t1Name);
+    const t2Short = getShortName(t2Name);
+    const scoreVal = curInn.runs + '-' + curInn.wickets;
+    const ovVal = formatOvers(curInn.balls, m.ballsPerOver);
+
+    const siIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx] : null;
+    const nsiIdx = (curInn.currentBatsmenIdx && typeof curInn.strikerIdx !== 'undefined') ? curInn.currentBatsmenIdx[curInn.strikerIdx === 0 ? 1 : 0] : null;
+
+    const b1 = (typeof siIdx === 'number' && curInn.batsmen && curInn.batsmen[siIdx]) ? curInn.batsmen[siIdx] : { name:'Batter 1', runs:0, balls:0 };
+    const b2 = (typeof nsiIdx === 'number' && curInn.batsmen && curInn.batsmen[nsiIdx]) ? curInn.batsmen[nsiIdx] : { name:'Batter 2', runs:0, balls:0 };
+    const bowler = (curInn.bowlers && typeof curInn.currentBowlerIdx !== 'undefined' && curInn.bowlers[curInn.currentBowlerIdx]) ? curInn.bowlers[curInn.currentBowlerIdx] : { name:'Bowler', wickets:0, runs:0, balls:0 };
+    
+    // Resolve photos
+    const getPhoto = (pName) => {
+        if (!pName) return OVERLAY_DEFAULT_PLAYER_PHOTO;
+        const p = DB.getMatches().flatMap(mx => (mx.players && mx.players[0]) ? mx.players[0].concat(mx.players[1]) : [])
+                    .find(px => px && px.name === pName);
+        if (p && p.photo) return p.photo;
+        // Fallback: search all players in DB
+        const dp = DB.getPlayers().find(px => px.name === pName);
+        return (dp && dp.photo) ? dp.photo : OVERLAY_DEFAULT_PLAYER_PHOTO;
+    };
+
+    const b1Photo = getPhoto(b1.name);
+    const b2Photo = getPhoto(b2.name);
+    const bowlPhoto = getPhoto(bowler.name);
+
+    container.innerHTML = `
+        <!-- Team & Score Section -->
+        <div class="m2-team-score">
+            <div class="m2-logo-box">${t1Short}</div>
+            <div class="m2-team-names">
+                <div class="name">${t1Short}</div>
+                <div class="vs">vs ${t2Short}</div>
+            </div>
+            <div class="m2-score-box">
+                <div class="score">${scoreVal}</div>
+                <div class="overs">${ovVal}</div>
+            </div>
+        </div>
+
+        <!-- Striker Section -->
+        <div class="m2-player-box active">
+            <div class="m2-player-photo"><img src="${b1Photo}"></div>
+            <div class="m2-player-info">
+                <div class="p-name">${b1.name}</div>
+                <div class="p-score">${b1.runs}<span>${b1.balls}</span></div>
+            </div>
+        </div>
+
+        <!-- Non-Striker Section -->
+        <div class="m2-player-box">
+            <div class="m2-player-photo"><img src="${b2Photo}"></div>
+            <div class="m2-player-info">
+                <div class="p-name">${b2.name}</div>
+                <div class="p-score">${b2.runs}<span>${b2.balls}</span></div>
+            </div>
+        </div>
+
+        <!-- Middle Info (CRR) -->
+        <div class="m2-info-pill">
+            <div class="label">CRR</div>
+            <div class="value">${formatCRR(curInn.runs, curInn.balls)}</div>
+        </div>
+
+        <!-- Bowler Section -->
+        <div class="m2-bowler-box">
+            <div class="m2-player-photo"><img src="${bowlPhoto}"></div>
+            <div class="m2-player-info">
+                <div class="p-name">${bowler.name}</div>
+                <div class="p-score">${bowler.wickets}-${bowler.runs}<span>${formatOvers(bowler.balls, m.ballsPerOver)}</span></div>
+            </div>
+        </div>
+
+        <!-- Over Dots -->
+        <div class="m2-dots-section">
+            <div class="m2-dots-row">
+                ${(curInn.currentOver || []).slice(-6).map(b => {
+                    let cls = b.wicket ? 'w' : (b.runs >= 4 ? 'b' : '');
+                    let lbl = b.wicket ? 'W' : b.runs;
+                    return `<div class="dot ${cls}">${lbl}</div>`;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Overlay Mode 3: Detailed Data View
+ */
+function _renderOverlayMode3(m) {
+    const container = document.getElementById('overlay-container');
+    const curInn = m.innings[m.currentInnings];
+    container.className = 'overlay-container mode-3';
+
+    const t1Short = getShortName(curInn.battingTeam);
+    const t2Short = getShortName(curInn.bowlingTeam);
+    
+    const rrr = (m.currentInnings === 1 && m.innings[0]) ? 
+                (( (m.innings[0].runs + 1 - curInn.runs) / ((m.overs * m.ballsPerOver) - curInn.balls) ) * 6).toFixed(2) : '-';
+
+    container.innerHTML = `
+        <div class="m3-left">
+            <div class="m3-score">${curInn.runs}-${curInn.wickets} <small>${formatOvers(curInn.balls, m.ballsPerOver)}</small></div>
+            <div class="m3-teams">${t1Short} v ${t2Short}</div>
+        </div>
+        <div class="m3-center">
+            <div class="m3-row">
+                <span class="lbl">STR:</span> <span class="val">${curInn.batsmen[curInn.currentBatsmenIdx[curInn.strikerIdx]]?.name || 'Batter'}</span>
+                <span class="lbl">RUNS:</span> <span class="val highlight">${curInn.batsmen[curInn.currentBatsmenIdx[curInn.strikerIdx]]?.runs || 0} (${curInn.batsmen[curInn.currentBatsmenIdx[curInn.strikerIdx]]?.balls || 0})</span>
+            </div>
+            <div class="m3-row">
+                <span class="lbl">BWL:</span> <span class="val">${curInn.bowlers[curInn.currentBowlerIdx]?.name || 'Bowler'}</span>
+                <span class="lbl">FIG:</span> <span class="val highlight">${curInn.bowlers[curInn.currentBowlerIdx]?.wickets || 0}-${curInn.bowlers[curInn.currentBowlerIdx]?.runs || 0}</span>
+                <span class="lbl">CRR:</span> <span class="val">${formatCRR(curInn.runs, curInn.balls)}</span>
+                ${rrr !== '-' ? `<span class="lbl">RRR:</span> <span class="val">${rrr}</span>` : ''}
+            </div>
+        </div>
+        <div class="m3-right">
+             <div class="m3-recent">${(curInn.currentOver || []).slice(-8).map(b => `<span class="${b.wicket?'w':''}">${b.wicket?'W':b.runs}</span>`).join('')}</div>
+        </div>
+    `;
 }
 
 function renderOverlayFromLightPayload(payload) {

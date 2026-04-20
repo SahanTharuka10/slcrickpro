@@ -3873,6 +3873,15 @@ function renderBroadcastController(match) {
             
             .v-trigger:active { transform: scale(0.95); opacity: 0.7; }
 
+            /* Toggle Switch Style */
+            .switch input { opacity: 0; width: 0; height: 0; }
+            .slider:before {
+                position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+                background-color: white; transition: .4s; border-radius: 50%;
+            }
+            input:checked + .slider { background-color: #3b82f6 !important; }
+            input:checked + .slider:before { transform: translateX(22px); }
+
             /* Mobile Fixes for Broadcast Controller (Super Compact Mode) */
             @media (max-width: 900px) {
                 .broadcast-controller-content {
@@ -3972,10 +3981,30 @@ function renderBroadcastController(match) {
                 <!-- INSTANT ACTION TRIGGERS -->
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom:12px">
                         <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
                         <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
                         <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; justify-content:space-between; align-items:center">
+                            <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.6)">SCOREBAR DISPLAY</div>
+                            <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+                                <input type="checkbox" id="scorebar-toggle" checked onchange="sendBroadcast('SET_SCOREBAR_VISIBILITY', { visible: this.checked })">
+                                <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px;"></span>
+                            </label>
+                        </div>
+                        
+                        <div style="display:flex; flex-direction:column; gap:6px">
+                            <div style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.4)">OVERLAY THEME</div>
+                            <select id="overlay-mode-select" onchange="sendBroadcast('SET_OVERLAY_MODE', { mode: this.value }); showToast('Theme Switched!', 'success')" 
+                                style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; width: 100%;">
+                                <option value="1">Score Overlay 1 (Classic)</option>
+                                <option value="2">Score Overlay 2 (Photo Mode)</option>
+                                <option value="3">Score Overlay 3 (Detail View)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
