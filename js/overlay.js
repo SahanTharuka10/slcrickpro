@@ -1051,7 +1051,13 @@ function renderOverlayFromLightPayload(payload) {
     if (payload && payload.fullMatch) return _renderOverlayFromMatch(payload.fullMatch);
     const cur = payload ? payload.score : null;
     if (!cur) return;
+    
+    if (!isScorebarVisible) {
+        document.getElementById('overlay-container').style.display = 'none';
+        return;
+    }
     document.getElementById('overlay-container').style.display = 'flex';
+    
     const t1Name = cur.battingTeam || payload.team1 || "T1";
     const t2Name = cur.bowlingTeam || payload.team2 || "T2";
     const t1Short = getShortName(t1Name);

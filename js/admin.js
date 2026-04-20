@@ -302,6 +302,7 @@ function deleteTournamentAdmin(id) {
     if (!confirm('Delete tournament permanently?')) return;
     DB.deleteTournament(id);
     renderTournamentsAdmin();
+    renderSystemMatches(); 
 }
 
 function forceDeleteMatch(id) {

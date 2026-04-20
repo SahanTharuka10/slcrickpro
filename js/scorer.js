@@ -4087,6 +4087,22 @@ function renderBroadcastController(match) {
 
                 <!-- PLAYER & TEAM GRAPHICS -->
                 <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">📺 SCOREBAR CONTROL</div>
+                    <button class="b-btn b-btn-emerald" id="btn-toggle-scorebar" style="min-height:48px; box-shadow:0 0 10px rgba(0,255,0,0.5); margin-bottom:12px;" onclick="if(typeof Broadcast !== 'undefined') Broadcast.toggleScorebar(); else sendBroadcast('TOGGLE_SCOREBAR')">
+                        <div style="display:flex; justify-content:space-between; width:100%">
+                            <div class="b-btn-title" id="txt-toggle-scorebar">👁 LIVE SCOREBAR (ON)</div>
+                            <div class="b-btn-hotkey">S+V</div>
+                        </div>
+                    </button>
+                    <label style="font-size:10px; font-weight:800; color:#aaa; margin-bottom:4px; display:block">SCOREBAR THEME:</label>
+                    <select class="form-select" id="scorebar-style-select" onchange="if(typeof Broadcast !== 'undefined') Broadcast.changeOverlayTheme(this.value); else sendBroadcast('CHANGE_OVERLAY_THEME', {theme: this.value})" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:#fff;">
+                        <option value="theme1">Score Overlay 1 (Classic)</option>
+                        <option value="theme2">Score Overlay 2 (With Photos)</option>
+                        <option value="theme3">Score Overlay 3 (Compact Detailed)</option>
+                    </select>
+                </div>
+
+                <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
                     <div class="b-grid">
                         <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
@@ -4352,44 +4368,57 @@ function renderBroadcastController(match) {
         
         window.compressImageUtility(file, (data) => {
             if (!data) return;
-            const m = currentMatch;
-            const inn = m ? m.innings[m.currentInnings] : null;
+            try {
+                const m = currentMatch;
+                const inn = m ? m.innings[m.currentInnings] : null;
 
-            if (window._pendingManualPhotoType === 'striker') {
-                window.__photo_striker = data;
-                const el = document.getElementById('preview_striker');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
-                
-                if (inn) {
-                    const strikerName = getStrikerBatterName(inn);
-                    const p = resolvePlayerProfileForBatter(inn, strikerName);
-                    if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
-                }
-            } else if (window._pendingManualPhotoType === 'nonstriker') {
-                window.__photo_nonstriker = data;
-                const el = document.getElementById('preview_nonstriker');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
-                
-                if (inn) {
-                    const nonStrikerIdx = (inn.strikerIdx === 0) ? inn.currentBatsmenIdx[1] : inn.currentBatsmenIdx[0];
-                    const nonStrikerB = inn.batsmen[nonStrikerIdx];
-                    if (nonStrikerB) {
-                        const p = resolvePlayerProfileForBatter(inn, nonStrikerB.name);
-                        if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
+                if (window._pendingManualPhotoType === 'striker') {
+                    window.__photo_striker = data;
+                    const el = document.getElementById('preview_striker');
+                    if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
+                    
+                    if (inn) {
+                        const strikerName = getStrikerBatterName(inn);
+                        const p = resolvePlayerProfileForBatter(inn, strikerName);
+                        if (p && p.playerId) { 
+                            DB.updatePlayer({ ...p, photo: data }); 
+                            showToast(`Saved photo to ${p.name || 'Striker'}`, 'success'); 
+                        }
+                    }
+                } else if (window._pendingManualPhotoType === 'nonstriker') {
+                    window.__photo_nonstriker = data;
+                    const el = document.getElementById('preview_nonstriker');
+                    if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
+                    
+                    if (inn) {
+                        const nonStrikerIdx = (inn.strikerIdx === 0) ? inn.currentBatsmenIdx[1] : inn.currentBatsmenIdx[0];
+                        const nonStrikerB = inn.batsmen[nonStrikerIdx];
+                        if (nonStrikerB && nonStrikerB.name) {
+                            const p = resolvePlayerProfileForBatter(inn, nonStrikerB.name);
+                            if (p && p.playerId) { 
+                                DB.updatePlayer({ ...p, photo: data }); 
+                                showToast(`Saved photo to ${p.name || 'Non-Striker'}`, 'success'); 
+                            }
+                        }
+                    }
+                } else if (window._pendingManualPhotoType === 'bowler') {
+                    window.__photo_bowler = data;
+                    const el = document.getElementById('preview_bowler');
+                    if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
+                    
+                    if (inn) {
+                        const bowler = inn.bowlers[inn.currentBowlerIdx];
+                        let p = null;
+                        if (bowler && bowler.playerId) p = DB.getPlayerById(bowler.playerId);
+                        if (p && p.playerId) { 
+                            DB.updatePlayer({ ...p, photo: data }); 
+                            showToast(`Saved photo to ${p.name || 'Bowler'}`, 'success'); 
+                        }
                     }
                 }
-            } else if (window._pendingManualPhotoType === 'bowler') {
-                window.__photo_bowler = data;
-                const el = document.getElementById('preview_bowler');
-                if(el) el.innerHTML = `<img src="${data}" style="width:100%; height:100%; object-fit:contain; border-radius:10px">`;
-                
-                if (inn) {
-                    const bowler = inn.bowlers[inn.currentBowlerIdx];
-                    let p = null;
-                    if (bowler && bowler.playerId) p = DB.getPlayerById(bowler.playerId);
-                    if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
-                }
-            }
+            } catch (err) {
+                console.error("Photo Error:", err);
+                showToast('Failed to apply photo', 'error');
             }
         });
     };

@@ -921,7 +921,10 @@ DB.handshake = async function(id, password) {
  */
 window.pullGlobalData = async function(showFeedback = false) {
     if (showFeedback) showToast('🔄 Syncing with Cloud...', 'default');
-    return syncCloudData({ forceRefresh: true, silent: !showFeedback });
+    const res = await syncCloudData({ forceRefresh: true, silent: !showFeedback });
+    window._isGlobalSyncCompleted = true;
+    if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
+    return res;
 };
 
 // ================================================
@@ -1128,16 +1131,20 @@ async function syncCloudData(options = {}) {
                 }
             });
 
-            // Sync local matches back to remote.
-            // SAFETY: Never delete local data — if a match is missing from cloud
-            // (server restart, network hiccup, partial sync), re-push it to cloud.
+            // Sync local matches back to remote OR delete them locally if they were removed from the cloud.
             localMatches.forEach(lm => {
                 if (!matchMap.has(lm.id)) {
-                    // Always keep local copy and re-push to cloud to recover
-                    matchMap.set(lm.id, lm);
-                    anyUpdated = true;
-                    console.log(`🔄 Sync: Re-pushing match ${lm.id} to cloud (was missing from remote)`);
-                    try { syncToDB('match', lm); } catch(e) {}
+                    if (lm._isCloudSynced) {
+                        // It was on the cloud before, but missing now. Cloud deleted it.
+                        console.log(`🗑️ Sync: Local match ${lm.id} was deleted from cloud. Removing locally.`);
+                        anyUpdated = true;
+                    } else {
+                        // Never synced before, so keep local and push to cloud.
+                        matchMap.set(lm.id, lm);
+                        anyUpdated = true;
+                        console.log(`🔄 Sync: Pushing new match ${lm.id} to cloud (was missing from remote)`);
+                        try { syncToDB('match', lm); } catch(e) {}
+                    }
                 }
             });
 
@@ -1146,6 +1153,7 @@ async function syncCloudData(options = {}) {
                 if (typeof renderOngoing === 'function') renderOngoing();
                 if (typeof updateTicker === 'function') updateTicker();
                 if (typeof renderLive === 'function') renderLive();
+                if (typeof renderSystemMatches === 'function') renderSystemMatches();
                 localStorage.setItem('cricpro_force_update', Date.now().toString());
             }
         }
@@ -1169,11 +1177,19 @@ async function syncCloudData(options = {}) {
 
             localTournaments.forEach(lt => {
                 if (!tournMap.has(lt.id)) {
-                    // Always keep local copy and re-push to cloud to recover
-                    tournMap.set(lt.id, lt);
-                    anyTUpdated = true;
-                    console.log(`🔄 Sync: Re-pushing tournament ${lt.id} to cloud (was missing from remote)`);
-                    try { syncToDB('tournament', lt); } catch(e) {}
+                    if (lt._isCloudSynced) {
+                        console.log(`🗑️ Sync: Local tournament ${lt.id} was deleted from cloud. Removing locally.`);
+                        anyTUpdated = true;
+                        
+                        // Cascade delete matches for this tournament
+                        const matches = DB.getMatches().filter(m => m.tournamentId !== lt.id);
+                        DB.saveMatches(matches);
+                    } else {
+                        tournMap.set(lt.id, lt);
+                        anyTUpdated = true;
+                        console.log(`🔄 Sync: Pushing new tournament ${lt.id} to cloud (was missing from remote)`);
+                        try { syncToDB('tournament', lt); } catch(e) {}
+                    }
                 }
             });
 
@@ -1181,6 +1197,9 @@ async function syncCloudData(options = {}) {
                 DB.saveTournaments(Array.from(tournMap.values()));
                 if (typeof renderTournamentSelector === 'function') renderTournamentSelector();
                 if (typeof renderOngoing === 'function') renderOngoing();
+                if (typeof window.renderResumeMatches === 'function') window.renderResumeMatches();
+                if (typeof renderTournamentsAdmin === 'function') renderTournamentsAdmin();
+                if (typeof renderRequests === 'function') renderRequests();
             }
         }
 

@@ -128,5 +128,41 @@ const Broadcast = {
     showSummary() {
         this.send('SHOW_SUMMARY');
         showToast('🏆 Summary Published!', 'success');
+    },
+
+    /**
+     * Toggle Live Scorebar visibility
+     */
+    toggleScorebar() {
+        const btn = document.getElementById('btn-toggle-scorebar');
+        const txt = document.getElementById('txt-toggle-scorebar');
+        if (btn && txt) {
+            if (txt.innerText.includes('ON')) {
+                txt.innerText = '👁 LIVE SCOREBAR (OFF)';
+                btn.className = 'b-btn b-btn-red';
+                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.5)';
+                this.send('SET_SCOREBAR_VISIBILITY', { visible: false });
+                showToast('Scorebar Hidden!', 'default');
+            } else {
+                txt.innerText = '👁 LIVE SCOREBAR (ON)';
+                btn.className = 'b-btn b-btn-emerald';
+                btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.5)';
+                this.send('SET_SCOREBAR_VISIBILITY', { visible: true });
+                showToast('Scorebar Visible!', 'success');
+            }
+        } else {
+            // Unused fallback
+            this.send('SET_SCOREBAR_VISIBILITY', { visible: true });
+        }
+    },
+
+    /**
+     * Change active Scorebar Overlay Theme
+     */
+    changeOverlayTheme(themeValue) {
+        // themeValue is "theme1", "theme2", "theme3" etc
+        const modeNum = parseInt(themeValue.replace('theme', '')) || 1;
+        this.send('SET_OVERLAY_MODE', { mode: modeNum });
+        showToast('🎨 Theme Updated!', 'success');
     }
 };

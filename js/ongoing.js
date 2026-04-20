@@ -111,8 +111,8 @@ function renderLive() {
   const matches = DB.getMatches().filter(m => {
     const isPublic = m.publishLive !== false; 
     if (!isPublic) return false;
-    // Show live, paused, AND scheduled matches in this view if they are "active"
-    return (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled');
+    // Show live, paused, AND scheduled/setup matches in this view if they are "active"
+    return (m.status === 'live' || m.status === 'paused' || m.status === 'scheduled' || m.status === 'setup');
   });
 
   const uniqueMatches = Array.from(new Map(matches.map(m => [m.id, m])).values());
@@ -133,14 +133,14 @@ function buildMatchCard(m, isLive) {
   const inn0 = m.innings ? m.innings[0] : null;
   const inn1 = m.innings ? m.innings[1] : null;
   const curInn = m.innings ? m.innings[m.currentInnings] : null;
-  const statusColor = m.status === 'live' ? '#00e676' : (m.status === 'scheduled' ? '#00bcd4' : '#ffc107');
-  const statusLabel = m.status === 'live' ? '🔴 LIVE' : (m.status === 'scheduled' ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ COMPLETE'));
+  const statusColor = m.status === 'live' ? '#00e676' : ((m.status === 'scheduled' || m.status === 'setup') ? '#00bcd4' : '#ffc107');
+  const statusLabel = m.status === 'live' ? '🔴 LIVE' : ((m.status === 'scheduled' || m.status === 'setup') ? '🗓 Scheduled' : (m.status === 'paused' ? '⏸ Paused' : '✅ COMPLETE'));
   const hasPw = (m.scoringPassword || m.password || m.isLocked);
 
-  const score0 = m.status === 'scheduled' ? '-' : (inn0 ? `${inn0.runs}/${inn0.wickets}` : '-');
-  const ov0 = m.status === 'scheduled' ? '' : (inn0 ? `(${formatOvers(inn0.balls, m.ballsPerOver)} ov)` : '');
-  const score1 = m.status === 'scheduled' ? '-' : (inn1 ? `${inn1.runs}/${inn1.wickets}` : (m.status !== 'completed' && m.currentInnings === 1 ? 'Yet to bat' : '-'));
-  const ov1 = m.status === 'scheduled' ? '' : (inn1 ? `(${formatOvers(inn1.balls, m.ballsPerOver)} ov)` : '');
+  const score0 = (m.status === 'scheduled' || m.status === 'setup') ? '-' : (inn0 ? `${inn0.runs}/${inn0.wickets}` : '-');
+  const ov0 = (m.status === 'scheduled' || m.status === 'setup') ? '' : (inn0 ? `(${formatOvers(inn0.balls, m.ballsPerOver)} ov)` : '');
+  const score1 = (m.status === 'scheduled' || m.status === 'setup') ? '-' : (inn1 ? `${inn1.runs}/${inn1.wickets}` : (m.status !== 'completed' && m.currentInnings === 1 ? 'Yet to bat' : '-'));
+  const ov1 = (m.status === 'scheduled' || m.status === 'setup') ? '' : (inn1 ? `(${formatOvers(inn1.balls, m.ballsPerOver)} ov)` : '');
 
   const crr = curInn ? formatCRR(curInn.runs, curInn.balls) : '0.00';
   let targetInfo = '';
@@ -186,7 +186,7 @@ function buildMatchCard(m, isLive) {
             <span class="match-target-info" style="color:#ffc107">${targetInfo}</span>
             <span class="match-crr">${m.overs} ov · ${subText}</span>
         </div>
-        ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled') ? `
+        ${(m.status === 'live' || m.status === 'paused' || m.status === 'scheduled' || m.status === 'setup') ? `
         <div class="match-card-actions" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; justify-content:space-between; gap:10px">
             <button class="btn btn-primary" style="flex:2; font-weight:900; border-radius:12px; height:44px; display:flex; align-items:center; justify-content:center; gap:8px" onclick="event.stopPropagation(); scoreMatchRedirect('${m.id}')">
                  ${m.status === 'live' ? '⚡ SCORE' : (m.status === 'paused' ? '🔑 RESUME' : '🏏 START')}
