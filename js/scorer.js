@@ -3978,8 +3978,15 @@ function renderBroadcastController(match) {
             
             <!-- LEFT COLUMN: INSTANT TRIGGERS & PROMOS -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
-                <!-- INSTANT ACTION TRIGGERS -->
+                <!-- ACTION & OVERRIDE PANEL -->
                 <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">✏️ SCORE OVERRIDE (MANUAL)</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="number" id="manual-run" placeholder="Runs" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center;">
+                        <input type="number" id="manual-wkt" placeholder="Wkt" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center;">
+                        <button class="b-btn b-btn-emerald" style="min-height:40px; padding: 0 15px; border-radius:8px" onclick="overrideLiveScore()">SET</button>
+                    </div>
+
                     <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom:12px">
                         <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
@@ -4383,7 +4390,28 @@ function renderBroadcastController(match) {
                     if (p && p.playerId) { DB.updatePlayer({ ...p, photo: data }); showToast(`Saved photo to ${p.name}`, 'success'); }
                 }
             }
+            }
         });
+    };
+
+    window.overrideLiveScore = function() {
+        const m = currentMatch;
+        if (!m || !m.innings) return;
+        const curInn = m.innings[m.currentInnings || 0];
+
+        const rVal = document.getElementById('manual-run').value;
+        const wVal = document.getElementById('manual-wkt').value;
+        
+        if (rVal !== '') curInn.runs = parseInt(rVal) || 0;
+        if (wVal !== '') curInn.wickets = parseInt(wVal) || 0;
+        
+        if (typeof DB !== 'undefined' && DB.saveMatch) {
+            DB.saveMatch(m);
+        }
+        updatePreviewSync(m);
+        showToast('Live Score Forced!', 'success');
+        document.getElementById('manual-run').value = '';
+        document.getElementById('manual-wkt').value = '';
     };
 }
 
