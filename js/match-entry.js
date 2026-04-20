@@ -158,8 +158,8 @@ function showModeSelectionModal(match) {
         };
     };
 
+    document.body.appendChild(overlay); // MUST append first so getElementById works inside renderModeSelection
     renderModeSelection();
-    document.body.appendChild(overlay);
 }
 
 function openScorerDashboard(matchId) {

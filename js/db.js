@@ -849,7 +849,8 @@ function syncToDB(type, data) {
         if (type === 'match') {
             const arr = DB.getMatches();
             const idx = arr.findIndex(m => m.id === data.id);
-            if (idx !== -1 && !arr[idx].synced) {
+            if (idx !== -1) {
+                arr[idx]._isCloudSynced = true; // Flag used by syncCloudData to detect cloud-deleted matches
                 arr[idx].synced = true;
                 arr[idx].lastUpdated = Date.now();
                 DB._secureSet(DB_KEYS.MATCHES, arr);
@@ -858,7 +859,8 @@ function syncToDB(type, data) {
         if (type === 'tournament') {
             const arr = DB.getTournaments();
             const idx = arr.findIndex(t => t.id === data.id);
-            if (idx !== -1 && !arr[idx].synced) {
+            if (idx !== -1) {
+                arr[idx]._isCloudSynced = true;
                 arr[idx].synced = true;
                 arr[idx].lastUpdated = Date.now();
                 DB._secureSet(DB_KEYS.TOURNAMENTS, arr);
@@ -1134,7 +1136,7 @@ async function syncCloudData(options = {}) {
             // Sync local matches back to remote OR delete them locally if they were removed from the cloud.
             localMatches.forEach(lm => {
                 if (!matchMap.has(lm.id)) {
-                    if (lm._isCloudSynced) {
+                    if (lm._isCloudSynced || lm.synced) {
                         // It was on the cloud before, but missing now. Cloud deleted it.
                         console.log(`🗑️ Sync: Local match ${lm.id} was deleted from cloud. Removing locally.`);
                         anyUpdated = true;
