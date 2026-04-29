@@ -17,7 +17,7 @@ const DB_KEYS = {
 // SLCRICKPRO – Theme Logic (Global)
 (function() {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
+    if (savedTheme === 'light' || savedTheme === null) {
         const apply = () => document.body.classList.add('light-mode');
         if (document.body) apply();
         else document.addEventListener('DOMContentLoaded', apply);

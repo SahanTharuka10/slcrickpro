@@ -952,54 +952,149 @@ body.light-mode .back-btn {
   color: #00bcd4;
 }
 
-/* ========== TICKER ========== */
-.ticker-bar {
+/* ========== TOP LIVE MATCH PANEL ========== */
+.top-live-panel {
+  width: 100%;
+  padding: 12px 24px;
+  background: rgba(3, 7, 18, 0.95);
+  border-bottom: 1px solid var(--c-border);
   position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  background: rgba(255, 60, 60, 0.1);
-  border-top: 1px solid rgba(255, 60, 60, 0.25);
-  border-bottom: 1px solid rgba(255, 60, 60, 0.25);
-  height: 44px;
-  overflow: hidden;
+  z-index: 90;
 }
 
-.ticker-label {
-  flex-shrink: 0;
-  padding: 0 18px;
-  background: rgba(255, 0, 0, 0.25);
-  font-size: 12px;
+body.light-mode .top-live-panel {
+  background: #f8fafc;
+}
+
+.live-cards-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
+}
+
+.live-cards-container::-webkit-scrollbar {
+  height: 6px;
+}
+.live-cards-container::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 4px;
+}
+
+.live-match-card {
+  flex: 0 0 auto;
+  width: 320px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+body.light-mode .live-match-card {
+  background: #ffffff;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.live-match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+body.light-mode .live-match-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+
+.live-card-header {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 12px;
+  font-size: 11px;
   font-weight: 700;
-  color: #ff5555;
-  letter-spacing: 0.08em;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  border-right: 1px solid rgba(255, 60, 60, 0.3);
-}
-
-.ticker-track {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.ticker-content {
-  display: inline-block;
-  font-size: 13px;
+  text-transform: uppercase;
   color: var(--c-muted);
-  animation: tickerScroll 30s linear infinite;
-  padding-left: 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--c-border);
+  letter-spacing: 0.05em;
+}
+body.light-mode .live-card-header {
+  background: #f1f5f9;
 }
 
-@keyframes tickerScroll {
-  from {
-    transform: translateX(0);
-  }
+.live-card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-  to {
-    transform: translateX(-50%);
+.live-team-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.live-team-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.live-team-score {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--c-text);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.live-team-overs {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-muted);
+}
+
+.live-yet-to-bat {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-muted);
+  text-transform: uppercase;
+}
+
+.live-card-footer {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: center;
+  border-top: 1px solid rgba(16, 185, 129, 0.2);
+  letter-spacing: 0.05em;
+}
+
+body.light-mode .live-card-footer {
+  background: #ecfdf5;
+  color: #059669;
+  border-top: 1px solid #d1fae5;
+}
+
+@media (max-width: 600px) {
+  .top-live-panel {
+    padding: 10px;
+  }
+  .live-match-card {
+    width: 280px;
   }
 }
 

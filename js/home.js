@@ -46,23 +46,80 @@ function updateClock() {
 }
 
 function updateTicker() {
-    const el = document.getElementById('ticker-content');
-    if (!el) return;
+    const container = document.getElementById('live-cards-container');
+    const panel = document.getElementById('top-live-panel');
+    if (!container || !panel) return;
+
     const matches = DB.getMatches().filter(m => (m.status === 'live' || m.status === 'paused' || m.status === 'ongoing') && m.publishLive);
+    
     if (!matches.length) {
-        const welcome = '🏏 Welcome to SLCRICKPRO — No live matches right now. Start a match to see live scores here! &nbsp;&nbsp;&nbsp;&nbsp; 🏆 Use Score New Match to begin ball-by-ball scoring &nbsp;&nbsp;&nbsp;&nbsp; 📊 Check rankings and stats in Player & Team Rankings &nbsp;&nbsp;&nbsp;&nbsp; 🛒 Visit Crick Store for equipment needs';
-        el.innerHTML = welcome + '&nbsp;&nbsp;&nbsp;&nbsp;' + welcome;
+        panel.style.display = 'none';
         return;
     }
-    const parts = matches.map(m => {
+
+    panel.style.display = 'block';
+    
+    container.innerHTML = matches.map(m => {
         const inn = m.innings[m.currentInnings];
         if (!inn) return '';
-        const score = `${inn.runs}/${inn.wickets}`;
-        const ov = formatOvers(inn.balls, m.ballsPerOver);
-        return `🏏 ${m.team1} vs ${m.team2} | ${inn.battingTeam}: ${score} (${ov}) | CRR: ${formatCRR(inn.runs, inn.balls)}`;
-    });
-    const content = parts.join('   &nbsp;|&nbsp;   ');
-    el.innerHTML = content + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + content;
+        
+        let innText = '';
+        if (m.currentInnings === 0) innText = '1ST INNINGS IN PROGRESS';
+        else if (m.currentInnings === 1) innText = '2ND INNINGS IN PROGRESS';
+        else innText = 'INNINGS IN PROGRESS';
+
+        // Check if there is a target (in 2nd innings)
+        if (m.currentInnings === 1 && m.innings[0]) {
+            const target = m.innings[0].runs + 1;
+            const needs = target - inn.runs;
+            if (needs > 0) {
+                innText = `${inn.battingTeam} NEEDS ${needs} RUNS`;
+            } else if (needs <= 0) {
+                innText = 'SCORES LEVEL';
+            }
+        }
+
+        const teamA = m.team1;
+        const teamB = m.team2;
+        
+        // Determine scores for Team A and Team B
+        let aScoreHTML = '<span class="live-yet-to-bat">YET TO BAT</span>';
+        let bScoreHTML = '<span class="live-yet-to-bat">YET TO BAT</span>';
+
+        // If Team 1 is batting now
+        if (inn.battingTeam === teamA) {
+            aScoreHTML = `${inn.runs}-${inn.wickets} <span class="live-team-overs">(${formatOvers(inn.balls, m.ballsPerOver)} ov)</span>`;
+            if (m.currentInnings === 1 && m.innings[0]) {
+                const prevInn = m.innings[0];
+                bScoreHTML = `${prevInn.runs}-${prevInn.wickets} <span class="live-team-overs">(${formatOvers(prevInn.balls, m.ballsPerOver)} ov)</span>`;
+            }
+        } else if (inn.battingTeam === teamB) {
+            bScoreHTML = `${inn.runs}-${inn.wickets} <span class="live-team-overs">(${formatOvers(inn.balls, m.ballsPerOver)} ov)</span>`;
+            if (m.currentInnings === 1 && m.innings[0]) {
+                const prevInn = m.innings[0];
+                aScoreHTML = `${prevInn.runs}-${prevInn.wickets} <span class="live-team-overs">(${formatOvers(prevInn.balls, m.ballsPerOver)} ov)</span>`;
+            }
+        }
+
+        const tournName = m.tournamentName ? `${m.tournamentName} - LIVE` : 'LIVE MATCH';
+
+        return `
+        <div class="live-match-card" onclick="window.location.href='pages/score-match.html?matchId=${m.id}'">
+            <div class="live-card-header">${tournName}</div>
+            <div class="live-card-body">
+                <div class="live-team-row">
+                    <div class="live-team-name">${teamA}</div>
+                    <div class="live-team-score">${aScoreHTML}</div>
+                </div>
+                <div class="live-team-row">
+                    <div class="live-team-name">${teamB}</div>
+                    <div class="live-team-score">${bScoreHTML}</div>
+                </div>
+            </div>
+            <div class="live-card-footer">${innText}</div>
+        </div>
+        `;
+    }).join('');
 }
 
 function formatOvers(balls, bpo = 6) {
