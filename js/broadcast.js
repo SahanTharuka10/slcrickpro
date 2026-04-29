@@ -51,9 +51,9 @@ const Broadcast = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })
-        .then(r => r.json())
-        .then(d => console.log('✅ Broadcast sync response:', d))
-        .catch(err => console.error('❌ Broadcast sync failed:', err));
+        .then(r => { if (r.status === 404) return null; return r.json(); })
+        .then(d => { if (d) console.log('✅ Broadcast sync response:', d); })
+        .catch(() => {}); // Silently ignore — socket.io handles real-time relay
     },
 
     /**
@@ -83,8 +83,15 @@ const Broadcast = {
      * Set the "Coming Up Next" graphic
      */
     publishNextMatch() {
-        const teamA = document.getElementById('broadcast-next-a').value.trim();
-        const teamB = document.getElementById('broadcast-next-b').value.trim();
+        // Support multiple possible input IDs from different UI layouts
+        const aEl = document.getElementById('broadcast-next-a') ||
+                    document.getElementById('next-match-teama') ||
+                    document.getElementById('next-teama');
+        const bEl = document.getElementById('broadcast-next-b') ||
+                    document.getElementById('next-match-teamb') ||
+                    document.getElementById('next-teamb');
+        const teamA = (aEl && aEl.value.trim()) || '';
+        const teamB = (bEl && bEl.value.trim()) || '';
         if (!teamA || !teamB) {
             showToast('Enter both team names!', 'error');
             return;
@@ -136,23 +143,41 @@ const Broadcast = {
     toggleScorebar() {
         const btn = document.getElementById('btn-toggle-scorebar');
         const txt = document.getElementById('txt-toggle-scorebar');
+        const checkbox = document.getElementById('scorebar-toggle');
+        
+        let newState = true;
+        if (txt) {
+            newState = !txt.innerText.includes('ON');
+        } else if (checkbox) {
+            newState = !checkbox.checked;
+        }
+
+        this.send('SET_SCOREBAR_VISIBILITY', { visible: newState });
+        this.syncToggleUI(newState);
+        showToast(newState ? 'Scorebar Visible!' : 'Scorebar Hidden!', newState ? 'success' : 'default');
+    },
+
+    /**
+     * Keep the Controller UI in sync with the broadcast state
+     */
+    syncToggleUI(isVisible) {
+        const btn = document.getElementById('btn-toggle-scorebar');
+        const txt = document.getElementById('txt-toggle-scorebar');
+        const checkbox = document.getElementById('scorebar-toggle');
+
         if (btn && txt) {
-            if (txt.innerText.includes('ON')) {
-                txt.innerText = '👁 LIVE SCOREBAR (OFF)';
-                btn.className = 'b-btn b-btn-red';
-                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.5)';
-                this.send('SET_SCOREBAR_VISIBILITY', { visible: false });
-                showToast('Scorebar Hidden!', 'default');
-            } else {
+            if (isVisible) {
                 txt.innerText = '👁 LIVE SCOREBAR (ON)';
                 btn.className = 'b-btn b-btn-emerald';
                 btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.5)';
-                this.send('SET_SCOREBAR_VISIBILITY', { visible: true });
-                showToast('Scorebar Visible!', 'success');
+            } else {
+                txt.innerText = '👁 LIVE SCOREBAR (OFF)';
+                btn.className = 'b-btn b-btn-red';
+                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.5)';
             }
-        } else {
-            // Unused fallback
-            this.send('SET_SCOREBAR_VISIBILITY', { visible: true });
+        }
+        if (checkbox) {
+            checkbox.checked = isVisible;
         }
     },
 

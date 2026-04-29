@@ -1049,6 +1049,27 @@ app.get('/health', async (req, res) => {
   try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
 });
 
+// --- BROADCAST COMMAND HTTP RELAY ---
+// Allows broadcast.js to relay commands via HTTP as a fallback to socket.io
+app.post('/sync/broadcast', (req, res) => {
+  const data = parseBody(req);
+  if (!data || !data.cmd) return res.status(400).json({ error: 'Missing cmd' });
+  
+  console.log(`[Broadcast HTTP] Command '${data.cmd}' for match ${data.matchId || 'global'}`);
+  
+  // Relay to specific match room if matchId provided
+  if (data.matchId) {
+    io.to(data.matchId).emit('broadcast_command', data);
+  }
+  if (data.tournamentId) {
+    io.to(data.tournamentId).emit('broadcast_command', data);
+  }
+  // Also emit globally so all connected overlays receive it
+  io.emit('broadcast_command', data);
+  
+  res.json({ ok: true, relayed: true, cmd: data.cmd });
+});
+
 // --- REAL-TIME ENGINE (Socket.io) ---
 io.on('connection', (socket) => {
     console.log('User connected to Sync Engine:', socket.id);

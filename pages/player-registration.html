@@ -283,21 +283,6 @@
         </div>
     </div>
 
-    <!-- Camera Modal -->
-    <div class="modal-overlay" id="modal-camera" style="display:none">
-        <div class="modal-box" style="max-width:400px">
-            <div class="modal-title">Take Photo</div>
-            <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1/1;margin-bottom:16px">
-                <video id="camera-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
-                <canvas id="camera-canvas" style="display:none"></canvas>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-ghost" onclick="stopCamera()">Cancel</button>
-                <button class="btn btn-primary" onclick="capturePhoto()">📸 Capture</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Player Detail Modal -->
     <div class="modal-overlay" id="modal-player" style="display:none" onclick="closePlayerModal(event)">
         <div class="modal-box" onclick="event.stopPropagation()">

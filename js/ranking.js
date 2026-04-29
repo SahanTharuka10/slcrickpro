@@ -310,12 +310,11 @@ function renderTeams() {
                 won: s.won || 0,
                 lost: s.lost || 0,
                 tied: s.tied || 0,
-                prizeMoney: s.prizeMoney || 0,
                 runsFor: s.runsScored || 0,
                 ballsFaced: s.ballsFaced || 0,
                 runsAgainst: s.runsConceded || 0,
                 ballsBowled: s.ballsBowled || 0,
-                prizeMoney: s.prizeMoney || 0,
+                prizeMoney: s.prizeMoney || 0
             };
         });
     }

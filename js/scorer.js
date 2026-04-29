@@ -3854,6 +3854,7 @@ function renderBroadcastController(match) {
             .b-btn-amber { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
             .b-btn-slate { background: linear-gradient(135deg, #475569 0%, #1e293b 100%); }
             .b-btn-black { background: #000; border: 1px solid rgba(255,255,255,0.1); }
+            .b-btn-red { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
             
             .v-trigger {
                 width: 100%;
@@ -3998,7 +3999,7 @@ function renderBroadcastController(match) {
                         <div style="display:flex; justify-content:space-between; align-items:center">
                             <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.6)">SCOREBAR DISPLAY</div>
                             <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 22px;">
-                                <input type="checkbox" id="scorebar-toggle" checked onchange="sendBroadcast('SET_SCOREBAR_VISIBILITY', { visible: this.checked })">
+                                <input type="checkbox" id="scorebar-toggle" checked onchange="if(typeof Broadcast !== 'undefined') { Broadcast.send('SET_SCOREBAR_VISIBILITY', { visible: this.checked }); Broadcast.syncToggleUI(this.checked); } else sendBroadcast('SET_SCOREBAR_VISIBILITY', { visible: this.checked })">
                                 <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px;"></span>
                             </label>
                         </div>
