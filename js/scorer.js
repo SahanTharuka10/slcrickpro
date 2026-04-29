@@ -257,6 +257,11 @@ function selectMatchType(type) {
     document.getElementById('type-instant-nrr').classList.toggle('active', type === 'instant-nrr');
     
     document.getElementById('tournament-setup-section').style.display = type === 'tournament' ? '' : 'none';
+    
+    const matchConfigCard = document.getElementById('match-config-card');
+    if (matchConfigCard) {
+        matchConfigCard.style.display = type === 'tournament' ? 'none' : '';
+    }
 
     if (type === 'tournament') {
         onTournamentSelect('new');
@@ -1000,8 +1005,8 @@ async function startNewMatch() {
                 const tName = document.getElementById('tourn-name').value.trim();
                 const scoringPw = document.getElementById('tourn-scoring-password').value.trim();
                 const teamLines = document.getElementById('tourn-teams').value.split('\n').map(l => l.trim()).filter(Boolean);
-                const overs = parseInt(document.getElementById('setup-overs').value) || 20;
-                const bpo = parseInt(document.getElementById('setup-bpo').value) || 6;
+                const overs = parseInt(document.getElementById('tourn-overs').value) || 20;
+                const bpo = parseInt(document.getElementById('tourn-bpo').value) || 6;
                 const tournType = document.getElementById('tourn-type') ? document.getElementById('tourn-type').value : 'unofficial';
                 const format = document.getElementById('tourn-format').value;
 
