@@ -953,14 +953,14 @@ body.light-mode .back-btn {
 }
 
 /* ========== TOP LIVE MATCH PANEL (CrickStream Style) ========== */
-/* Dark Mode (Default/Fallback) */
 .top-live-panel {
   width: 100%;
   padding: 16px 24px;
-  background: #090d16; /* Deep dark blue to match global dark theme */
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: #003b2b; /* Uniform elegant dark green */
+  border-bottom: 1px solid rgba(0,0,0,0.1);
   position: relative;
   z-index: 90;
+  box-shadow: inset 0 -5px 15px rgba(0,0,0,0.1);
 }
 
 .live-cards-container {
@@ -969,45 +969,45 @@ body.light-mode .back-btn {
   overflow-x: auto;
   padding-bottom: 8px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
 .live-cards-container::-webkit-scrollbar {
   height: 6px;
 }
 .live-cards-container::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.2);
   border-radius: 4px;
 }
 
 .live-match-card {
   flex: 0 0 auto;
   width: 280px;
-  background: #111827; /* Slate/dark grey to blend with primary dark mode components */
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px;
+  background: #fcfdfd; /* Premium bright card */
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
 }
 
 .live-match-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
 }
 
 .live-card-header {
-  background: rgba(255,255,255,0.02);
+  background: #f1f5f9; 
   padding: 10px 12px;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  color: #9ca3af;
+  color: #475569;
   text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid #e2e8f0;
   letter-spacing: 0.06em;
 }
 
@@ -1016,7 +1016,7 @@ body.light-mode .back-btn {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #111827;
+  background: #ffffff;
 }
 
 .live-team-row {
@@ -1028,7 +1028,7 @@ body.light-mode .back-btn {
 .live-team-name {
   font-size: 15px;
   font-weight: 800;
-  color: #f9fafb;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1038,7 +1038,7 @@ body.light-mode .back-btn {
 .live-team-score {
   font-size: 16px;
   font-weight: 800;
-  color: #f9fafb;
+  color: #0f172a;
   display: flex;
   align-items: baseline;
   gap: 5px;
@@ -1047,67 +1047,48 @@ body.light-mode .back-btn {
 .live-team-overs {
   font-size: 12px;
   font-weight: 600;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .live-yet-to-bat {
   font-size: 11px;
   font-weight: 700;
-  color: #4b5563;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .live-card-footer {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34d399;
+  background: #e6f4ea;
+  color: #137333;
   padding: 10px 12px;
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
   text-align: center;
-  border-top: 1px solid rgba(16, 185, 129, 0.15);
+  border-top: 1px solid #ceead6;
   letter-spacing: 0.06em;
 }
 
-/* Light Mode Overrides */
-body.light-mode .top-live-panel {
-  background: #003b2b; /* Exact original green */
+/* Soft low-glare adjustments specifically for Dark Mode to optimize integration */
+body:not(.light-mode) .live-match-card {
+  background: #f8fafc; 
+  border-color: rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
-body.light-mode .live-match-card {
-  background: #f8fafc;
-  border: 1px solid rgba(0,0,0,0.05);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+body:not(.light-mode) .live-card-body {
+  background: #fcfdfd;
 }
 
-body.light-mode .live-card-header {
-  background: #f1f5f9;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+body:not(.light-mode) .live-card-header {
+  background: #edf2f7;
+  color: #4a5568;
 }
 
-body.light-mode .live-card-body {
-  background: #ffffff;
-}
-
-body.light-mode .live-team-name,
-body.light-mode .live-team-score {
-  color: #0f172a;
-}
-
-body.light-mode .live-team-overs {
-  color: #64748b;
-}
-
-body.light-mode .live-yet-to-bat {
-  color: #94a3b8;
-}
-
-body.light-mode .live-card-footer {
-  background: #e6f4ea;
-  color: #137333;
-  border-top: 1px solid #ceead6;
+body:not(.light-mode) .top-live-panel {
+  background: #002b20; /* Deeper sophisticated green for darker page context */
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 @media (max-width: 600px) {
