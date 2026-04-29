@@ -642,13 +642,12 @@ const DB = {
 // HOW TO DEPLOY TO THE INTERNET (RAILWAY.APP)
 // ============================================
 // 1. Change `IS_PRODUCTION` to true
-// 2. Paste your Railway backend link into `PROD_BACKEND_URL`
-const IS_PRODUCTION = true; 
+const IS_PRODUCTION = !(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'); 
 const PROD_BACKEND_URL = "https://slcrickpro.onrender.com"; 
 
 let BACKEND_BASE_URL = IS_PRODUCTION 
     ? PROD_BACKEND_URL 
-    : (localStorage.getItem('cricpro_backend_url') || "http://" + window.location.hostname + ":3000");
+    : "http://localhost:3000";
 
 // Clear old cache if in production
 if (IS_PRODUCTION) {
