@@ -1070,25 +1070,45 @@ body.light-mode .back-btn {
   letter-spacing: 0.06em;
 }
 
-/* Soft low-glare adjustments specifically for Dark Mode to optimize integration */
+body:not(.light-mode) .top-live-panel {
+  background: linear-gradient(135deg, #070b14 0%, #0f172a 100%); /* Rich matching indigo/dark blue */
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 -5px 25px rgba(0,0,0,0.5);
+}
+
 body:not(.light-mode) .live-match-card {
-  background: #f8fafc; 
-  border-color: rgba(0,0,0,0.1);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  background: #1e293b; /* Premium slate grey cards for dark mode */
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }
 
 body:not(.light-mode) .live-card-body {
-  background: #fcfdfd;
+  background: #1e293b;
 }
 
 body:not(.light-mode) .live-card-header {
-  background: #edf2f7;
-  color: #4a5568;
+  background: rgba(255,255,255,0.03);
+  color: #cbd5e1;
+  border-bottom-color: rgba(255,255,255,0.05);
 }
 
-body:not(.light-mode) .top-live-panel {
-  background: #002b20; /* Deeper sophisticated green for darker page context */
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+body:not(.light-mode) .live-team-name,
+body:not(.light-mode) .live-team-score {
+  color: #f8fafc;
+}
+
+body:not(.light-mode) .live-team-overs {
+  color: #94a3b8;
+}
+
+body:not(.light-mode) .live-yet-to-bat {
+  color: #64748b;
+}
+
+body:not(.light-mode) .live-card-footer {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-top-color: rgba(16, 185, 129, 0.2);
 }
 
 @media (max-width: 600px) {
