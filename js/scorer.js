@@ -1060,14 +1060,21 @@ async function startNewMatch() {
                         matchCount: matchCount 
                     });
                     setTournamentAuthorized(tourn.id, 'local-creator', 7200000);
-                    showToast(`🏆 Tournament "${tName}" created!`, 'success');
+                    showToast(`🏆 Tournament "${tName}" created & matches scheduled!`, 'success');
                     
-                    // Force immediate UI refresh and open hub
+                    // Force immediate UI refresh
                     renderResumeMatches();
-                    setTimeout(() => {
-                        currentTournament = null; 
-                        openTournamentHub(tourn.id);
-                    }, 500);
+                    
+                    // Clear the form
+                    document.getElementById('tourn-name').value = '';
+                    document.getElementById('tourn-teams').value = '';
+                    document.getElementById('tourn-scoring-password').value = '';
+                    
+                    // Scroll to recent matches
+                    const matchesList = document.getElementById('resume-matches-list');
+                    if (matchesList) {
+                        matchesList.scrollIntoView({ behavior: 'smooth' });
+                    }
                     return;
                 }
             } else {
