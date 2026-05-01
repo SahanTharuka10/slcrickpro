@@ -4113,20 +4113,38 @@ function renderBroadcastController(match) {
             <!-- CENTER COLUMN: PREVIEW + PLAYER GRAPHICS -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
                 <!-- LIVE PREVIEW AREA -->
-                <div>
-                    <div style="background:#111; border:2px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
-                        <!-- Simulated TV/OBS Output: shows the scorebar at the bottom -->
-                        <div id="broadcast-preview-bg" style="width:100%; height:100%; background:linear-gradient(135deg,#0f172a 60%,#1e293b 100%); position:relative; overflow:hidden;">
-                            <!-- Fake camera background -->
-                            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0.12;font-size:60px;">📹</div>
-                            <div style="position:absolute;top:8px;left:12px;background:rgba(230,27,77,0.85);color:#fff;font-size:9px;font-weight:900;letter-spacing:2px;padding:2px 8px;border-radius:4px;">● REC</div>
-                            <!-- Scorebar Preview: rendered inline, at the bottom, scaled to fit -->
-                            <div id="live-scorebar-preview-wrap" style="position:absolute;bottom:0;left:0;right:0;padding:0 8px 6px;transform-origin:bottom center;">
-                                <div id="live-scorebar-preview" style="font-family:'Outfit',sans-serif;"></div>
-                            </div>
+                <div id="preview-container-root">
+                    <div id="broadcast-preview-container" style="background:#000; border:2px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
+                        <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}&preview=true" style="width:1920px; height:1080px; border:none; pointer-events:none; position:absolute; top:0; left:0; transform-origin: top left;" scrolling="no"></iframe>
+                        
+                        <!-- Top Bar Overlays -->
+                        <div style="position:absolute; top:12px; left:12px; display:flex; gap:8px; align-items:center;">
+                            <div style="background:rgba(230,27,77,0.9); color:#fff; font-size:9px; font-weight:900; letter-spacing:2px; padding:3px 10px; border-radius:6px; box-shadow:0 4px 12px rgba(230,27,77,0.3)">● LIVE</div>
+                            <div style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); color:rgba(255,255,255,0.8); font-size:9px; font-weight:700; padding:3px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">1920 × 1080</div>
                         </div>
+
+                        <button onclick="window.open('overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}', '_blank')" 
+                                style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:10px; font-weight:800; transition:all 0.2s; display:flex; align-items:center; gap:6px;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                            <span>⛶</span> FULL SCREEN
+                        </button>
                     </div>
-                    <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:8px;">🔴 Live Output Preview · Updates every 3s</div>
+                    <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:10px; letter-spacing:1px">🔴 Real-Time Output Preview · Updates every 1s</div>
+                    
+                    <script>
+                        (function() {
+                            const frame = document.getElementById('broadcast-preview-frame');
+                            const container = document.getElementById('broadcast-preview-container');
+                            function scalePreview() {
+                                if (!frame || !container) return;
+                                const scale = container.offsetWidth / 1920;
+                                frame.style.transform = `scale(${scale})`;
+                            }
+                            window.addEventListener('resize', scalePreview);
+                            setTimeout(scalePreview, 100);
+                            setInterval(scalePreview, 1000);
+                        })();
+                    </script>
                 </div>
 
                 <!-- PLAYER & TEAM GRAPHICS -->
@@ -4302,59 +4320,14 @@ function renderBroadcastController(match) {
             scoreEl.innerText = `${inn0.runs}/${inn0.wickets} (${typeof formatOvers === 'function' ? formatOvers(inn0.balls, m.ballsPerOver || 6) : inn0.balls})`;
         }
 
-        // 2. Render live inline scorebar preview
-        const previewEl = document.getElementById('live-scorebar-preview');
-        if (!previewEl) return;
-
-        const bpo = m.ballsPerOver || 6;
-        const inn = (m.innings && m.innings[m.currentInnings || 0]) || { runs:0, wickets:0, balls:0, batsmen:[], bowlers:[], recentBalls:[] };
-        const inn0first = m.innings && m.innings[0];
-        const ovStr = typeof formatOvers === 'function' ? formatOvers(inn.balls, bpo) : '0.0';
-        const batters = (inn.batsmen || []).filter(b => b.status === 'Batting');
-        const striker = batters.find(b => b.onStrike) || batters[0] || null;
-        const nonStriker = batters.find(b => !b.onStrike) || batters[1] || null;
-        const bowler = (inn.bowlers || []).find(b => b.current) || (inn.bowlers || []).slice(-1)[0] || null;
-        const recentBalls = (inn.recentBalls || []).slice(-6);
-        const crr = inn.balls ? (inn.runs / (inn.balls / bpo)).toFixed(2) : '0.00';
-        let bottomText = `CRR: ${crr}`;
-        if (m.currentInnings === 1 && inn0first) {
-            const target = inn0first.runs + 1;
-            const need = target - inn.runs;
-            const ballsLeft = (m.overs * bpo) - inn.balls;
-            if (need > 0) bottomText = `TARGET ${target} · NEED ${need} OFF ${ballsLeft}B`;
+        // 2. Sync to iframe preview
+        const frame = document.getElementById('broadcast-preview-frame');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.postMessage({ 
+                type: 'cricpro_broadcast_cmd', 
+                payload: { cmd: 'SYNC_SCORE', data: { match: m } } 
+            }, '*');
         }
-        if (m.status === 'setup' || m.status === 'scheduled') bottomText = 'NOT STARTED YET';
-
-        const bHtml = (b) => {
-            if (b === undefined || b === null) return '';
-            const bv = String(b);
-            const bg = bv==='W'?'#e32459':((bv==='4'||bv==='6')?'#1a1a2e':'transparent');
-            const bc = bv==='W'?'#e32459':((bv==='4'||bv==='6')?'#1a1a2e':'rgba(0,0,0,0.25)');
-            return `<div style="width:20px;height:20px;border-radius:50%;border:2px solid ${bc};background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;">${bv==='0'?'':bv}</div>`;
-        };
-
-        previewEl.innerHTML = `
-        <div style="display:flex;align-items:center;border-radius:38px;background:#fff;height:64px;width:100%;position:relative;overflow:visible;box-shadow:0 6px 20px rgba(0,0,0,0.6);">
-            <div style="width:64px;height:100%;border-radius:38px 0 0 38px;background:#f4f4f8;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid #e8e8f0;">
-                <div style="width:44px;height:44px;background:#fff;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#1a1a2e;border:2px solid #e0e0ea;">${(m.team1||'A')[0]}</div>
-            </div>
-            <div style="flex:1;padding:0 10px;display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden;">
-                ${striker ? `<div style="display:flex;align-items:center;font-size:12px;font-weight:800;color:#1a1a2e;white-space:nowrap;gap:3px;"><span style="font-size:7px;">▶</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${striker.name}</span><span style="font-size:14px;font-weight:900;margin-left:6px;">${striker.runs}</span><span style="font-size:10px;color:#7a7a9a;margin-left:2px;">(${striker.balls})</span></div>` : '<div style="font-size:11px;color:#aaa;padding-left:10px;">-</div>'}
-                ${nonStriker ? `<div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:#555;white-space:nowrap;gap:3px;"><span style="font-size:7px;color:transparent;">▶</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${nonStriker.name}</span><span style="font-size:12px;font-weight:800;margin-left:6px;">${nonStriker.runs}</span><span style="font-size:10px;color:#aaa;margin-left:2px;">(${nonStriker.balls})</span></div>` : ''}
-            </div>
-            <div style="background:linear-gradient(160deg,#1b1642,#252060);color:#fff;height:76px;width:200px;flex-shrink:0;border-radius:40px;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 6px 20px rgba(27,22,66,0.6);z-index:10;padding:4px 0;">
-                <div style="font-size:10px;font-weight:800;color:#c8ceeb;text-transform:uppercase;letter-spacing:0.5px;">${(m.team1||'?').slice(0,5)} <span style="font-size:8px;color:#6e74a0;">v</span> ${(m.team2||'?').slice(0,5)}</div>
-                <div style="background:#e32459;padding:2px 12px;font-size:20px;font-weight:900;border-radius:8px;margin:2px 0;">${inn.runs}/${inn.wickets}</div>
-                <div style="font-size:9px;font-weight:700;color:#8890b8;">${ovStr} ov &nbsp;·&nbsp; ${bottomText}</div>
-            </div>
-            <div style="flex:1;padding:0 10px;display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden;">
-                ${bowler ? `<div style="font-size:12px;font-weight:800;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${bowler.name}</div><div style="font-size:10px;color:#7a7a9a;">${bowler.wickets}/${bowler.runs} (${typeof formatOvers==='function'?formatOvers(bowler.balls,bpo):bowler.balls} ov)</div>` : '<div style="font-size:11px;color:#aaa;">-</div>'}
-                <div style="display:flex;gap:3px;margin-top:3px;">${recentBalls.map(b => bHtml(b)).join('')}</div>
-            </div>
-            <div style="width:64px;height:100%;border-radius:0 38px 38px 0;background:#f4f4f8;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-left:1px solid #e8e8f0;">
-                <div style="width:44px;height:44px;background:#fff;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#1a1a2e;border:2px solid #e0e0ea;">${(m.team2||'B')[0]}</div>
-            </div>
-        </div>`;
     };
 
     // Listen for Sync Requests from remote TV/OBS
@@ -4402,7 +4375,7 @@ function renderBroadcastController(match) {
             currentMatch = activeMatch;
             updatePreviewSync(activeMatch);
         }
-    }, 4000);
+    }, 1000);
     window._broadcastSyncInterval = syncInterval;
 
     // Initial Sync
