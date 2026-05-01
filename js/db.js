@@ -1101,10 +1101,10 @@ async function syncCloudData(options = {}) {
 
     try {
         const [mReq, tReq, pReq, tmReq] = await Promise.all([
-            fetch(`${BACKEND_BASE_URL}/sync/matches`, { signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/sync/tournaments`, { signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/players`, { signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/teams`, { signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false }))
+            fetch(`${BACKEND_BASE_URL}/sync/matches`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${BACKEND_BASE_URL}/sync/tournaments`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${BACKEND_BASE_URL}/players`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${BACKEND_BASE_URL}/teams`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false }))
         ]);
 
         // Validate responses before parsing
@@ -1248,7 +1248,9 @@ async function syncCloudData(options = {}) {
         }
 
     } catch (err) {
-        console.warn('📡 Sync Error:', err.message);
+        if (err.name !== 'AbortError' && err.name !== 'TimeoutError') {
+            console.warn('📡 Sync Error:', err.message);
+        }
     } finally {
         _isSyncingCloud = false;
     }

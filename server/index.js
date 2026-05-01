@@ -631,6 +631,7 @@ app.delete('/sync/matches/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await ensureDB();
+    await MatchReport.destroy({ where: { matchId: id } });
     await Match.destroy({ where: { id } });
     io.emit('globalUpdate', { type: 'match_deleted', id });
     res.json({ ok: true });
@@ -643,6 +644,21 @@ app.delete('/sync/tournaments/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await ensureDB();
+    
+    // CASCADE DELETE matches and match reports for this tournament
+    const matches = await Match.findAll();
+    for (const match of matches) {
+      let d = match.data;
+      if (typeof d === 'string') {
+        try { d = JSON.parse(d); } catch (e) { d = {}; }
+      }
+      if (d && d.tournamentId === id) {
+        await MatchReport.destroy({ where: { matchId: match.id } });
+        await Match.destroy({ where: { id: match.id } });
+        io.emit('globalUpdate', { type: 'match_deleted', id: match.id });
+      }
+    }
+
     await Tournament.destroy({ where: { id } });
     io.emit('globalUpdate', { type: 'tournament_deleted', id });
     res.json({ ok: true });

@@ -339,8 +339,15 @@ function renderTournamentSquadsPanel(id) {
 
     (t.teams || []).forEach(teamName => {
         const ids = t.rosters[teamName] || [];
+        const teamPhoto = (t.teamPhotos && t.teamPhotos[teamName]) || null;
         html += `<div class="card" style="margin-bottom:12px">
-            <div style="font-weight:800;margin-bottom:10px">${escapeHtmlOngoing(teamName)}</div>
+            <div style="font-weight:800;margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    ${teamPhoto ? `<img src="${teamPhoto}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.2);">` : `<div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">🛡️</div>`}
+                    <span style="font-size:16px;">${escapeHtmlOngoing(teamName)}</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,0.05)" onclick="promptUploadTeamPhoto('${t.id}', '${escapeHtmlOngoing(teamName).replace(/'/g, "\\'")}')">🖼️ Upload Team Photo</button>
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:10px">`;
         if (!ids.length) {
             html += `<span style="opacity:0.65;font-size:13px">No players in this squad yet. In the scorer, open this tournament → <b>Team Rosters</b> and add registered players.</span>`;
@@ -361,6 +368,52 @@ function renderTournamentSquadsPanel(id) {
 
     el.innerHTML = html;
 }
+
+window.promptUploadTeamPhoto = function(tournId, teamName) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 400; // Limit size to save DB space
+                let width = img.width;
+                let height = img.height;
+                if (width > height && width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                } else if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const b64 = canvas.toDataURL('image/jpeg', 0.6); // Compress
+                
+                const t = DB.getTournament(tournId);
+                if (t) {
+                    if (!t.teamPhotos) t.teamPhotos = {};
+                    t.teamPhotos[teamName] = b64;
+                    DB.saveTournament(t);
+                    if (typeof syncToDB === 'function') syncToDB('tournament', t);
+                    renderTournamentSquadsPanel(tournId);
+                    showToast('✅ Team photo saved inside tournament file!', 'success');
+                }
+            };
+            img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
+};
 
 function switchTournSubTab(tab) {
     selectedTournSubTab = tab;
