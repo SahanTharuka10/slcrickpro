@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pollServerScore();   // Fetch latest from server (cross-device)
             renderOverlay();     // Also re-render from localStorage (same device)
         }
-    }, 1500); // Speed up for better real-time feel
+    }, 1000); // 1s sync frequency for smooth updates
 
     // ── Live Clock Ticker ──────────────────────────────────
     function updateClock() {
@@ -746,12 +746,15 @@ function renderOverlay() {
 
     container.style.display = 'flex';
     container.innerHTML = `
-        <div class="score-center-section" style="width: auto; padding: 15px 80px; margin: 0 auto;">
+        <div class="score-center-section" style="width: auto; padding: 10px 60px; margin: 0 auto; height: 80px; border-radius: 40px;">
             <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top" style="justify-content: center;">
-                <span class="teams" style="font-size:32px;">${title}</span>
+                <span class="teams" style="font-size:18px; letter-spacing:2px">${title}</span>
+                <div class="score-badges" style="margin-top:4px">
+                     <span class="phase" style="background:#e61b4d">LIVE</span>
+                </div>
             </div>
-            <div class="score-bottom" style="font-size: 20px; text-transform:uppercase;">${sub}</div>
+            <div class="score-bottom" style="font-size: 10px; margin-top:2px">${sub}</div>
         </div>
     `;
 }
@@ -875,7 +878,7 @@ function _renderOverlayClassic(m) {
             <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top">
                 <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
-                <div class="score-pill-main">
+                <div class="score-badges">
                     <span class="total">${score}</span>
                     <span class="phase">${phase}</span>
                     <span class="overs">${ov}</span>
