@@ -1310,27 +1310,22 @@ function editPlayerName(role, idx) {
     const inn = m.innings[m.currentInnings];
     if (!inn) return;
 
+    let p = null;
     if (role === 'batsman') {
         const batIdx = inn.currentBatsmenIdx[idx];
         if (batIdx === undefined || batIdx === null) return;
-        const bat = inn.batsmen[batIdx];
-        const newName = prompt("Edit Batsman Name:", bat.name);
-        if (newName && newName.trim() !== '') {
-            bat.name = newName.trim();
-            saveMatchState();
-            renderScoring();
-            showToast('Batsman name updated!', 'success');
-        }
+        p = inn.batsmen[batIdx];
     } else if (role === 'bowler') {
-        if (inn.currentBowlerIdx === null) return;
-        const bowl = inn.bowlers[inn.currentBowlerIdx];
-        const newName = prompt("Edit Bowler Name:", bowl.name);
-        if (newName && newName.trim() !== '') {
-            bowl.name = newName.trim();
-            saveMatchState();
-            renderScoring();
-            showToast('Bowler name updated!', 'success');
+        if (inn.currentBowlerIdx === null && role === 'bowler') {
+            // Check if there's a selected bowler in the parameter `idx` or we default
+            // Wait, in Tab 1, editPlayerName('bowler', null) is called.
+            if(inn.currentBowlerIdx === null) return;
         }
+        p = inn.bowlers[inn.currentBowlerIdx];
+    }
+    
+    if (p) {
+        showPlayerProfile(p.playerId, p.name);
     }
 }
 
@@ -1403,31 +1398,58 @@ function renderScoring() {
         return `<div class="obs-chip ${cls}">${label}</div>`;
     }).join('');
 
-    // Batting stats
+    // Batting stats (desktop right col + mobile batter bar)
     [0, 1].forEach(i => {
         const batIdx = inn.currentBatsmenIdx ? inn.currentBatsmenIdx[i] : null;
         const bat = (batIdx !== undefined && batIdx !== null) ? (inn.batsmen ? inn.batsmen[batIdx] : null) : null;
-        document.getElementById(`bat${i}-name`).textContent = bat ? (bat.name || '-') : '-';
-        document.getElementById(`bat${i}-runs`).textContent = bat ? (bat.runs || 0) : 0;
-        document.getElementById(`bat${i}-balls`).textContent = bat ? (bat.balls || 0) : 0;
-        document.getElementById(`bat${i}-4s`).textContent = bat ? (bat.fours || 0) : 0;
-        document.getElementById(`bat${i}-6s`).textContent = bat ? (bat.sixes || 0) : 0;
-        document.getElementById(`bat${i}-sr`).textContent = bat ? formatSR(bat.runs || 0, bat.balls || 0) : '0.0';
-        const rowEl = document.getElementById(`bat-row-${i}`);
-        rowEl.style.background = i === inn.strikerIdx ? 'rgba(124,77,255,0.12)' : 'transparent';
-        document.getElementById(`bat${i}-name`).className = i === inn.strikerIdx ? 'striker-name' : '';
-        document.getElementById(`striker-opt-label-${i}`).textContent = bat ? bat.name : `Batter ${i + 1}`;
-        document.getElementById(`striker-opt-${i}`).classList.toggle('active', i === inn.strikerIdx);
+        const batNameEl = document.getElementById(`bat${i}-name`);
+        if (batNameEl) {
+            batNameEl.textContent = bat ? (bat.name || '-') : '-';
+            document.getElementById(`bat${i}-runs`).textContent = bat ? (bat.runs || 0) : 0;
+            document.getElementById(`bat${i}-balls`).textContent = bat ? (bat.balls || 0) : 0;
+            document.getElementById(`bat${i}-4s`).textContent = bat ? (bat.fours || 0) : 0;
+            document.getElementById(`bat${i}-6s`).textContent = bat ? (bat.sixes || 0) : 0;
+            document.getElementById(`bat${i}-sr`).textContent = bat ? formatSR(bat.runs || 0, bat.balls || 0) : '0.0';
+            const rowEl = document.getElementById(`bat-row-${i}`);
+            if (rowEl) rowEl.style.background = i === inn.strikerIdx ? 'rgba(124,77,255,0.12)' : 'transparent';
+            batNameEl.className = i === inn.strikerIdx ? 'striker-name' : '';
+        }
+
+        // Mobile batter bar
+        const mobName = document.getElementById(`mob-bat-name-${i}`);
+        if (mobName) {
+            mobName.textContent = bat ? (bat.name || `Batter ${i+1}`) : `Batter ${i+1}`;
+            document.getElementById(`mob-bat-score-${i}`).textContent = bat ? (bat.runs || 0) : 0;
+            document.getElementById(`mob-bat-balls-${i}`).textContent = `(${bat ? (bat.balls || 0) : 0}b)`;
+            const cell = document.getElementById(`mob-bat-${i}`);
+            if (cell) cell.classList.toggle('is-striker', i === inn.strikerIdx);
+        }
     });
 
     // Bowling
     const bowler = inn.currentBowlerIdx !== null ? inn.bowlers[inn.currentBowlerIdx] : null;
-    document.getElementById('bowler-name').textContent = bowler ? bowler.name : '-';
-    document.getElementById('bowler-overs').textContent = bowler ? formatOvers(bowler.balls || 0, m.ballsPerOver) : '0';
-    document.getElementById('bowler-maidens').textContent = bowler ? (bowler.maidens || 0) : '0';
-    document.getElementById('bowler-runs').textContent = bowler ? (bowler.runs || 0) : '0';
-    document.getElementById('bowler-wkts').textContent = bowler ? (bowler.wickets || 0) : '0';
-    document.getElementById('bowler-econ').textContent = bowler ? formatEcon(bowler.runs || 0, bowler.balls || 0, m.ballsPerOver) : '0.0';
+    const bowlerNameEl = document.getElementById('bowler-name');
+    if (bowlerNameEl) {
+        bowlerNameEl.textContent = bowler ? bowler.name : '-';
+        document.getElementById('bowler-overs').textContent = bowler ? formatOvers(bowler.balls || 0, m.ballsPerOver) : '0';
+        document.getElementById('bowler-maidens').textContent = bowler ? (bowler.maidens || 0) : '0';
+        document.getElementById('bowler-runs').textContent = bowler ? (bowler.runs || 0) : '0';
+        document.getElementById('bowler-wkts').textContent = bowler ? (bowler.wickets || 0) : '0';
+        document.getElementById('bowler-econ').textContent = bowler ? formatEcon(bowler.runs || 0, bowler.balls || 0, m.ballsPerOver) : '0.0';
+    }
+
+    // Mobile bowler bar
+    const mobBowlerBar = document.getElementById('mobile-bowler-bar');
+    if (mobBowlerBar) {
+        if (bowler) {
+            mobBowlerBar.style.display = 'flex';
+            document.getElementById('mob-bowler-name').textContent = `🎯 ${bowler.name}`;
+            document.getElementById('mob-bowler-stats').textContent = 
+                `${formatOvers(bowler.balls || 0, m.ballsPerOver)} ov | ${bowler.runs || 0}R | ${bowler.wickets || 0}W`;
+        } else {
+            mobBowlerBar.style.display = 'none';
+        }
+    }
 
     // Partnership – track per partnership object
     const p = getPartnership(inn);
@@ -4535,3 +4557,252 @@ function forceEndMatchInHub(mId) {
     if (typeof renderTournamentMatches === 'function') renderTournamentMatches();
     showToast('🛑 Match marked as completed.', 'success');
 }
+
+// ========== EMBEDDED FULL SCORECARD ==========
+function renderEmbeddedScorecard(innIdx = 0) {
+    const m = currentMatch;
+    if (!m) return;
+    
+    // If innIdx is invalid, default to current innings
+    if (!m.innings[innIdx]) innIdx = m.currentInnings;
+    const inn = m.innings[innIdx];
+    
+    const btn0 = document.getElementById('btn-inn-0');
+    const btn1 = document.getElementById('btn-inn-1');
+    if(btn0) btn0.className = (innIdx === 0) ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
+    if(btn1) btn1.className = (innIdx === 1) ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
+    
+    const contentDiv = document.getElementById('embedded-scorecard-content');
+    if (!contentDiv) return;
+    
+    if (!inn || inn.runs === undefined) {
+        contentDiv.innerHTML = '<div style="text-align:center;color:gray;padding:20px;">Innings not started yet</div>';
+        return;
+    }
+    
+    // Get full roster to show 11 players
+    let roster = [];
+    let t = m.tournamentId ? DB.getTournament(m.tournamentId) : m;
+    if (t && t.rosters && t.rosters[inn.battingTeam]) {
+        roster = t.rosters[inn.battingTeam];
+    }
+    
+    let battedPlayers = inn.batsmen || [];
+    let allPlayersList = [];
+    
+    if (roster.length > 0) {
+        roster.forEach(r => {
+            if(!r) return;
+            let pName = r;
+            let pId = null;
+            if(r.length === 16 && r.toUpperCase() === r) {
+               let pObj = DB.getPlayerById(r);
+               if(pObj) { pName = pObj.name; pId = pObj.playerId; }
+            } else {
+               let pObj = DB.getPlayers().find(p => p.name && p.name.toLowerCase() === r.toLowerCase());
+               if(pObj) { pName = pObj.name; pId = pObj.playerId; }
+            }
+            
+            let batted = battedPlayers.find(b => (b.playerId && b.playerId === pId) || (b.name && b.name.toLowerCase() === pName.toLowerCase()));
+            if (batted) {
+                allPlayersList.push(batted);
+            } else {
+                allPlayersList.push({ name: pName, playerId: pId, didNotBat: true });
+            }
+        });
+    } else {
+        allPlayersList = battedPlayers;
+    }
+    
+    // Append any batted players that were somehow not in the roster
+    battedPlayers.forEach(b => {
+        if (!allPlayersList.find(a => (a.playerId && a.playerId === b.playerId) || (a.name && a.name.toLowerCase() === b.name.toLowerCase()))) {
+            allPlayersList.push(b);
+        }
+    });
+
+    const ex = inn.extras || {};
+    const totalEx = (ex.wides || 0) + (ex.noBalls || 0) + (ex.byes || 0) + (ex.legByes || 0);
+
+    let html = `
+      <div style="font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--c-muted);margin-bottom:10px;font-size:12px; display:flex; justify-content:space-between">
+        <span>${innIdx === 0 ? '1st' : '2nd'} Innings – ${inn.battingTeam}</span>
+        <span style="color:#fff;font-size:16px">${inn.runs}/${inn.wickets} (${formatOvers(inn.balls, m.ballsPerOver)} ov)</span>
+      </div>
+      <table class="data-table" style="margin-bottom:16px">
+        <thead><tr><th>Batsman</th><th>How Out</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
+        <tbody>
+          ${allPlayersList.map(b => `<tr>
+            <td><strong style="cursor:pointer; color:#7ecbff" onclick="showPlayerProfile('${b.playerId || ''}', '${escapeHTML(b.name)}')">${b.name}</strong></td>
+            <td style="font-size:12px;color:var(--c-muted)">${b.didNotBat ? 'did not bat' : (b.dismissal || (b.notOut ? 'not out' : 'not out'))}</td>
+            <td><strong>${b.didNotBat ? '-' : (b.runs || 0)}</strong></td>
+            <td>${b.didNotBat ? '-' : (b.balls || 0)}</td>
+            <td>${b.didNotBat ? '-' : (b.fours || 0)}</td>
+            <td>${b.didNotBat ? '-' : (b.sixes || 0)}</td>
+            <td>${b.didNotBat ? '-' : formatSR(b.runs || 0, b.balls || 0)}</td>
+          </tr>`).join('')}
+          <tr style="border-top:1px solid var(--c-border)">
+            <td colspan="2" style="color:var(--c-muted)">Extras (${totalEx})</td>
+            <td colspan="5" style="font-size:12px;color:var(--c-muted)">
+              Wd:${ex.wides || 0} Nb:${ex.noBalls || 0} By:${ex.byes || 0} Lb:${ex.legByes || 0}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="data-table">
+        <thead><tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>Econ</th></tr></thead>
+        <tbody>
+          ${(inn.bowlers || []).map(b => `<tr>
+            <td><strong style="cursor:pointer; color:#7ecbff" onclick="showPlayerProfile('${b.playerId || ''}', '${escapeHTML(b.name)}')">${b.name}</strong></td>
+            <td>${formatOvers(b.balls || 0, m.ballsPerOver)}</td><td>${b.maidens || 0}</td>
+            <td>${b.runs || 0}</td><td><strong>${b.wickets || 0}</strong></td>
+            <td>${formatEcon(b.runs || 0, b.balls || 0, m.ballsPerOver)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${inn.fallOfWickets && inn.fallOfWickets.length ? `
+      <div style="margin-top:10px;font-size:12px">
+        <span style="color:var(--c-muted);font-weight:700">FOW: </span>
+        ${inn.fallOfWickets.map((fw, j) => `${j + 1}-${fw.runs} (${fw.batsmanName}, ${formatOvers(fw.balls, m.ballsPerOver)} ov)`).join(', ')}
+      </div>`: ''}
+    `;
+
+    contentDiv.innerHTML = html;
+}
+
+// ========== PLAYER PROFILE POPUP ==========
+let currentPlayerProfileId = null;
+let currentProfileTempPhoto = null;
+
+window.showPlayerProfile = function(playerId, defaultName) {
+    let p = null;
+    if (playerId) p = DB.getPlayerById(playerId);
+    if (!p && defaultName) {
+        p = DB.getPlayers().find(x => x.name.toLowerCase() === defaultName.toLowerCase());
+    }
+
+    currentPlayerProfileId = p ? p.playerId : null;
+    currentProfileTempPhoto = null;
+
+    document.getElementById('pp-name').value = p ? p.name : (defaultName || '');
+    document.getElementById('pp-name').readOnly = true;
+    document.getElementById('pp-team').value = p && p.team ? p.team : (currentMatch ? currentMatch.team1 : 'Unknown Team');
+    document.getElementById('pp-team').readOnly = true;
+    
+    if (p && p.photo) {
+        document.getElementById('pp-photo').src = p.photo;
+        document.getElementById('pp-photo').style.display = 'block';
+        document.getElementById('pp-photo-placeholder').style.display = 'none';
+    } else {
+        document.getElementById('pp-photo').style.display = 'none';
+        document.getElementById('pp-photo-placeholder').style.display = 'flex';
+    }
+
+    // Reset view
+    document.getElementById('pp-name').style.border = "none";
+    document.getElementById('pp-name').style.background = "transparent";
+    document.getElementById('pp-team').style.border = "none";
+    document.getElementById('pp-team').style.background = "transparent";
+    
+    document.getElementById('pp-view-actions').style.display = 'grid';
+    document.getElementById('pp-edit-actions').style.display = 'none';
+
+    // File upload handler
+    document.getElementById('pp-photo-upload').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                currentProfileTempPhoto = evt.target.result;
+                document.getElementById('pp-photo').src = currentProfileTempPhoto;
+                document.getElementById('pp-photo').style.display = 'block';
+                document.getElementById('pp-photo-placeholder').style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        }
+    };
+
+    openModal('modal-player-profile');
+};
+
+window.enablePlayerProfileEdit = function() {
+    document.getElementById('pp-name').readOnly = false;
+    document.getElementById('pp-name').style.border = "1px solid var(--c-border)";
+    document.getElementById('pp-name').style.background = "rgba(255,255,255,0.05)";
+    
+    document.getElementById('pp-team').readOnly = false;
+    document.getElementById('pp-team').style.border = "1px solid var(--c-border)";
+    document.getElementById('pp-team').style.background = "rgba(255,255,255,0.05)";
+
+    document.getElementById('pp-view-actions').style.display = 'none';
+    document.getElementById('pp-edit-actions').style.display = 'grid';
+};
+
+window.savePlayerProfile = function() {
+    const newName = document.getElementById('pp-name').value.trim();
+    const newTeam = document.getElementById('pp-team').value.trim();
+
+    if (!newName) return showToast('Name is required', 'error');
+
+    let p = null;
+    let oldName = null;
+    if (currentPlayerProfileId) {
+        p = DB.getPlayerById(currentPlayerProfileId);
+        oldName = p.name;
+    } else {
+        p = { playerId: 'P' + Date.now() + Math.floor(Math.random()*1000) };
+    }
+
+    p.name = newName;
+    p.team = newTeam;
+    if (currentProfileTempPhoto) {
+        p.photo = currentProfileTempPhoto;
+    }
+
+    DB.updatePlayer(p);
+    
+    // Global update across match state
+    if (currentMatch) {
+        let updated = false;
+        currentMatch.innings.forEach(inn => {
+            if(!inn) return;
+            inn.batsmen.forEach(b => {
+                if (b.playerId === p.playerId || (oldName && b.name === oldName)) {
+                    b.name = newName; b.playerId = p.playerId; updated = true;
+                }
+            });
+            inn.bowlers.forEach(b => {
+                if (b.playerId === p.playerId || (oldName && b.name === oldName)) {
+                    b.name = newName; b.playerId = p.playerId; updated = true;
+                }
+            });
+        });
+
+        // Update roster
+        const t = currentMatch.tournamentId ? DB.getTournament(currentMatch.tournamentId) : currentMatch;
+        if (t && t.rosters) {
+             Object.keys(t.rosters).forEach(team => {
+                 let arr = t.rosters[team];
+                 for(let i=0; i<arr.length; i++) {
+                     if (arr[i] === p.playerId || (oldName && arr[i] === oldName)) {
+                         arr[i] = p.playerId; 
+                     }
+                 }
+             });
+             DB.saveTournament(t);
+        }
+
+        if (updated) {
+            saveAndRender();
+        }
+    }
+    
+    // Broadcast for TV overlay update
+    if (typeof sendBroadcast === 'function') sendBroadcast('FORCE_UPDATE');
+    
+    showToast('Player Profile Updated Live!', 'success');
+    closeModal('modal-player-profile');
+    
+    // Re-render embedded scorecard if we are viewing it
+    renderEmbeddedScorecard(currentMatch.currentInnings);
+};

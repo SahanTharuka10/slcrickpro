@@ -11,7 +11,7 @@ body {
     margin: 0;
     padding: 0;
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start; /* Changed from flex-end for top scoreboard */
     justify-content: center;
     height: 100vh;
     overflow: hidden;
@@ -24,7 +24,7 @@ body {
     width: calc(100% - 40px);
     max-width: 1700px;
     height: 110px;
-    margin: 0 auto 50px;
+    margin: 50px auto 0; /* Changed from 0 auto 50px */
     display: flex;
     align-items: center;
     border-radius: 55px;

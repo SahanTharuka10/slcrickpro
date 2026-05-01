@@ -295,75 +295,218 @@
             </div>
         </div>
 
-        <!-- Two-column content -->
-        <div class="scorer-layout" id="scorer-layout">
-            <!-- LEFT: Stats panels -->
-            <div class="stats-column">
+        <!-- TABS NAV -->
+        <div class="setup-tabs" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; margin-bottom: 16px; max-width: 1300px; margin-left: auto; margin-right: auto; padding: 0 16px;">
+            <button class="setup-tab-btn active" id="tab-btn-scoring" onclick="switchScoringTab('scoring')" style="padding: 10px 16px; flex: 1; min-width: 100px;">🏏 Scoring</button>
+            <button class="setup-tab-btn" id="tab-btn-scorecard" onclick="switchScoringTab('scorecard')" style="padding: 10px 16px; flex: 1; min-width: 100px;">📋 ScoreCard</button>
+            <button class="setup-tab-btn" id="tab-btn-hotkeys" onclick="switchScoringTab('hotkeys')" style="padding: 10px 16px; flex: 1; min-width: 100px;">📺 Hotkeys</button>
+        </div>
 
-                <!-- Batting -->
-                <div class="card" id="card-batting" style="margin-bottom:16px">
-                    <div class="card-head">⚾ Batting</div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Batsman</th>
-                                <th>R</th>
-                                <th>B</th>
-                                <th>4s</th>
-                                <th>6s</th>
-                                <th>SR</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="bat-row-0">
-                                <td class="striker-name"><span id="bat0-name">-</span> <span onclick="editPlayerName('batsman', 0)" style="cursor:pointer;font-size:10px">✏️</span></td>
-                                <td id="bat0-runs">0</td>
-                                <td id="bat0-balls">0</td>
-                                <td id="bat0-4s">0</td>
-                                <td id="bat0-6s">0</td>
-                                <td id="bat0-sr">0.0</td>
-                            </tr>
-                            <tr id="bat-row-1">
-                                <td><span id="bat1-name">-</span> <span onclick="editPlayerName('batsman', 1)" style="cursor:pointer;font-size:10px">✏️</span></td>
-                                <td id="bat1-runs">0</td>
-                                <td id="bat1-balls">0</td>
-                                <td id="bat1-4s">0</td>
-                                <td id="bat1-6s">0</td>
-                                <td id="bat1-sr">0.0</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <script>
+            function switchScoringTab(tabId) {
+                document.querySelectorAll('.scoring-tab-panel').forEach(p => p.style.display = 'none');
+                document.querySelectorAll('.setup-tab-btn').forEach(b => b.classList.remove('active'));
+                
+                document.getElementById('panel-' + tabId).style.display = 'block';
+                document.getElementById('tab-btn-' + tabId).classList.add('active');
+                
+                if(tabId === 'scorecard' && typeof renderEmbeddedScorecard === 'function') {
+                    renderEmbeddedScorecard();
+                }
+            }
+        </script>
 
-                <!-- Bowling -->
-                <div class="card" id="card-bowling" style="margin-bottom:16px">
-                    <div class="card-head">
-                        <svg class="svg-icon" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff1744"><use href="#icon-leather-bowler"></use></svg>
-                        Bowling
+        <!-- TAB 1: SCORING -->
+        <div class="scoring-tab-panel" id="panel-scoring">
+            <div class="desktop-scoring-grid">
+                <style>
+                .desktop-scoring-grid { display: grid; grid-template-columns: minmax(320px, 560px) minmax(280px, 1fr); gap: 20px; max-width: 1300px; margin: 0 auto; padding: 10px 20px; align-items: start; }
+                @media (max-width: 900px) { 
+                    .desktop-scoring-grid { grid-template-columns: 1fr; padding: 8px; gap: 10px; } 
+                    .scoring-stats-col { display: none !important; }
+                }
+                .scoring-controls-col { display: flex; flex-direction: column; gap: 8px; }
+                .scoring-stats-col { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 120px; }
+                .compact-scoring-layout .card { padding: 12px; margin-bottom: 0 !important; }
+                .compact-scoring-layout .card-head { margin-bottom: 8px; padding-bottom: 4px; font-size: 10px; }
+                .compact-scoring-layout .ball-btn { min-height: 60px; padding: 10px 4px; border-radius: 12px; }
+                .compact-scoring-layout .ball-n { font-size: 20px; }
+                .compact-scoring-layout .ball-l { font-size: 9px; }
+                .compact-scoring-layout .ball-grid { gap: 6px; }
+                .compact-scoring-layout .btn { padding: 8px; font-size: 13px; }
+                .mobile-batter-bar { display: none; }
+                @media (max-width: 900px) {
+                    .mobile-batter-bar { display: flex; gap: 0; margin-bottom: 8px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+                    .mobile-batter-cell { flex: 1; padding: 10px 6px; background: rgba(255,255,255,0.04); border-right: 1px solid rgba(255,255,255,0.06); text-align: center; cursor: pointer; transition: background 0.2s; }
+                    .mobile-batter-cell:last-child { border-right: none; }
+                    .mobile-batter-cell.is-striker { background: rgba(124,77,255,0.18); }
+                    .mobile-batter-name { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .mobile-batter-score { font-size: 20px; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff; }
+                    .mobile-batter-balls { font-size: 10px; color: var(--c-muted); }
+                    .mobile-bowler-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,61,0,0.08); border-radius: 10px; margin-bottom: 8px; border: 1px solid rgba(255,61,0,0.15); }
+                    .mobile-bowler-name { font-size: 12px; font-weight: 700; color: #ff8a65; }
+                    .mobile-bowler-stats { font-size: 12px; color: var(--c-muted); }
+                }
+                </style>
+                
+                <!-- LEFT COLUMN: CONTROLS -->
+                <div class="scoring-controls-col compact-scoring-layout">
+
+                    <!-- MOBILE ONLY: Live Batter Stats Bar -->
+                    <div class="mobile-batter-bar" id="mobile-batter-bar">
+                        <div class="mobile-batter-cell is-striker" id="mob-bat-0" onclick="setStriker(0)">
+                            <div class="mobile-batter-name" id="mob-bat-name-0">Batter 1</div>
+                            <div class="mobile-batter-score" id="mob-bat-score-0">0</div>
+                            <div class="mobile-batter-balls" id="mob-bat-balls-0">(0b)</div>
+                        </div>
+                        <div class="mobile-batter-cell" id="mob-bat-1" onclick="setStriker(1)">
+                            <div class="mobile-batter-name" id="mob-bat-name-1">Batter 2</div>
+                            <div class="mobile-batter-score" id="mob-bat-score-1">0</div>
+                            <div class="mobile-batter-balls" id="mob-bat-balls-1">(0b)</div>
+                        </div>
                     </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Bowler</th>
-                                <th>O</th>
-                                <th>M</th>
-                                <th>R</th>
-                                <th>W</th>
-                                <th>Econ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bowling-table-body">
-                            <tr>
-                                <td><span id="bowler-name">-</span> <span onclick="editPlayerName('bowler', null)" style="cursor:pointer;font-size:10px">✏️</span></td>
-                                <td id="bowler-overs">0</td>
-                                <td id="bowler-maidens">0</td>
-                                <td id="bowler-runs">0</td>
-                                <td id="bowler-wkts">0</td>
-                                <td id="bowler-econ">0.0</td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                    <!-- MOBILE ONLY: Bowler Bar -->
+                    <div class="mobile-bowler-bar" id="mobile-bowler-bar" style="display:none;">
+                        <span class="mobile-bowler-name" id="mob-bowler-name">🎯 Bowler</span>
+                        <span class="mobile-bowler-stats" id="mob-bowler-stats">0.0 ov | 0R | 0W</span>
+                    </div>
+
+                    <!-- Undo / Redo compact -->
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-ghost btn-full" onclick="undoAction()" id="undo-btn" style="font-size:13px; padding:10px;">↩ Undo</button>
+                        <button class="btn btn-ghost btn-full" onclick="redoAction()" id="redo-btn" style="font-size:13px; padding:10px;">↪ Redo</button>
+                    </div>
+                    <div id="last-ball-info" style="font-size:11px;color:var(--c-muted);text-align:center;"></div>
+
+                    <!-- Ball buttons -->
+                    <div class="card" id="card-buttons">
+                        <div class="card-head">Record Ball</div>
+                        <div class="ball-grid">
+                            <button class="ball-btn b-dot" onclick="recordBall({type:'dot',runs:0})"><span class="ball-n">●</span><span class="ball-l">Dot</span></button>
+                            <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:1})"><span class="ball-n">1</span><span class="ball-l">Single</span></button>
+                            <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:2})"><span class="ball-n">2</span><span class="ball-l">Double</span></button>
+                            <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:3})"><span class="ball-n">3</span><span class="ball-l">Triple</span></button>
+                            <button class="ball-btn b-four" onclick="recordBall({type:'four',runs:4})"><span class="ball-n">4</span><span class="ball-l">Four</span></button>
+                            <button class="ball-btn b-six" onclick="recordBall({type:'six',runs:6})"><span class="ball-n">6</span><span class="ball-l">Six</span></button>
+                            <button class="ball-btn b-wide" onclick="openWideModal()"><span class="ball-n">Wd</span><span class="ball-l">Wide</span></button>
+                            <button class="ball-btn b-noball" onclick="openNoballModal()"><span class="ball-n">Nb</span><span class="ball-l">No Ball</span></button>
+                            <button class="ball-btn b-bye" onclick="openByeModal()"><span class="ball-n">By</span><span class="ball-l">Bye</span></button>
+                            <button class="ball-btn b-legbye" onclick="openLegByeModal()"><span class="ball-n">Lb</span><span class="ball-l">Leg Bye</span></button>
+                            <button class="ball-btn b-wicket" onclick="openWicketModal()"><span class="ball-n">W</span><span class="ball-l">Wicket!</span></button>
+                            <button class="ball-btn b-five" onclick="recordBall({type:'run',runs:5})"><span class="ball-n">5</span><span class="ball-l">Five</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Match Controls -->
+                    <div class="card" id="card-controls">
+                        <div class="card-head">Match Controls</div>
+                        <div style="display:flex;flex-direction:column;gap:10px">
+                            <label class="toggle-row" id="publish-toggle-row">
+                                <span class="toggle-label">📡 Publish Live Score</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="publish-toggle" onchange="togglePublish(this.checked)" />
+                                    <span class="toggle-knob"></span>
+                                </label>
+                            </label>
+                            <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp; Save</button>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px" id="match-end-buttons">
+                                <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End Innings</button>
+                                <button class="btn btn-red btn-full btn-sm" style="background:#d32f2f" onclick="confirmEndMatch()">🛑 End Match</button>
+                            </div>
+                            <button class="btn btn-amber btn-full btn-sm" id="btn-declare" style="display:none; background:#ff8f00; font-weight:800" onclick="declareInnings()">📢 Declare Innings</button>
+                        </div>
+                    </div>
+                </div> <!-- End scoring-controls-col -->
+
+                <!-- RIGHT COLUMN: STATS -->
+                <div class="scoring-stats-col">
+                    <!-- Batting -->
+                    <div class="card" id="card-batting" style="margin-bottom:16px">
+                        <div class="card-head">⚾ Batting</div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Batsman</th>
+                                    <th>R</th>
+                                    <th>B</th>
+                                    <th>4s</th>
+                                    <th>6s</th>
+                                    <th>SR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr id="bat-row-0">
+                                    <td class="striker-name"><span id="bat0-name">-</span> <span onclick="editPlayerName('batsman', 0)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                    <td id="bat0-runs">0</td>
+                                    <td id="bat0-balls">0</td>
+                                    <td id="bat0-4s">0</td>
+                                    <td id="bat0-6s">0</td>
+                                    <td id="bat0-sr">0.0</td>
+                                </tr>
+                                <tr id="bat-row-1">
+                                    <td><span id="bat1-name">-</span> <span onclick="editPlayerName('batsman', 1)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                    <td id="bat1-runs">0</td>
+                                    <td id="bat1-balls">0</td>
+                                    <td id="bat1-4s">0</td>
+                                    <td id="bat1-6s">0</td>
+                                    <td id="bat1-sr">0.0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bowling -->
+                    <div class="card" id="card-bowling" style="margin-bottom:16px">
+                        <div class="card-head">
+                            <svg class="svg-icon" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff1744"><use href="#icon-leather-bowler"></use></svg>
+                            Bowling
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Bowler</th>
+                                    <th>O</th>
+                                    <th>M</th>
+                                    <th>R</th>
+                                    <th>W</th>
+                                    <th>Econ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bowling-table-body">
+                                <tr>
+                                    <td><span id="bowler-name">-</span> <span onclick="editPlayerName('bowler', null)" style="cursor:pointer;font-size:10px">✏️</span></td>
+                                    <td id="bowler-overs">0</td>
+                                    <td id="bowler-maidens">0</td>
+                                    <td id="bowler-runs">0</td>
+                                    <td id="bowler-wkts">0</td>
+                                    <td id="bowler-econ">0.0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> <!-- End scoring-stats-col -->
+            </div> <!-- End desktop-scoring-grid -->
+        </div> <!-- End panel-scoring -->
+
+        <!-- TAB 2: SCORECARD -->
+        <div class="scoring-tab-panel" id="panel-scorecard" style="display:none; max-width: 1300px; margin: 0 auto; padding: 24px;">
+            <div class="scorer-layout" style="grid-template-columns: 1fr;">
+                
+                <div class="card" style="margin-bottom:16px" id="embedded-scorecard">
+                    <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>📋 Match Scorecard</span>
+                        <div class="inning-toggles" style="display:flex; gap:8px">
+                            <button id="btn-inn-0" class="btn btn-sm btn-primary" onclick="renderEmbeddedScorecard(0)">1st Innings</button>
+                            <button id="btn-inn-1" class="btn btn-sm btn-ghost" onclick="renderEmbeddedScorecard(1)">2nd Innings</button>
+                        </div>
+                    </div>
+                    <div id="embedded-scorecard-content" style="padding-top: 10px;">
+                        <!-- Content goes here -->
+                        <div style="text-align:center; color:gray; padding:20px;">Loading scorecard...</div>
+                    </div>
                 </div>
+
 
                 <!-- Partnership & FoW -->
                 <div class="card" id="card-partnership" style="margin-bottom:16px">
@@ -389,101 +532,13 @@
                     <div class="card-head">💥 Fall of Wickets</div>
                     <div id="fow-list" style="font-size:12px;color:var(--c-muted)">No wickets yet</div>
                 </div>
+
             </div>
+        </div> <!-- End panel-scorecard -->
 
-            <!-- RIGHT: Input controls -->
-            <div class="input-column">
-
-                <!-- Striker toggle -->
-                <div class="card" id="card-striker" style="margin-bottom:16px">
-                    <div class="card-head">On Strike</div>
-                    <div class="striker-toggle" id="striker-toggle">
-                        <button class="striker-opt active" id="striker-opt-0" onclick="setStriker(0)">
-                            <span class="striker-indicator">🏏</span>
-                            <span id="striker-opt-label-0">Batter 1</span>
-                        </button>
-                        <button class="striker-opt" id="striker-opt-1" onclick="setStriker(1)">
-                            <span id="striker-opt-label-1">Batter 2</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Ball buttons -->
-                <div class="card" id="card-buttons" style="margin-bottom:16px">
-                    <div class="card-head">Record Ball</div>
-                    <div class="ball-grid">
-                        <button class="ball-btn b-dot" onclick="recordBall({type:'dot',runs:0})">
-                            <span class="ball-n">●</span><span class="ball-l">Dot</span>
-                        </button>
-                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:1})">
-                            <span class="ball-n">1</span><span class="ball-l">Single</span>
-                        </button>
-                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:2})">
-                            <span class="ball-n">2</span><span class="ball-l">Double</span>
-                        </button>
-                        <button class="ball-btn b-run" onclick="recordBall({type:'run',runs:3})">
-                            <span class="ball-n">3</span><span class="ball-l">Triple</span>
-                        </button>
-                        <button class="ball-btn b-four" onclick="recordBall({type:'four',runs:4})">
-                            <span class="ball-n">4</span><span class="ball-l">Four</span>
-                        </button>
-                        <button class="ball-btn b-six" onclick="recordBall({type:'six',runs:6})">
-                            <span class="ball-n">6</span><span class="ball-l">Six</span>
-                        </button>
-                        <button class="ball-btn b-wide" onclick="openWideModal()">
-                            <span class="ball-n">Wd</span><span class="ball-l">Wide</span>
-                        </button>
-                        <button class="ball-btn b-noball" onclick="openNoballModal()">
-                            <span class="ball-n">Nb</span><span class="ball-l">No Ball</span>
-                        </button>
-                        <button class="ball-btn b-bye" onclick="openByeModal()">
-                            <span class="ball-n">By</span><span class="ball-l">Bye</span>
-                        </button>
-                        <button class="ball-btn b-legbye" onclick="openLegByeModal()">
-                            <span class="ball-n">Lb</span><span class="ball-l">Leg Bye</span>
-                        </button>
-                        <button class="ball-btn b-wicket" onclick="openWicketModal()">
-                            <span class="ball-n">W</span><span class="ball-l">Wicket!</span>
-                        </button>
-                        <button class="ball-btn b-five" onclick="recordBall({type:'run',runs:5})">
-                            <span class="ball-n">5</span><span class="ball-l">Five</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Undo / Redo -->
-                <div class="card" id="card-history" style="margin-bottom:16px">
-                    <div class="card-head">History</div>
-                    <div style="display:flex;gap:10px">
-                        <button class="btn btn-ghost btn-full" onclick="undoAction()" id="undo-btn">↩ Undo</button>
-                        <button class="btn btn-ghost btn-full" onclick="redoAction()" id="redo-btn">↪ Redo</button>
-                    </div>
-                    <div id="last-ball-info"
-                        style="font-size:12px;color:var(--c-muted);margin-top:8px;text-align:center"></div>
-                </div>
-
-                <!-- Publish & Controls -->
-                <div class="card" id="card-controls">
-                    <div class="card-head">Match Controls</div>
-                    <div style="display:flex;flex-direction:column;gap:10px">
-                        <label class="toggle-row" id="publish-toggle-row">
-                            <span class="toggle-label">📡 Publish Live Score</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="publish-toggle" onchange="togglePublish(this.checked)" />
-                                <span class="toggle-knob"></span>
-                            </label>
-                        </label>
-                        <button class="btn btn-ghost btn-full btn-sm" onclick="openScorecard()">📋 Full
-                            Scorecard</button>
-                        <button class="btn btn-ghost btn-full btn-sm" onclick="pauseAndExit()">⏸ Pause &amp; Save</button>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px" id="match-end-buttons">
-                            <button class="btn btn-red btn-full btn-sm" onclick="confirmEndInnings()">🏁 End Innings</button>
-                            <button class="btn btn-red btn-full btn-sm" style="background:#d32f2f" onclick="confirmEndMatch()">🛑 End Match</button>
-                        </div>
-                        <button class="btn btn-amber btn-full btn-sm" id="btn-declare" style="display:none; background:#ff8f00; font-weight:800" onclick="declareInnings()">📢 Declare Innings</button>
-                    </div>
-                </div>
-
+        <!-- TAB 3: HOTKEYS -->
+        <div class="scoring-tab-panel" id="panel-hotkeys" style="display:none; max-width: 1300px; margin: 0 auto; padding: 24px;">
+            <div class="scorer-layout" style="grid-template-columns: 1fr; max-width:800px; margin: 0 auto;">
                 <!-- BROADCAST CONTROL PANEL (Master UI) -->
                 <div class="card" id="card-broadcast" style="margin-top:20px; border: 2px solid #7c4dff; background: rgba(124,77,255,0.03); box-shadow: 0 10px 30px rgba(124,77,255,0.1)">
                     <div class="card-head" style="color:#7c4dff; font-weight:950; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(124,77,255,0.2)">
@@ -594,8 +649,9 @@
                         </div>
                     </div>
                 </div> <!-- End Broadcast card -->
-            </div> <!-- End input-column -->
-        </div> <!-- End scorer-layout -->
+
+            </div>
+        </div> <!-- End panel-hotkeys -->
     </div> <!-- End screen-scoring -->
 
     <!-- ===== TOURNAMENT SUMMARY SCREEN ===== -->
@@ -1231,6 +1287,45 @@
                 </button>
             </div>
             <p style="font-size:12px; opacity:0.6" id="test-innings-hint"></p>
+        </div>
+    </div>
+
+    <div id="modal-player-profile" class="modal-overlay" style="display:none; z-index: 10000; backdrop-filter: blur(8px);">
+        <div class="modal-box" style="max-width: 380px; padding: 0; overflow: hidden; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: linear-gradient(135deg, #130b29, #2b125a); border: 1px solid rgba(255,255,255,0.1);">
+            
+            <div style="position: absolute; top: 15px; right: 15px; z-index: 10;">
+                <span style="font-size: 28px; cursor: pointer; color: rgba(255,255,255,0.6); text-shadow: 0 2px 4px rgba(0,0,0,0.5);" onclick="closeModal('modal-player-profile')">&times;</span>
+            </div>
+
+            <div style="padding: 40px 20px 20px; text-align: center; position: relative;">
+                <!-- Decorative background elements -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to bottom, rgba(0,210,255,0.2), transparent);"></div>
+                
+                <div style="position: relative; display: inline-block; margin-bottom: 16px;">
+                    <img id="pp-photo" src="" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 4px solid #00d2ff; display:none; box-shadow: 0 10px 25px rgba(0,210,255,0.4);" />
+                    <div id="pp-photo-placeholder" style="width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #2a1458, #110524); display:flex; align-items:center; justify-content:center; font-size: 60px; border: 4px solid #00d2ff; box-shadow: 0 10px 25px rgba(0,210,255,0.4);">👤</div>
+                </div>
+                
+                <input type="text" id="pp-name" style="text-align:center; font-size: 28px; font-weight: 900; border: none; background: transparent; color: #fff; width: 100%; outline: none; text-shadow: 0 2px 10px rgba(0,0,0,0.5); letter-spacing: 1px;" placeholder="Player Name" readonly />
+                
+                <div style="margin-top: 4px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                    <span style="background: rgba(0, 210, 255, 0.2); color: #00d2ff; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Player</span>
+                    <input type="text" id="pp-team" style="text-align:center; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); border: none; background: transparent; outline: none; width: auto; max-width: 150px;" placeholder="Team" readonly />
+                </div>
+                
+                <input type="file" id="pp-photo-upload" accept="image/*" style="display:none;" />
+            </div>
+
+            <div style="padding: 20px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;" id="pp-view-actions">
+                    <button class="btn btn-ghost" style="border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.05);" onclick="enablePlayerProfileEdit()">✏️ Edit</button>
+                    <button class="btn btn-primary" style="border-radius: 12px; font-weight: 800; background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; box-shadow: 0 4px 15px rgba(0,210,255,0.3);" onclick="closeModal('modal-player-profile')">Close</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; display:none;" id="pp-edit-actions">
+                    <button class="btn btn-ghost" style="border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.05);" onclick="document.getElementById('pp-photo-upload').click()">📷 Photo</button>
+                    <button class="btn btn-primary" style="border-radius: 12px; background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; font-weight: 900; border: none; box-shadow: 0 4px 15px rgba(0,230,118,0.4);" onclick="savePlayerProfile()">✅ Save</button>
+                </div>
+            </div>
         </div>
     </div>
 
