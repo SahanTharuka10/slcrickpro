@@ -216,6 +216,7 @@
     </style>
 </head>
 <body class="page-wrapper posts-page-wrap">
+  <script id="prevent-fouc">if(localStorage.getItem('theme') !== 'dark') document.body.classList.add('light-mode');</script>
     <div class="bg-canvas"></div>
 
     <!-- Header -->
@@ -581,3 +582,4 @@
     </script>
 </body>
 </html>
+

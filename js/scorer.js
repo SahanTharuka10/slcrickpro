@@ -339,7 +339,7 @@ function renderResumeMatchesImpl() {
     // 1. Get ALL matches and filter for displayable ones
     const allMatches = DB.getMatches();
     const pausedMatches = allMatches.filter(m => m.status === 'paused' || m.status === 'live');
-    const scheduledMatches = allMatches.filter(m => m.status === 'scheduled' || m.status === 'setup').sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const scheduledMatches = allMatches.filter(m => (!m.tournamentId) && (m.status === 'scheduled' || m.status === 'setup')).sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // Improved tournament filtering: include 'scheduled' for newly created locally
     const tourns = DB.getTournaments().filter(t => ['requested', 'approved', 'active', 'scheduled', 'setup'].includes(t.status));

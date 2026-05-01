@@ -14,15 +14,7 @@ const DB_KEYS = {
     REPORTS: 'cricpro_reports',
 };
 
-// SLCRICKPRO – Theme Logic (Global)
-(function() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light' || savedTheme === null) {
-        const apply = () => document.body.classList.add('light-mode');
-        if (document.body) apply();
-        else document.addEventListener('DOMContentLoaded', apply);
-    }
-})();
+// SLCRICKPRO – Theme Logic is now handled via inline scripts in HTML files to prevent FOUC
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img').forEach((img) => {
