@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (!matchId && !tournId) {
-        document.getElementById('overlay-container').innerHTML = '<div style="padding: 20px; font-weight: bold; color: #ff0000; background: white; border-radius: 10px;">No Match or Tournament ID specified!</div>';
+        document.getElementById('overlay-container').innerHTML = '<div style="padding: 20px; font-weight: bold; color: #ff0000; background: rgba(0,0,0,0.8); border-radius: 10px; border: 1px solid red;">No Match or Tournament ID specified!</div>';
         return;
     }
 
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Backend URL Discovery ─────────────────────────────────
-    const baseUrl = window.BACKEND_BASE_URL || ('http' + (window.location.protocol === 'https:' ? 's' : '') + '://' + window.location.hostname + ':3000');
+    const baseUrl = window.BACKEND_BASE_URL || (typeof DB !== 'undefined' ? DB.getCloudURL() : "https://slcrickpro.onrender.com");
 
     // ── Socket.io: Instant push-based updates from the server
     // Reuse existing socket if db.js initialized it, otherwise create new
@@ -257,9 +257,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!scoreItem || !scoreItem.score) return;
 
                 const prevBalls = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.balls : -1;
+                const prevRuns = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.runs : -1;
+                const prevWickets = latestSocketScore && latestSocketScore.score ? latestSocketScore.score.wickets : -1;
                 const containerHidden = document.getElementById('overlay-container').style.display === 'none' || document.getElementById('overlay-container').innerHTML === '';
                 
-                if (scoreItem.score.balls !== prevBalls || containerHidden) {
+                const scoreChanged = scoreItem.score.balls !== prevBalls || 
+                                     scoreItem.score.runs !== prevRuns || 
+                                     scoreItem.score.wickets !== prevWickets;
+
+                if (scoreChanged || containerHidden) {
                     latestSocketScore = scoreItem;
                     renderOverlay();
                 }
@@ -1920,7 +1926,7 @@ function showPartnershipGraphic(data) {
     const { player1, player2, runs, balls, teamName } = data;
     const html = `
         <div class="overlay-container show" id="overlay-partnership" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 80%);">
-            <div class="partnership-card" style="width: 800px; background: rgba(10, 10, 30, 0.95); backdrop-filter: blur(20px); border-left: 6px solid #FFD700; border-right: 6px solid #FFD700; border-radius: 40px; padding: 30px 60px; box-shadow: 0 40px 100px rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; opacity: 0; transform: perspective(1000px) rotateX(-20deg) translateY(50px);">
+            <div class="partnership-card" style="width: 800px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); border-radius: 42px; border-left: 6px solid #FFD700; border-right: 6px solid #FFD700; padding: 30px 60px; box-shadow: 0 40px 100px rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; opacity: 0; transform: perspective(1000px) rotateX(-20deg) translateY(50px);">
                 
                 <div style="font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.4); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px;">
                     ${teamName} • CURRENT PARTNERSHIP
