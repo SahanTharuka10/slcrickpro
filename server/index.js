@@ -108,7 +108,9 @@ app.get('/api/admin/check', (req, res) => {
 
 // --- DATABASE INITIALIZATION ---
 const LOCAL_SQLITE_PATH = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'slcrickpro.sqlite');
-let DATABASE_URL = process.env.DATABASE_URL || process.env.MONGO_URI || '';
+let DATABASE_URL = process.env.DATABASE_URL || '';
+// MONGO_URI check removed as this is a Sequelize/SQL server, not MongoDB. 
+// If users want MongoDB they should use the mongoose-specific index file.
 
 let dbType = 'sqlite';
 let sequelize = new Sequelize({ dialect: 'sqlite', storage: LOCAL_SQLITE_PATH, logging: false });
@@ -216,13 +218,20 @@ const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-sco
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 // Note: ADMIN_USERNAME and ADMIN_PASSWORD are now handled inside the login route for reliability
 
+let dbInitError = null;
 let _dbInitPromise = null;
 async function ensureDB() {
   if (!_dbInitPromise) {
-    _dbInitPromise = initDatabase();
+    _dbInitPromise = initDatabase().catch(err => {
+        dbInitError = err.message;
+        console.error('❌ Async DB Init Failed:', err);
+        throw err;
+    });
   }
   await _dbInitPromise;
-  if (!dbInitialized) throw new Error('Database not ready');
+  if (!dbInitialized) {
+      throw new Error(`Database not ready. Last error: ${dbInitError || 'Unknown initialization failure'}`);
+  }
   return true;
 }
 
@@ -276,6 +285,7 @@ async function initDatabase() {
     dbInitialized = true;
     console.log('✅ Database models synced successfully');
   } catch (syncErr) {
+    dbInitError = syncErr.message;
     console.error('❌ Database sync failed:', syncErr.message);
   }
 }
@@ -415,7 +425,7 @@ app.get('/players', async (req, res) => {
     res.json(players.map(p => p.dataValues || p));
   } catch (e) {
     console.error('/players error:', e.message);
-    res.status(500).json({ error: 'Failed to fetch players' });
+    res.status(500).json({ error: 'Failed to fetch players', details: e.message });
   }
 });
 
@@ -441,7 +451,7 @@ app.delete('/players/:id', async (req, res) => {
     emitUpdate('player_deleted', req.params.id, null);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to delete player' });
+    res.status(500).json({ error: 'Failed to delete player', details: e.message });
   }
 });
 
@@ -453,7 +463,7 @@ app.get('/teams', async (req, res) => {
     res.json(teams.map(t => t.dataValues || t));
   } catch (e) {
     console.error('/teams error:', e.message);
-    res.status(500).json({ error: 'Failed to fetch teams' });
+    res.status(500).json({ error: 'Failed to fetch teams', details: e.message });
   }
 });
 
@@ -489,7 +499,7 @@ app.delete('/sync/products/:id', async (req, res) => {
     emitUpdate('product_deleted', req.params.id, null);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to delete product' });
+    res.status(500).json({ error: 'Failed to delete product', details: e.message });
   }
 });
 
@@ -499,7 +509,7 @@ app.get('/sync/orders', async (req, res) => {
     const orders = await Order.findAll({ order: [['createdAt', 'DESC']] });
     res.json(orders.map(o => o.dataValues || o));
   } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch orders' });
+    res.status(500).json({ error: 'Failed to fetch orders', details: e.message });
   }
 });
 
@@ -511,7 +521,7 @@ app.post('/sync/order', async (req, res) => {
     await Order.upsert(data);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to sync order' });
+    res.status(500).json({ error: 'Failed to sync order', details: e.message });
   }
 });
 
@@ -523,7 +533,7 @@ app.get('/sync/posts', async (req, res) => {
     const posts = await Post.findAll({ where, order: [['createdAt', 'DESC']] });
     res.json(posts.map(p => p.dataValues || p));
   } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    res.status(500).json({ error: 'Failed to fetch posts', details: e.message });
   }
 });
 
@@ -554,7 +564,7 @@ app.post('/sync/post', upload.single('image'), async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('/sync/post error:', e.message);
-    res.status(500).json({ error: 'Failed to sync post' });
+    res.status(500).json({ error: 'Failed to sync post', details: e.message });
   }
 });
 
@@ -565,7 +575,7 @@ app.delete('/sync/posts/:id', async (req, res) => {
     emitUpdate('post_deleted', req.params.id, null);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to delete post' });
+    res.status(500).json({ error: 'Failed to delete post', details: e.message });
   }
 });
 
@@ -575,7 +585,7 @@ app.get('/sync/feedback', async (req, res) => {
     const feedbacks = await Feedback.findAll({ order: [['createdAt', 'DESC']] });
     res.json(feedbacks.map(f => f.dataValues || f));
   } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch feedback' });
+    res.status(500).json({ error: 'Failed to fetch feedback', details: e.message });
   }
 });
 
@@ -588,7 +598,7 @@ app.post('/sync/feedback', async (req, res) => {
     emitUpdate('feedback', data.id, data);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to sync feedback' });
+    res.status(500).json({ error: 'Failed to sync feedback', details: e.message });
   }
 });
 

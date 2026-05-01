@@ -1103,7 +1103,16 @@ async function syncCloudData(options = {}) {
         ]);
 
         // Validate responses before parsing
-        if (!mReq.ok || !tReq.ok) {
+        if (!mReq.ok || !tReq.ok || !pReq.ok || !tmReq.ok) {
+            const errReq = [mReq, tReq, pReq, tmReq].find(r => !r.ok);
+            if (errReq) {
+                try {
+                    const errBody = await errReq.json();
+                    console.error(`📡 Sync: Server returned error for ${errReq.url}:`, errBody.details || errBody.error || 'Unknown error');
+                } catch(e) {
+                    console.warn('📡 Sync: Cloud requests failed with status', errReq.status);
+                }
+            }
             if (!options.silent) console.warn('📡 Sync: Cloud requests failed. Preserving local cache.');
             _isSyncingCloud = false;
             return;
