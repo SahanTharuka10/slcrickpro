@@ -45,6 +45,27 @@ body {
     z-index: 11000;
 }
 
+#overlay-container {
+    transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    transform: translateY(150px);
+    opacity: 0;
+}
+
+#overlay-container.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+#overlay-container.mode-1 {
+    width: auto;
+    min-width: 1000px;
+    height: 84px; /* Slightly taller for premium feel */
+    margin: 0 auto 40px; /* Better spacing from bottom */
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 42px;
+}
+
 /* ─── Team Logo Boxes (far left & far right) ──────────────── */
 .team-logo-box {
     width: 76px;
@@ -150,20 +171,21 @@ body {
 
 /* ─── Center Score Pill ─────────────────────────────────────── */
 .score-center-section {
-    background: linear-gradient(160deg, #1b1642 0%, #252060 50%, #1b1642 100%);
+    background: linear-gradient(165deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
     color: #fff;
-    height: 94px; /* Floats above/below slightly */
-    width: 250px; /* More compact width */
+    height: 100px; 
+    width: 280px; 
     flex-shrink: 0;
-    border-radius: 47px;
+    border-radius: 50px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 10px 30px rgba(27, 22, 66, 0.6);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.1);
     z-index: 10;
     position: relative;
-    padding: 4px 0;
+    padding: 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Top row: A v B  [score badge]  [P1 badge]  RR */

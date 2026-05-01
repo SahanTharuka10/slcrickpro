@@ -4009,285 +4009,196 @@ function renderBroadcastController(match) {
             </div>
         </div>
 
-        <div class="broadcast-main-grid" style="display: grid; grid-template-columns: 280px 1fr 280px; gap: 24px; align-items: start;">
+        <div class="broadcast-main-grid" style="display: grid; grid-template-columns: 320px 1fr 320px; gap: 24px; align-items: start;">
             
-            <!-- LEFT COLUMN: INSTANT TRIGGERS & PROMOS -->
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                <!-- ACTION & OVERRIDE PANEL -->
-                <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">✏️ SCORE OVERRIDE (MANUAL)</div>
-                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                        <input type="number" id="manual-run" placeholder="Runs" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center;">
-                        <input type="number" id="manual-wkt" placeholder="Wkt" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center;">
-                        <button class="b-btn b-btn-emerald" style="min-height:40px; padding: 0 15px; border-radius:8px" onclick="overrideLiveScore()">SET</button>
-                    </div>
-
-                    <div class="b-section-title">⚡ INSTANT VISUAL TRIGGERS</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom:12px">
-                        <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
-                        <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
-                        <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                        <div style="display:flex; justify-content:space-between; align-items:center">
-                            <div style="font-size:11px; font-weight:800; color:rgba(255,255,255,0.6)">SCOREBAR DISPLAY</div>
-                            <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 22px;">
-                                <input type="checkbox" id="scorebar-toggle" checked onchange="if(typeof Broadcast !== 'undefined') { Broadcast.send('SET_SCOREBAR_VISIBILITY', { visible: this.checked }); Broadcast.syncToggleUI(this.checked); } else sendBroadcast('SET_SCOREBAR_VISIBILITY', { visible: this.checked })">
-                                <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px;"></span>
-                            </label>
-                        </div>
+            <!-- LEFT COLUMN: MASTER CONTROL & SCOREBAR -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- MASTER CONTROLS -->
+                <div class="b-card" style="margin-bottom:0; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);">
+                    <div class="b-section-title">🎮 MASTER CONTROL</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="b-btn b-btn-red" style="min-height:65px; border: 2px solid rgba(255,255,255,0.1);" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div>
+                                    <div class="b-btn-title" style="font-size:16px">⏹ STOP ALL</div>
+                                    <div class="b-btn-sub">Clear all active overlays</div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:6px; font-size:10px; font-weight:900">ESC</div>
+                            </div>
+                        </button>
                         
-                        <div style="display:flex; flex-direction:column; gap:6px">
-                            <div style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.4)">OVERLAY THEME</div>
-                            <select id="overlay-mode-select" onchange="sendBroadcast('SET_OVERLAY_MODE', { mode: this.value }); showToast('Theme Switched!', 'success')" 
-                                style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; width: 100%;">
-                                <option value="1">Score Overlay 1 (Classic)</option>
-                                <option value="2">Score Overlay 2 (Photo Mode)</option>
-                                <option value="3">Score Overlay 3 (Detail View)</option>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <button class="b-btn b-btn-slate" style="min-height:50px" onclick="location.reload()">
+                                <div class="b-btn-title" style="font-size:11px">🔌 RECONNECT</div>
+                            </button>
+                            <button class="b-btn b-btn-emerald" style="min-height:50px" onclick="const obsUrl = window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?match=' + '${match.id}'; navigator.clipboard.writeText(obsUrl); showToast('✅ OBS URL Copied!', 'success');">
+                                <div class="b-btn-title" style="font-size:11px">🔗 OBS URL</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCOREBAR CONTROL -->
+                <div class="b-card" style="margin-bottom:0">
+                    <div class="b-section-title">👁️ SCOREBAR CONTROL</div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="b-btn b-btn-emerald" id="btn-toggle-scorebar" style="min-height:55px; box-shadow:0 0 15px rgba(0,255,0,0.3);" onclick="if(typeof Broadcast !== 'undefined') Broadcast.toggleScorebar(); else sendBroadcast('TOGGLE_SCOREBAR')">
+                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                <div class="b-btn-title" id="txt-toggle-scorebar">LIVE SCOREBAR: ON</div>
+                                <div class="b-btn-hotkey" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; font-size:9px">S+V</div>
+                            </div>
+                        </button>
+
+                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px;">
+                            <label style="font-size:9px; font-weight:900; color:rgba(255,255,255,0.4); text-transform:uppercase; display:block; margin-bottom:8px; letter-spacing:1px;">ACTIVE THEME</label>
+                            <select id="scorebar-style-select" onchange="if(typeof Broadcast !== 'undefined') Broadcast.changeOverlayTheme(this.value); else sendBroadcast('SET_OVERLAY_MODE', { mode: this.value })" 
+                                style="width:100%; background:#0f172a; border:1px solid rgba(255,255,255,0.1); color:#fff; padding:10px; border-radius:8px; font-weight:700; font-size:12px;">
+                                <option value="theme1">Classic Scoreboard (Default)</option>
+                                <option value="theme2">Modern Photo Bar</option>
+                                <option value="theme3">Detailed Data View</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- UTILITIES -->
-                <div class="b-card" style="margin-bottom:0; display:flex; flex-direction:column; gap:8px">
-                    <button class="b-btn b-btn-rose" style="min-height:60px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.stopAll(); else sendBroadcast('STOP_OVERLAY')">
-                        <div style="display:flex; justify-content:space-between; width:100%">
-                            <div class="b-btn-title">⏹ STOP OVERLAYS</div>
-                            <div style="background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; font-size:9px; font-weight:900">ESC</div>
-                        </div>
-                    </button>
-                    <button class="b-btn b-btn-slate" style="min-height:50px" onclick="location.reload()">
-                        <div class="b-btn-title" style="font-size:12px">🔌 RECONNECT</div>
-                    </button>
-                    <!-- OBS COPY BUTTON -->
-                    <button class="b-btn b-btn-emerald" style="min-height:50px" onclick="
-                        const obsUrl = window.location.origin + window.location.pathname.replace('score-match.html', 'overlay.html') + '?match=' + '${match.id}';
-                        navigator.clipboard.writeText(obsUrl);
-                        showToast('✅ OBS URL Copied!', 'success');
-                    ">
-                        <div class="b-btn-title" style="font-size:12px">🔗 COPY OBS URL</div>
-                    </button>
-                </div>
-
-                <!-- PROMOTIONAL -->
+                <!-- QUICK TRIGGERS -->
                 <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">🎨 PROMOTIONS</div>
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
-                        <input type="text" id="next-teama" placeholder="Team A" value="TEAM A" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center; width: 100%; box-sizing: border-box;">
-                        <input type="text" id="next-teamb" placeholder="Team B" value="TEAM B" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 13px; text-align: center; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <button class="b-btn b-btn-primary" style="width: 100%; align-items: center; justify-content: center; min-height: 50px;"
-                            onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
-                        <div class="b-btn-title">NEXT MATCH</div>
-                    </button>
-
-                    <!-- GUEST INTRO -->
-                    <div style="height:1px; background:rgba(255,255,255,0.05); margin:15px 0"></div>
-                    <div style="font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 10px;">Guest Introduction</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                        <input type="text" id="guest-name" placeholder="Guest Name" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 12px;">
-                        <select id="guest-title" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; color: white; font-size: 12px;">
-                            <option value="SPECIAL GUEST">SPECIAL GUEST</option>
-                            <option value="MATCH UMPIRE">MATCH UMPIRE</option>
-                            <option value="OFFICIAL SPONSOR">OFFICIAL SPONSOR</option>
-                            <option value="CHIEF GUEST">CHIEF GUEST</option>
-                            <option value="COMMENTATOR">COMMENTATOR</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; gap:8px">
-                         <button class="b-btn b-btn-slate" style="flex:1; min-height:40px; justify-content:center; align-items:center" onclick="document.getElementById('file_guest').click()">
-                            <span id="preview_guest">📷 PHOTO</span>
-                         </button>
-                         <input type="file" id="file_guest" style="display:none" accept="image/*" onchange="if(this.files[0]){ window.compressImageUtility(this.files[0], data => { if(!data)return; window['__photo_guest']=data; document.getElementById('preview_guest').innerHTML='✅ READY'; }); }">
-                         <button class="b-btn b-btn-purple" style="flex:1; min-height:40px; justify-content:center; align-items:center" 
-                                onclick="const n=document.getElementById('guest-name').value; const t=document.getElementById('guest-title').value; sendBroadcast('SHOW_GUEST', { name: n, title: t, photo: window['__photo_guest'] }); showToast('⭐ Guest Published!', 'success');">
-                            <div class="b-btn-title" style="font-size:11px">PUBLISH</div>
-                         </button>
+                    <div class="b-section-title">⚡ QUICK TRIGGERS</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <div class="v-trigger v-4" onclick="triggerVisualBigEvent('FOUR')">4</div>
+                        <div class="v-trigger v-6" onclick="triggerVisualBigEvent('SIX')">6</div>
+                        <div class="v-trigger v-w" onclick="triggerVisualBigEvent('WICKET')">W</div>
                     </div>
                 </div>
-                
             </div>
 
-            <!-- CENTER COLUMN: PREVIEW + PLAYER GRAPHICS -->
-            <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- CENTER COLUMN: LIVE PREVIEW & CINEMATICS -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
                 <!-- LIVE PREVIEW AREA -->
-                <div id="preview-container-root">
-                    <div id="broadcast-preview-container" style="background:#000; border:2px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
-                        <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}&preview=true" style="width:1920px; height:1080px; border:none; pointer-events:none; position:absolute; top:0; left:0; transform-origin: top left;" scrolling="no"></iframe>
-                        
-                        <!-- Top Bar Overlays -->
-                        <div style="position:absolute; top:12px; left:12px; display:flex; gap:8px; align-items:center;">
-                            <div style="background:rgba(230,27,77,0.9); color:#fff; font-size:9px; font-weight:900; letter-spacing:2px; padding:3px 10px; border-radius:6px; box-shadow:0 4px 12px rgba(230,27,77,0.3)">● LIVE</div>
-                            <div style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); color:rgba(255,255,255,0.8); font-size:9px; font-weight:700; padding:3px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">1920 × 1080</div>
+                <div style="position: relative;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+                        <div style="display:flex; align-items:center; gap:8px">
+                            <div style="width:10px; height:10px; background:#f43f5e; border-radius:50%; animation: pulse 1.5s infinite"></div>
+                            <div style="font-size:11px; font-weight:900; color:#fff; text-transform:uppercase; letter-spacing:1px;">REAL-TIME OUTPUT PREVIEW</div>
                         </div>
-
-                        <button onclick="window.open('overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}', '_blank')" 
-                                style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:10px; font-weight:800; transition:all 0.2s; display:flex; align-items:center; gap:6px;"
-                                onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-                            <span>⛶</span> FULL SCREEN
-                        </button>
+                        <div style="font-size:10px; font-weight:700; color:rgba(255,255,255,0.4)">1920 × 1080 (SCALED)</div>
                     </div>
-                    <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:10px; letter-spacing:1px">🔴 Real-Time Output Preview · Updates every 1s</div>
                     
+                    <div id="broadcast-preview-container" style="background:#000; border:4px solid rgba(255,255,255,0.1); border-radius:16px; overflow:hidden; width:100%; aspect-ratio:16/9; position:relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                        <iframe id="broadcast-preview-frame" src="overlay.html?match=${match.id}${match.tournamentId ? '&tournament='+match.tournamentId : ''}&preview=true" style="width:1920px; height:1080px; border:none; pointer-events:none; position:absolute; top:0; left:0; transform-origin: top left;" scrolling="no"></iframe>
+                    </div>
+                    
+                    <div style="margin-top:12px; display:flex; justify-content:center; gap:20px">
+                        <div style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.3); text-transform: uppercase;">🔴 Live Feed Active</div>
+                        <div style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.3); text-transform: uppercase;">⚡ Zero Latency Sync</div>
+                        <div style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.3); text-transform: uppercase;">📺 OBS/VMIX READY</div>
+                    </div>
                 </div>
 
-                <!-- PLAYER & TEAM GRAPHICS -->
-                <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">📺 SCOREBAR CONTROL</div>
-                    <button class="b-btn b-btn-emerald" id="btn-toggle-scorebar" style="min-height:48px; box-shadow:0 0 10px rgba(0,255,0,0.5); margin-bottom:12px;" onclick="if(typeof Broadcast !== 'undefined') Broadcast.toggleScorebar(); else sendBroadcast('TOGGLE_SCOREBAR')">
-                        <div style="display:flex; justify-content:space-between; width:100%">
-                            <div class="b-btn-title" id="txt-toggle-scorebar">👁 LIVE SCOREBAR (ON)</div>
-                            <div class="b-btn-hotkey">S+V</div>
-                        </div>
-                    </button>
-                    <label style="font-size:10px; font-weight:800; color:#aaa; margin-bottom:4px; display:block">SCOREBAR THEME:</label>
-                    <select class="form-select" id="scorebar-style-select" onchange="if(typeof Broadcast !== 'undefined') Broadcast.changeOverlayTheme(this.value); else sendBroadcast('CHANGE_OVERLAY_THEME', {theme: this.value})" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:#fff;">
-                        <option value="theme1">Score Overlay 1 (Classic)</option>
-                        <option value="theme2">Score Overlay 2 (With Photos)</option>
-                        <option value="theme3">Score Overlay 3 (Compact Detailed)</option>
-                    </select>
-                </div>
-
-                <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">🖼️ CINEMATIC GRAPHICS</div>
-                    <div class="b-grid">
+                <!-- CINEMATIC GRAPHICS -->
+                <div class="b-card" style="margin-bottom:0; background: rgba(59, 130, 246, 0.03); border-color: rgba(59, 130, 246, 0.15);">
+                    <div class="b-section-title" style="color: #60a5fa;">🎬 CINEMATIC PRODUCTIONS</div>
+                    <div class="b-grid" style="grid-template-columns: repeat(3, 1fr);">
                         <button class="b-btn b-btn-primary" onclick="broadcastStrikerProfile()">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">⚡ STRIKER PROFILE</div>
-                                    <div class="b-btn-sub">Batter stats card</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+B</div>
-                            </div>
+                            <div class="b-btn-title">⚡ STRIKER</div>
+                            <div class="b-btn-sub">S+B</div>
                         </button>
-                        
                         <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">🏏 BATTERS</div>
-                                    <div class="b-btn-sub">Both on crease</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+P</div>
-                            </div>
+                            <div class="b-btn-title">🏏 BATTERS</div>
+                            <div class="b-btn-sub">S+P</div>
                         </button>
-                        
                         <button class="b-btn b-btn-amber" onclick="broadcastPartnership()">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">🤝 PARTNERSHIP</div>
-                                    <div class="b-btn-sub">Standing pair</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+H</div>
-                            </div>
+                            <div class="b-btn-title">🤝 PARTNER</div>
+                            <div class="b-btn-sub">S+H</div>
                         </button>
-                        
                         <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">🛡️ BOWLER PROFILE</div>
-                                    <div class="b-btn-sub">Current bowler</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+L</div>
-                            </div>
+                            <div class="b-btn-title">🛡️ BOWLER</div>
+                            <div class="b-btn-sub">S+L</div>
                         </button>
-                        
                         <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">👕 ${match.team1}</div>
-                                    <div class="b-btn-sub">Team Card</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+K</div>
-                            </div>
+                            <div class="b-btn-title">👕 ${getShortName(match.team1)}</div>
+                            <div class="b-btn-sub">S+K</div>
                         </button>
-
                         <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
-                            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                                <div>
-                                    <div class="b-btn-title">👕 ${match.team2}</div>
-                                    <div class="b-btn-sub">Team Card</div>
-                                </div>
-                                <div class="b-btn-hotkey">S+J</div>
-                            </div>
+                            <div class="b-btn-title">👕 ${getShortName(match.team2)}</div>
+                            <div class="b-btn-sub">S+J</div>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT COLUMN: MATCH DATA, PHOTO INJECTORS & TEAMS -->
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-
+            <!-- RIGHT COLUMN: MATCH DATA & PHOTOS -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
                 <!-- PHOTO INJECTORS -->
                 <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">📷 PHOTO UPLOADS</div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px">
+                    <div class="b-section-title">📸 PLAYER PHOTOS</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px">
                         <div style="text-align:center">
-                            <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:64px; background:rgba(59,130,246,0.07); border:2px dashed rgba(59,130,246,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.07)'">📷</div>
-                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#3b82f6">STRIKER</div>
+                            <div id="preview_striker" onclick="triggerManualPhoto('striker')" style="width:100%; height:75px; background:rgba(59,130,246,0.07); border:2px dashed rgba(59,130,246,0.4); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.2s">📷</div>
+                            <div style="font-size:9px; font-weight:900; margin-top:6px; color:#3b82f6; text-transform:uppercase">Striker</div>
                         </div>
                         <div style="text-align:center">
-                            <div id="preview_nonstriker" onclick="triggerManualPhoto('nonstriker')" style="width:100%; height:64px; background:rgba(244,63,94,0.07); border:2px dashed rgba(244,63,94,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(244,63,94,0.18)'" onmouseout="this.style.background='rgba(244,63,94,0.07)'">📷</div>
-                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#f43f5e">NON-STRIKER</div>
+                            <div id="preview_nonstriker" onclick="triggerManualPhoto('nonstriker')" style="width:100%; height:75px; background:rgba(244,63,94,0.07); border:2px dashed rgba(244,63,94,0.4); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.2s">📷</div>
+                            <div style="font-size:9px; font-weight:900; margin-top:6px; color:#f43f5e; text-transform:uppercase">Non-Str</div>
                         </div>
                         <div style="text-align:center">
-                            <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:64px; background:rgba(139,92,246,0.07); border:2px dashed rgba(139,92,246,0.4); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; transition:0.2s" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background='rgba(139,92,246,0.07)'">📷</div>
-                            <div style="font-size:8px; font-weight:800; margin-top:4px; color:#8b5cf6">BOWLER</div>
+                            <div id="preview_bowler" onclick="triggerManualPhoto('bowler')" style="width:100%; height:75px; background:rgba(139,92,246,0.07); border:2px dashed rgba(139,92,246,0.4); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.2s">📷</div>
+                            <div style="font-size:9px; font-weight:900; margin-top:6px; color:#8b5cf6; text-transform:uppercase">Bowler</div>
                         </div>
                     </div>
                     <input type="file" id="manual-photo-input" style="display:none" accept="image/*" onchange="onManualPhotoSelected(event)">
-                    <div style="font-size:8px; color:rgba(255,255,255,0.3); text-align:center; margin-top:4px">Tap a slot to assign photo · auto-compressed for mobile</div>
                 </div>
 
-                <!-- MATCH STATS -->
+                <!-- MATCH STATS OVERLAYS -->
                 <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">📊 MATCH DATA OVERLAYS</div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="b-btn b-btn-primary" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🚀 RUNS NEEDED</div>
-                                <div class="b-btn-hotkey">S+R</div>
-                            </div>
+                    <div class="b-section-title">📊 DATA OVERLAYS</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <button class="b-btn b-btn-primary" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS')">
+                            <div class="b-btn-title">🚀 NEEDED</div>
+                            <div class="b-btn-sub">S+R</div>
                         </button>
-                        <button class="b-btn b-btn-emerald" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">📈 RUN RATE</div>
-                                <div class="b-btn-hotkey">S+C</div>
-                            </div>
+                        <button class="b-btn b-btn-emerald" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR')">
+                            <div class="b-btn-title">📈 RRATE</div>
+                            <div class="b-btn-sub">S+C</div>
                         </button>
-                        <button class="b-btn b-btn-purple" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">📄 SCORECARD</div>
-                                <div class="b-btn-hotkey">S+S</div>
-                            </div>
+                        <button class="b-btn b-btn-purple" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showScorecard(); else sendBroadcast('SHOW_SCORECARD')">
+                            <div class="b-btn-title">📄 CARD</div>
+                            <div class="b-btn-sub">S+S</div>
                         </button>
-                        <button class="b-btn b-btn-amber" style="min-height:48px" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
-                            <div style="display:flex; justify-content:space-between; width:100%">
-                                <div class="b-btn-title">🏆 TOURN. SUMMARY</div>
-                                <div class="b-btn-hotkey">S+T</div>
-                            </div>
+                        <button class="b-btn b-btn-amber" onclick="if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY')">
+                            <div class="b-btn-title">🏆 SUMRY</div>
+                            <div class="b-btn-sub">S+T</div>
                         </button>
                     </div>
                 </div>
 
+                <!-- PROMO / NEXT MATCH -->
                 <div class="b-card" style="margin-bottom:0">
-                    <div class="b-section-title">📋 ROSTERS</div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="b-btn b-btn-slate" style="min-height:46px" onclick="broadcastTeamRoster(0)">
-                            <div class="b-btn-title">${match.team1}</div>
-                        </button>
-                        <button class="b-btn b-btn-slate" style="min-height:46px" onclick="broadcastTeamRoster(1)">
-                            <div class="b-btn-title">${match.team2}</div>
+                    <div class="b-section-title">📺 PROMOTIONS</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="next-teama" placeholder="Team A" value="TEAM A" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 11px; text-align: center;">
+                            <input type="text" id="next-teamb" placeholder="Team B" value="TEAM B" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; font-weight: 700; font-size: 11px; text-align: center;">
+                        </div>
+                        <button class="b-btn b-btn-primary" style="width: 100%; align-items: center; justify-content: center; min-height: 45px;"
+                                onclick="const a=document.getElementById('next-teama').value; const b=document.getElementById('next-teamb').value; sendBroadcast('SHOW_NEXT_MATCH', { teamA: a, teamB: b }); showToast('📺 Animation Published!', 'success');">
+                            <div class="b-btn-title">NEXT MATCH PREVIEW</div>
                         </button>
                     </div>
                 </div>
 
-                <button onclick="window.close()" style="margin-top:auto; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); padding: 12px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Terminate Session</button>
+                <button onclick="window.close()" style="margin-top:20px; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.2); padding: 12px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Terminate Broadcast Session</button>
             </div>
             
         </div>
     </div>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
     `;
 
     // Integrated hotkey helper

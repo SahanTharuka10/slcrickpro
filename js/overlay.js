@@ -852,45 +852,64 @@ function _renderOverlayClassic(m) {
         : null;
     const isWicketBall = lastBall && lastBall.wicket;
 
+    // Mode 1: Adjusted for Bottom Alignment
+    container.className = 'mode-1 show';
+    
+    const isPreview = new URLSearchParams(window.location.search).get('preview');
+
     container.innerHTML = `
-        <div class="team-logo-box left">
+        <div class="team-logo-box left" style="background: ${match.team1Color || '#f4f4f8'}">
             <div class="logo-circle">${t1Short}</div>
         </div>
-        <div class="batsmen-section">
-            <div class="player-row">
-                <div class="player-name">
-                    <span class="striker-mark">${siIdx === 0 ? '▶' : '&nbsp;'}</span>
-                    ${striker.name}
+        <div class="batsmen-section" style="padding-left: 20px;">
+            <div class="player-row ${siIdx === 0 ? 'active' : ''}">
+                <div class="player-name" style="font-size: 17px; font-weight: 800;">
+                    <span class="striker-mark" style="color: ${siIdx === 0 ? '#1a1a2e' : 'transparent'}">▶</span>
+                    ${striker.name.split(' ').pop()}
                 </div>
-                <div class="player-value runs">${striker.runs || 0}</div>
-                <div class="player-value balls">${striker.balls || 0}</div>
+                <div class="player-value runs" style="font-size: 19px; font-weight: 950;">${striker.runs || 0}</div>
+                <div class="player-value balls" style="font-size: 14px; opacity: 0.6;">(${striker.balls || 0})</div>
             </div>
-            <div class="player-row">
-                <div class="player-name">
-                    <span class="striker-mark">${siIdx === 1 ? '▶' : '&nbsp;'}</span>
-                    ${nonStriker.name}
+            <div class="player-row ${siIdx === 1 ? 'active' : ''}">
+                <div class="player-name" style="font-size: 17px; font-weight: 800;">
+                    <span class="striker-mark" style="color: ${siIdx === 1 ? '#1a1a2e' : 'transparent'}">▶</span>
+                    ${nonStriker.name.split(' ').pop()}
                 </div>
-                <div class="player-value runs">${nonStriker.runs || 0}</div>
-                <div class="player-value balls">${nonStriker.balls || 0}</div>
+                <div class="player-value runs" style="font-size: 19px; font-weight: 950;">${nonStriker.runs || 0}</div>
+                <div class="player-value balls" style="font-size: 14px; opacity: 0.6;">(${nonStriker.balls || 0})</div>
             </div>
         </div>
+
         <div class="score-center-section${isWicketBall ? ' wicket-flash' : ''}" id="score-pill">
+            ${isPreview ? '<div style="position:absolute; top:-25px; left:50%; transform:translateX(-50%); background:#e32459; color:#fff; font-size:9px; font-weight:900; padding:2px 10px; border-radius:4px; letter-spacing:1px; box-shadow:0 5px 15px rgba(227,36,89,0.3)">LIVE PREVIEW</div>' : ''}
             <span class="score-clock" id="overlay-live-clock"></span>
             <div class="score-top">
-                <span class="teams">${t1Short} <span class="v">v</span> ${t2Short}</span>
-                <div class="score-badges">
-                    <span class="total">${score}</span>
-                    <span class="phase">${phase}</span>
-                    <span class="overs">${ov}</span>
+                <span class="teams" style="font-size: 14px;">${t1Short} <span class="v">v</span> ${t2Short}</span>
+                <div class="score-badges" style="gap: 10px; margin-top: 4px;">
+                    <span class="total" style="font-size: 26px; background: #e32459; padding: 4px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(227,36,89,0.4)">${score}</span>
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        <span class="phase" style="margin-bottom: 2px;">${phase}</span>
+                        <span class="overs" style="font-size: 15px;">${ov}</span>
+                    </div>
                 </div>
             </div>
-            <div class="score-bottom">${bottomText}</div>
-            ${rrrText ? `<span class="score-rrr">${rrrText}</span>` : ''}
+            <div class="score-bottom" style="margin-top: 6px; letter-spacing: 1.5px; opacity: 0.6;">${bottomText}</div>
+            ${rrrText ? `<span class="score-rrr" style="bottom: -22px; right: 50%; transform: translateX(50%); font-size: 11px; white-space: nowrap; color: #38bdf8; opacity: 0.9; font-weight: 800;">${rrrText}</span>` : ''}
         </div>
-        <div class="bowler-section">
-            <div class="player-row" style="margin-bottom: 4px;">
-                <div class="player-name" style="color: #1a1a2e;">${bowler.name}</div>
-                <div class="player-value runs">${bowler.wickets || 0}-${bowler.runs || 0}</div>
+
+        <div class="bowler-section" style="padding-right: 20px;">
+            <div class="player-row" style="margin-bottom: 6px; justify-content: flex-end;">
+                <div class="player-name" style="color: #1a1a2e; text-align: right; font-size: 16px; font-weight: 800;">${bowler.name.split(' ').pop()}</div>
+                <div class="player-value runs" style="width: 65px; font-weight: 900; font-size: 18px;">${bowler.wickets || 0}-${bowler.runs || 0}</div>
+                <div class="player-value balls" style="width: 45px; opacity: 0.6; font-size: 13px;">(${b_overs})</div>
+            </div>
+            <div class="recent-balls-row" style="justify-content: flex-end;">${recentBallsHtml}</div>
+        </div>
+        <div class="team-logo-box right" style="background: ${match.team2Color || '#f4f4f8'}">
+            <div class="logo-circle">${t2Short}</div>
+        </div>
+    `;
+    kets || 0}-${bowler.runs || 0}</div>
                 <div class="player-value balls">${b_overs}</div>
             </div>
             <div class="recent-balls-row">${recentBallsHtml}</div>
