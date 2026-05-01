@@ -30,22 +30,25 @@ const io = socketIo(server, {
 });
 
 // ── CORS: Allow all origins (reflects request origin back) ───────────────────
-app.use(cors({
+const corsOptions = {
   origin: true, // Reflect ANY origin — simplest and most reliable cross-domain fix
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-key', 'x-scoring-token', 'session-token', 'Session-Token']
-}));
+};
+app.use(cors(corsOptions));
+
+// Pre-flight: handle OPTIONS for ALL routes explicitly
+app.options('*', cors(corsOptions));
 
 // Hardcoded CORS safety net (catches any edge cases cors() misses)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && !res.headersSent) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
-  }
+  // If origin header is present, reflect it; otherwise allow all with wildcard
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });

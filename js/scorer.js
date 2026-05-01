@@ -3,6 +3,15 @@
 //  Bugs fixed: wicket fall, leg bye, partnership
 // ================================================
 
+// ── Shared Utility: also defined in overlay.js for TV page ──
+function getShortName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].substring(0, 3).toUpperCase();
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
 let currentMatch = null;
 let currentMatchType = 'single';
 let wicketRuns = 0;
