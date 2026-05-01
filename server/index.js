@@ -220,15 +220,20 @@ const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 
 let dbInitError = null;
 let _dbInitPromise = null;
+
+function startDatabase() {
+    if (!_dbInitPromise) {
+        _dbInitPromise = initDatabase().catch(err => {
+            dbInitError = err.message;
+            console.error('❌ Async DB Init Failed:', err);
+            throw err;
+        });
+    }
+    return _dbInitPromise;
+}
+
 async function ensureDB() {
-  if (!_dbInitPromise) {
-    _dbInitPromise = initDatabase().catch(err => {
-        dbInitError = err.message;
-        console.error('❌ Async DB Init Failed:', err);
-        throw err;
-    });
-  }
-  await _dbInitPromise;
+  await startDatabase();
   if (!dbInitialized) {
       throw new Error(`Database not ready. Last error: ${dbInitError || 'Unknown initialization failure'}`);
   }
@@ -1169,7 +1174,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Health Check: http://localhost:${PORT}/api/status`);
     
     // Initialize database after server starts to ensure health checks pass
-    initDatabase()
-      .then(() => console.log('📦 Database initialization background process finished'))
-      .catch((e) => console.error('📦 Database initialization background process failed:', e));
+    startDatabase()
+      .then(() => console.log('📦 Database initialization finished'))
+      .catch((e) => console.error('📦 Database initialization failed:', e));
 });
