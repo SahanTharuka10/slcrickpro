@@ -46,11 +46,15 @@ body {
 }
 
 #overlay-container {
-    transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-    transform: translateY(150px);
-    opacity: 0;
+    animation: scorebarEnter 0.6s cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
 
+@keyframes scorebarEnter {
+    from { transform: translateY(80px); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* .show kept for legacy JS compat */
 #overlay-container.show {
     transform: translateY(0);
     opacity: 1;
