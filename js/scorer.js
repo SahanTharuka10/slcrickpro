@@ -4131,20 +4131,6 @@ function renderBroadcastController(match) {
                     </div>
                     <div style="text-align:center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top:10px; letter-spacing:1px">🔴 Real-Time Output Preview · Updates every 1s</div>
                     
-                    <script>
-                        (function() {
-                            const frame = document.getElementById('broadcast-preview-frame');
-                            const container = document.getElementById('broadcast-preview-container');
-                            function scalePreview() {
-                                if (!frame || !container) return;
-                                const scale = container.offsetWidth / 1920;
-                                frame.style.transform = `scale(${scale})`;
-                            }
-                            window.addEventListener('resize', scalePreview);
-                            setTimeout(scalePreview, 100);
-                            setInterval(scalePreview, 1000);
-                        })();
-                    </script>
                 </div>
 
                 <!-- PLAYER & TEAM GRAPHICS -->
@@ -4309,6 +4295,18 @@ function renderBroadcastController(match) {
         // Ensure global hotkeys are active and recognize we are in Master Control mode
         document.body.classList.add('broadcast-controller-active');
     }
+
+    // Scaling Preview Logic (Replaced innerHTML script with real JS)
+    const frame = document.getElementById('broadcast-preview-frame');
+    const container = document.getElementById('broadcast-preview-container');
+    const scalePreview = () => {
+        if (!frame || !container) return;
+        const scaleVal = container.offsetWidth / 1920;
+        frame.style.transform = 'scale(' + scaleVal + ')';
+    };
+    window.addEventListener('resize', scalePreview);
+    setTimeout(scalePreview, 300);
+    setInterval(scalePreview, 1500);
 
 
     // Dynamic Live Sync Function

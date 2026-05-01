@@ -824,7 +824,9 @@ function syncToDB(type, data) {
         endpoint = `/api/matches/${id}/report`;
     }
 
-    console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
+    if (!data?._isBackgroundSync) {
+        console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
+    }
     let token = localStorage.getItem('cricpro_token');
     const expiry = parseInt(localStorage.getItem('cricpro_token_expiry') || '0');
     if (expiry && Date.now() > expiry) {
@@ -874,6 +876,7 @@ function syncToDB(type, data) {
         return r.json();
     })
     .then(d => {
+        if (data) data._isSyncing = false;
         if (!d || !d.ok) return;
         
         // Mark as synced locally to help distinguish between "unsynced new data" and "deleted from cloud"
@@ -1178,8 +1181,11 @@ async function syncCloudData(options = {}) {
                         // Never synced before, so keep local and push to cloud.
                         matchMap.set(lm.id, lm);
                         anyUpdated = true;
-                        console.log(`🔄 Sync: Pushing new match ${lm.id} to cloud (was missing from remote)`);
-                        try { syncToDB('match', lm); } catch(e) {}
+                        if (!lm._isSyncing) {
+                            lm._isSyncing = true;
+                            console.log(`🔄 Sync: Pushing new match ${lm.id} to cloud (was missing from remote)`);
+                            try { syncToDB('match', { ...lm, _isBackgroundSync: true }); } catch(e) {}
+                        }
                     }
                 }
             });
