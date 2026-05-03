@@ -2,6 +2,36 @@
 //  SLCRICKPRO – Central Database (localStorage)
 // ================================================
 
+// ============================================================
+//  BROWSER POLICY FIXES (Permissions Policy & Unload Warnings)
+// ============================================================
+(function() {
+    // Modern browsers (Chrome 115+) are phasing out 'unload' events.
+    // Instead of just swallowing them, we now use 'pagehide' and 'visibilitychange'.
+    const originalAddEventListener = window.addEventListener;
+    window.addEventListener = function(type, listener, options) {
+        if (type === 'unload') {
+            console.warn('⚠️ [SLCRICKPRO] Redirecting "unload" listener to "pagehide" due to browser policy.');
+            return originalAddEventListener.call(this, 'pagehide', listener, options);
+        }
+        return originalAddEventListener.apply(this, arguments);
+    };
+
+    // Global persistence on visibility change (modern best practice)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            console.log('📡 [SLCRICKPRO] App hidden, triggering cloud sync...');
+            if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
+        }
+    });
+
+    // Handle reliable page exit
+    window.addEventListener('pagehide', (event) => {
+        console.log('📡 [SLCRICKPRO] Page hiding, ensuring final sync...');
+        if (typeof syncCloudData === 'function') syncCloudData({ forceRefresh: true, silent: true });
+    });
+})();
+
 const DB_KEYS = {
     PLAYERS: 'cricpro_players',
     TEAMS: 'cricpro_teams',
@@ -55,6 +85,9 @@ window.showToast = function(msg, type = 'default') {
 
 const DB = {
     getCloudURL() {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return "http://localhost:3000";
+        }
         return window.BACKEND_BASE_URL || "https://slcrickpro.onrender.com";
     },
 
@@ -223,11 +256,50 @@ const DB = {
             runsConceded: 0, ballsBowled: 0,
             prizeMoney: 0
         };
+        
+        // Persistent photo storage
+        if (team.photo && String(team.photo).startsWith('data:')) {
+            localStorage.setItem('cricpro_team_photo_' + team.id, team.photo);
+            team.photo = ''; 
+        }
+
         arr.push(team);
         this.saveTeams(arr);
         // Sync to MongoDB
         syncToDB('team', team);
         return team;
+    },
+
+    getTeamPhoto(teamIdOrName, tournamentId = '') {
+        const key = `cricpro_team_photo_${teamIdOrName}${tournamentId ? '_' + tournamentId : ''}`;
+        const photo = localStorage.getItem(key);
+        if (photo) return photo;
+        
+        // Fallback to global team photo if tournament specific not found
+        const globalKey = `cricpro_team_photo_${teamIdOrName}`;
+        const globalPhoto = localStorage.getItem(globalKey);
+        if (globalPhoto) return globalPhoto;
+
+        const isPage = window.location.pathname.includes('/pages/');
+        return isPage ? '../assets/default-team.svg' : 'assets/default-team.svg';
+    },
+
+    saveTeamPhoto(teamIdOrName, dataUrl, tournamentId = '') {
+        if (!dataUrl) return;
+        const key = `cricpro_team_photo_${teamIdOrName}${tournamentId ? '_' + tournamentId : ''}`;
+        localStorage.setItem(key, dataUrl);
+    },
+
+    getPlayerPhoto(playerId) {
+        const isPage = window.location.pathname.includes('/pages/');
+        const fallback = isPage ? '../assets/default-player.svg' : 'assets/default-player.svg';
+        if (!playerId) return fallback;
+        return localStorage.getItem('cricpro_photo_' + playerId) || fallback;
+    },
+
+    savePlayerPhoto(playerId, dataUrl) {
+        if (!playerId || !dataUrl) return;
+        localStorage.setItem('cricpro_photo_' + playerId, dataUrl);
     },
 
     // ---------- MATCHES ----------
@@ -715,6 +787,7 @@ if (typeof io !== 'undefined') {
             reconnectionDelay: 1000,
             reconnectionDelayMax: 8000,
             timeout: 15000,
+            closeOnBeforeunload: false, // Prevent 'unload' related violations
         });
         window._cricproSocket = socket;
 
@@ -816,7 +889,19 @@ function syncToDB(type, data) {
     }
     else if (type === 'team') endpoint = '/teams';
     else if (type === 'match') endpoint = '/sync/match';
-    else if (type === 'tournament') endpoint = '/sync/tournament';
+    else if (type === 'tournament') {
+        endpoint = '/sync/tournament';
+        // Include team photos in the sync payload for broadcast consistency across devices
+        if (data && data.teams) {
+            data.teamPhotos = data.teamPhotos || {};
+            data.teams.forEach(teamName => {
+                const photo = DB.getTeamPhoto(teamName, data.id);
+                if (photo && photo.startsWith('data:')) {
+                    data.teamPhotos[teamName] = photo;
+                }
+            });
+        }
+    }
     else if (type === 'order') endpoint = '/sync/order';
     else if (type === 'post') endpoint = '/sync/post';
     else if (type === 'report') {
@@ -824,9 +909,10 @@ function syncToDB(type, data) {
         endpoint = `/api/matches/${id}/report`;
     }
 
-    if (!data?._isBackgroundSync) {
-        console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
-    }
+    if (data?._isSyncing) return;
+    data._isSyncing = true;
+
+    console.log(`📡 Syncing ${type} to: ${BACKEND_BASE_URL + endpoint}`);
     let token = localStorage.getItem('cricpro_token');
     const expiry = parseInt(localStorage.getItem('cricpro_token_expiry') || '0');
     if (expiry && Date.now() > expiry) {
@@ -836,22 +922,21 @@ function syncToDB(type, data) {
         localStorage.removeItem('cricpro_token_expiry');
     }
 
-    // Only skip cloud sync if the tournament is explicitly locked AND we have no valid token
-    if (type === 'match' && data && data.tournamentId && !token) {
+    // Security check: Only skip if NOT on localhost AND the tournament is explicitly locked AND we have no valid token.
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocal && type === 'match' && data && data.tournamentId && !token) {
         const tournament = (DB && DB.getTournament) ? DB.getTournament(data.tournamentId) : null;
         const locked = tournament && (tournament.scoringPassword || tournament.password || tournament.isLocked);
-        // Only skip if LOCKED — unlocked matches MUST always sync to cloud
         if (locked) {
-            // Silently skip for background syncs to avoid console spam
-            // console.warn('Skipping match sync for locked tournament without valid token.');
+            console.warn(`🔐 Sync [${data.id}] blocked: Tournament is locked and no token found.`);
+            data._isSyncing = false;
             return;
         }
-        // If unlocked or no tournament password set, proceed with sync
     }
 
     const headers = {
         'Content-Type': 'application/json',
-        'x-api-key': 'slcrickpro-v1' // Simple API secret for backend consistency
+        'x-api-key': 'slcrickpro-v1'
     };
     if (token) headers['x-scoring-token'] = token;
 
@@ -861,6 +946,7 @@ function syncToDB(type, data) {
         body: JSON.stringify(data),
     })
     .then(async (r) => {
+        data._isSyncing = false;
         if (r.status === 401) {
             console.warn('Scoring token expired or invalid (401). Clearing local token.');
             localStorage.removeItem('cricpro_token');
@@ -870,36 +956,32 @@ function syncToDB(type, data) {
         }
         if (!r.ok) {
             const text = await r.text();
-            console.warn('Sync failed with status', r.status, text);
+            console.warn(`❌ Sync [${type}] failed with status ${r.status}:`, text);
             return null;
         }
+        console.log(`✅ Sync [${type}] succeeded for ${data.id || data.playerId}`);
         return r.json();
     })
     .then(d => {
-        if (data) data._isSyncing = false;
         if (!d || !d.ok) return;
         
-        // Mark as synced locally to help distinguish between "unsynced new data" and "deleted from cloud"
-        if (type === 'match') {
-            const arr = DB.getMatches();
-            const idx = arr.findIndex(m => m.id === data.id);
-            if (idx !== -1) {
-                arr[idx]._isCloudSynced = true; // Flag used by syncCloudData to detect cloud-deleted matches
-                arr[idx].synced = true;
-                arr[idx].lastUpdated = Date.now();
-                DB._secureSet(DB_KEYS.MATCHES, arr);
-            }
-        }
-        if (type === 'tournament') {
-            const arr = DB.getTournaments();
-            const idx = arr.findIndex(t => t.id === data.id);
+        // Mark as synced locally
+        const updateSyncFlag = (getFn, saveFn, key) => {
+            const arr = getFn();
+            const idToMatch = data.id || data.playerId;
+            const idx = arr.findIndex(item => (item.id === idToMatch || item.playerId === idToMatch));
             if (idx !== -1) {
                 arr[idx]._isCloudSynced = true;
                 arr[idx].synced = true;
                 arr[idx].lastUpdated = Date.now();
-                DB._secureSet(DB_KEYS.TOURNAMENTS, arr);
+                saveFn(arr);
             }
-        }
+        };
+
+        if (type === 'match') updateSyncFlag(() => DB.getMatches(), (a) => DB._secureSet(DB_KEYS.MATCHES, a));
+        if (type === 'tournament') updateSyncFlag(() => DB.getTournaments(), (a) => DB._secureSet(DB_KEYS.TOURNAMENTS, a));
+        if (type === 'player') updateSyncFlag(() => DB.getPlayers(), (a) => DB.savePlayers(a));
+        if (type === 'team') updateSyncFlag(() => DB.getTeams(), (a) => DB.saveTeams(a));
 
         if (d.error === 'Unauthorized scoring session') {
             console.warn('Scoring token expired or invalid.');
@@ -909,12 +991,13 @@ function syncToDB(type, data) {
         }
     })
     .catch(err => {
+        data._isSyncing = false;
         console.error(`❌ Sync failed to ${BACKEND_BASE_URL + endpoint}:`, err);
-        // Only show toast if user is actively doing something (e.g. manual save)
         if (typeof showToast === 'function' && !data._isBackgroundSync) {
             showToast('⚠️ Sync limited: Network connection issue.', 'error');
         }
     });
+
 }
 window.syncToDB = syncToDB; // Expose globally for other files
 
@@ -1082,10 +1165,22 @@ if ('serviceWorker' in navigator) {
 //  UNIFIED CLOUD SYNC & REAL-TIME LOGIC
 // ============================================================
 let _isSyncingCloud = false;
+let _lastSyncTime = 0;
+const SYNC_DEBOUNCE_MS = 2000; // 2 second debounce
+
 async function syncCloudData(options = {}) {
     if (!BACKEND_BASE_URL || _isSyncingCloud) return;
+    
+    // Debounce: ignore rapid-fire requests (e.g. from globalUpdate flood)
+    const now = Date.now();
+    if (options.silent && (now - _lastSyncTime < SYNC_DEBOUNCE_MS)) {
+        return;
+    }
+    _lastSyncTime = now;
+
     if (document.hidden && !options.forceRefresh) return;
     if (window._isEditingRoster && !options.forceRefresh) return;
+
 
     // Don't hammer a sleeping server — wait for it to wake first
     if (!_serverAwake && !options.forceRefresh) return;
@@ -1124,20 +1219,31 @@ async function syncCloudData(options = {}) {
         const teamData = await tmReq.json();
 
         // 1. Sync Players (Preserve local if remote is empty or error)
-        if (playerData && Array.isArray(playerData) && playerData.length > 0) {
+        if (playerData && Array.isArray(playerData) && (playerData.length > 0 || options.forceRefresh)) {
             const localPlayers = DB.getPlayers();
-            // Create a map of existing players for faster merging
             const playerMap = new Map();
             playerData.forEach(p => {
                 const id = p.id || p.playerId || p._id;
                 if (id) playerMap.set(id, { ...p, playerId: id });
             });
-            
             // Re-add local players that might not be on cloud yet
             localPlayers.forEach(lp => {
+                if (!lp.playerId) return; // Skip broken records
                 if (!playerMap.has(lp.playerId)) {
-                    playerMap.set(lp.playerId, lp);
-                    try { syncToDB('player', lp); } catch(e) {}
+                    if (lp._isCloudSynced) {
+                        // Deleted from cloud
+                        console.log(`🗑️ Sync: Local player ${lp.playerId} was deleted from cloud. Removing locally.`);
+                    } else if (!options.silent) {
+                        // Only push back if it's NOT a silent/background sync (respect "don't push" loops)
+                        playerMap.set(lp.playerId, lp);
+                        if (!lp._isSyncing) {
+                            console.log(`🔄 Sync: Pushing new player ${lp.playerId} to cloud`);
+                            try { syncToDB('player', { ...lp, _isBackgroundSync: true }); } catch(e) {}
+                        }
+                    } else {
+                        // In a silent sync, we preserve local data but don't re-push to avoid loops.
+                        playerMap.set(lp.playerId, lp);
+                    }
                 }
             });
             DB.savePlayers(Array.from(playerMap.values()));
@@ -1147,12 +1253,24 @@ async function syncCloudData(options = {}) {
         if (teamData && Array.isArray(teamData) && teamData.length > 0) {
             const localTeams = DB.getTeams();
             const teamMap = new Map();
-            teamData.forEach(t => teamMap.set(t.id, t));
+            teamData.forEach(t => {
+                if (t.id) teamMap.set(t.id, t);
+            });
             
             localTeams.forEach(lt => {
+                if (!lt.id) return;
                 if (!teamMap.has(lt.id)) {
-                    teamMap.set(lt.id, lt);
-                    try { syncToDB('team', lt); } catch(e) {}
+                    if (lt._isCloudSynced) {
+                        console.log(`🗑️ Sync: Local team ${lt.id} was deleted from cloud. Removing locally.`);
+                    } else if (!options.silent) {
+                        teamMap.set(lt.id, lt);
+                        if (!lt._isSyncing) {
+                            console.log(`🔄 Sync: Pushing new team ${lt.id} to cloud`);
+                            try { syncToDB('team', { ...lt, _isBackgroundSync: true }); } catch(e) {}
+                        }
+                    } else {
+                        teamMap.set(lt.id, lt);
+                    }
                 }
             });
             DB.saveTeams(Array.from(teamMap.values()));
@@ -1181,20 +1299,23 @@ async function syncCloudData(options = {}) {
 
             // Sync local matches back to remote OR delete them locally if they were removed from the cloud.
             localMatches.forEach(lm => {
+                if (!lm.id) return;
                 if (!matchMap.has(lm.id)) {
+                    // Match exists locally but not on cloud
                     if (lm._isCloudSynced || lm.synced) {
-                        // It was on the cloud before, but missing now. Cloud deleted it.
-                        console.log(`🗑️ Sync: Local match ${lm.id} was deleted from cloud. Removing locally.`);
-                        anyUpdated = true;
-                    } else {
-                        // Never synced before, so keep local and push to cloud.
-                        matchMap.set(lm.id, lm);
-                        anyUpdated = true;
-                        if (!lm._isSyncing) {
-                            lm._isSyncing = true;
-                            console.log(`🔄 Sync: Pushing new match ${lm.id} to cloud (was missing from remote)`);
-                            try { syncToDB('match', { ...lm, _isBackgroundSync: true }); } catch(e) {}
-                        }
+                        // It was synced before, but now it's gone from cloud (e.g. server reset)
+                        // Instead of deleting locally, we RE-PUSH to restore the server state.
+                        console.log(`🔄 Sync: Local match ${lm.id} missing from remote. Re-pushing to restore...`);
+                        lm._isCloudSynced = false; 
+                        lm.synced = false;
+                    }
+                    
+                    matchMap.set(lm.id, lm);
+                    anyUpdated = true;
+                    if (!lm._isSyncing) {
+                        lm._isSyncing = true;
+                        console.log(`🔄 Sync: Pushing match ${lm.id} to cloud`);
+                        try { syncToDB('match', { ...lm, _isBackgroundSync: true }); } catch(e) {}
                     }
                 }
             });
@@ -1218,6 +1339,15 @@ async function syncCloudData(options = {}) {
 
             remoteTournaments.forEach(ct => {
                 const lt = localTournaments.find(x => x.id === ct.id);
+                
+                // Extract and persist team photos if they exist in the remote payload
+                if (ct.teamPhotos) {
+                    Object.entries(ct.teamPhotos).forEach(([teamName, dataUrl]) => {
+                        DB.saveTeamPhoto(teamName, dataUrl, ct.id);
+                    });
+                    delete ct.teamPhotos; // Keep the tournament record lightweight
+                }
+
                 if (lt && (lt.lastUpdated || 0) > (ct.lastUpdated || 0)) {
                     tournMap.set(lt.id, lt);
                 } else {
@@ -1227,20 +1357,17 @@ async function syncCloudData(options = {}) {
             });
 
             localTournaments.forEach(lt => {
+                if (!lt.id) return;
                 if (!tournMap.has(lt.id)) {
                     if (lt._isCloudSynced) {
-                        console.log(`🗑️ Sync: Local tournament ${lt.id} was deleted from cloud. Removing locally.`);
-                        anyTUpdated = true;
-                        
-                        // Cascade delete matches for this tournament
-                        const matches = DB.getMatches().filter(m => m.tournamentId !== lt.id);
-                        DB.saveMatches(matches);
-                    } else {
-                        tournMap.set(lt.id, lt);
-                        anyTUpdated = true;
-                        console.log(`🔄 Sync: Pushing new tournament ${lt.id} to cloud (was missing from remote)`);
-                        try { syncToDB('tournament', lt); } catch(e) {}
+                        console.log(`🔄 Sync: Local tournament ${lt.id} missing from remote. Re-pushing...`);
+                        lt._isCloudSynced = false;
                     }
+                    
+                    tournMap.set(lt.id, lt);
+                    anyTUpdated = true;
+                    console.log(`🔄 Sync: Pushing tournament ${lt.id} to cloud`);
+                    try { syncToDB('tournament', lt); } catch(e) {}
                 }
             });
 

@@ -178,7 +178,18 @@ function openScorerDashboard(matchId) {
 }
 
 function openHotkeyPanel(matchId) {
-    // FIX: Redirect to score-match.html (Broadcast Controller) NOT overlay.html
-    const mUrl = `score-match.html?matchId=${encodeURIComponent(matchId)}&hotkey=true`;
-    window.open(mUrl, '_blank');
+    // Load the match inline and switch to the Broadcast Master tab
+    const m = DB.getMatch(matchId);
+    if (!m) {
+        showToast('Match data not found', 'error');
+        return;
+    }
+    // Load match data into current session
+    loadMatch(m);
+    // After a short delay (for the scoring screen to render), switch to broadcast tab
+    setTimeout(() => {
+        if (typeof switchScoringTab === 'function') {
+            switchScoringTab('hotkeys');
+        }
+    }, 300);
 }

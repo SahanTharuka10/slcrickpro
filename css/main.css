@@ -1840,3 +1840,34 @@ body:not(.light-mode) .live-card-footer {
 
 /* FINAL TRANSPARENCY & STABILITY OVERRIDES */
 .logo { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; }
+
+/* ========== ROSTER MANAGEMENT (PREMIUM) ========== */
+.roster-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.roster-container::-webkit-scrollbar {
+    width: 6px;
+}
+.roster-container::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+}
+.roster-slot {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.roster-slot:hover {
+    background: rgba(255,255,255,0.06) !important;
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.15) !important;
+}
+.roster-player-input:focus {
+    background: rgba(255,255,255,0.08) !important;
+    border-color: var(--c-primary) !important;
+    box-shadow: 0 0 15px rgba(var(--c-primary-rgb), 0.2);
+    outline: none;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

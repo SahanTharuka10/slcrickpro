@@ -36,6 +36,7 @@ let currentOverlayTeam = null;
 let currentOverlayPlayer = null;
 let activeOverlayId = null;
 const DEFAULT_PLAYER_PHOTO = '../assets/default-player.svg';
+const DEFAULT_TEAM_PHOTO = '../assets/default-team.svg';
 
 function getOnCreaseBatterNames(inn) {
     if (!inn || !Array.isArray(inn.batsmen) || !Array.isArray(inn.currentBatsmenIdx)) return [];
@@ -261,11 +262,18 @@ function handleBack() {
 // ========== SETUP ==========
 function selectMatchType(type) {
     currentMatchType = type;
-    document.getElementById('type-single').classList.toggle('active', type === 'single');
-    document.getElementById('type-tournament').classList.toggle('active', type === 'tournament');
-    document.getElementById('type-instant-nrr').classList.toggle('active', type === 'instant-nrr');
+    const btnSingle = document.getElementById('type-single');
+    const btnTourn = document.getElementById('type-tournament');
+    const btnNRR = document.getElementById('type-instant-nrr');
     
-    document.getElementById('tournament-setup-section').style.display = type === 'tournament' ? '' : 'none';
+    if (btnSingle) btnSingle.classList.toggle('active', type === 'single');
+    if (btnTourn) btnTourn.classList.toggle('active', type === 'tournament');
+    if (btnNRR) btnNRR.classList.toggle('active', type === 'instant-nrr');
+    
+    const tournSection = document.getElementById('tournament-setup-section') || document.getElementById('new-tournament-form');
+    if (tournSection) {
+        tournSection.style.display = type === 'tournament' ? '' : 'none';
+    }
     
     const matchConfigCard = document.getElementById('match-config-card');
     if (matchConfigCard) {
@@ -578,16 +586,21 @@ function switchTournamentTab(tab) {
     currentTournamentTab = tab;
     const pMatches = document.getElementById('tm-panel-matches');
     const pTeams = document.getElementById('tm-panel-teams');
+    const pStandings = document.getElementById('tm-panel-standings');
     const btnMatches = document.getElementById('tm-tab-matches');
     const btnTeams = document.getElementById('tm-tab-teams');
+    const btnStandings = document.getElementById('tm-tab-standings');
 
     if (btnMatches) btnMatches.classList.toggle('active', tab === 'matches');
     if (btnTeams) btnTeams.classList.toggle('active', tab === 'teams');
+    if (btnStandings) btnStandings.classList.toggle('active', tab === 'standings');
 
     if (pMatches) pMatches.style.display = tab === 'matches' ? 'block' : 'none';
     if (pTeams) pTeams.style.display = tab === 'teams' ? 'block' : 'none';
+    if (pStandings) pStandings.style.display = tab === 'standings' ? 'block' : 'none';
 
     if (tab === 'matches') renderTournamentMatches();
+    else if (tab === 'standings') renderTournamentStandings();
     else renderTournamentTeams();
 }
 
@@ -1491,6 +1504,74 @@ function renderScoring() {
             decBtn.style.display = (m.matchFormat === 'test' && m.status === 'live') ? 'block' : 'none';
         }
     }
+
+    // Update Broadcast Master Player Photos
+    const imgStriker = document.getElementById('bm-photo-striker');
+    const imgNonStriker = document.getElementById('bm-photo-nonstriker');
+    const imgBowler = document.getElementById('bm-photo-bowler');
+    
+    if (imgStriker && imgNonStriker && imgBowler) {
+        const sIdx = inn.currentBatsmenIdx[inn.strikerIdx];
+        const nsIdx = inn.currentBatsmenIdx[inn.strikerIdx === 0 ? 1 : 0];
+        const striker = sIdx !== null && sIdx !== undefined ? inn.batsmen[sIdx] : null;
+        const nonStriker = nsIdx !== null && nsIdx !== undefined ? inn.batsmen[nsIdx] : null;
+        
+        imgStriker.src = (striker && striker.playerId) ? DB.getPlayerPhoto(striker.playerId) : '../assets/default-player.svg';
+        imgNonStriker.src = (nonStriker && nonStriker.playerId) ? DB.getPlayerPhoto(nonStriker.playerId) : '../assets/default-player.svg';
+        imgBowler.src = (bowler && bowler.playerId) ? DB.getPlayerPhoto(bowler.playerId) : '../assets/default-player.svg';
+    }
+}
+
+function uploadPlayerPhoto(role) {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+
+    let p = null;
+    if (role === 'striker') {
+        const idx = inn.currentBatsmenIdx[inn.strikerIdx];
+        p = idx !== null && idx !== undefined ? inn.batsmen[idx] : null;
+    } else if (role === 'nonstriker') {
+        const idx = inn.currentBatsmenIdx[inn.strikerIdx === 0 ? 1 : 0];
+        p = idx !== null && idx !== undefined ? inn.batsmen[idx] : null;
+    } else if (role === 'bowler') {
+        p = inn.currentBowlerIdx !== null && inn.currentBowlerIdx !== undefined ? inn.bowlers[inn.currentBowlerIdx] : null;
+    }
+
+    if (!p) {
+        showToast('No player selected for this role', 'error');
+        return;
+    }
+    
+    // Auto-generate a dummy ID if it's missing (e.g. ad-hoc manual match)
+    if (!p.playerId) {
+        p.playerId = 'MANUAL_' + p.name.replace(/\s+/g, '_') + '_' + Date.now();
+        // Since it's an ad-hoc player, we don't save to DB.PLAYERS, but photo key will use this id.
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            DB.savePlayerPhoto(p.playerId, ev.target.result);
+            DB.saveMatch(currentMatch); // Save the dummy ID if it was generated
+            showToast('✅ Photo saved for ' + p.name, 'success');
+            renderScoring();
+            
+            // Re-render broadcast overlay if it's open
+            if (typeof Broadcast !== 'undefined' && Broadcast.send) {
+                // Send a silent sync to update overlay
+                Broadcast.send('SYNC_SCORE', { match: currentMatch });
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
 }
 
 function getPartnership(inn) {
@@ -3132,6 +3213,163 @@ function saveActiveRosterRoot(rootObj) {
     }
 }
 
+
+function renderTournamentStandings() {
+    const t = currentTournament;
+    if (!t) return;
+    
+    const container = document.getElementById('tm-standings-table');
+    if (!container) return;
+
+    if (!t.teams || t.teams.length === 0) {
+        container.innerHTML = '<div style="padding:40px;text-align:center;opacity:0.5">No teams added yet.</div>';
+        return;
+    }
+
+    // Initialize standings map
+    const standings = {};
+    t.teams.forEach(team => {
+        standings[team] = { played: 0, won: 0, lost: 0, tied: 0, nr: 0, points: 0, runsFor: 0, oversFor: 0, runsAgainst: 0, oversAgainst: 0, nrr: 0 };
+    });
+
+    // Process all completed matches to calculate points and NRR
+    if (t.matches) {
+        t.matches.forEach(mId => {
+            const m = DB.getMatch(mId);
+            if (!m || m.status !== 'completed' || !m.innings || m.innings.length < 2) return;
+
+            const t1 = m.team1;
+            const t2 = m.team2;
+            
+            // If teams are missing from original roster, dynamically add them
+            if (t1 !== 'TBD' && !standings[t1]) standings[t1] = { played: 0, won: 0, lost: 0, tied: 0, nr: 0, points: 0, runsFor: 0, oversFor: 0, runsAgainst: 0, oversAgainst: 0, nrr: 0 };
+            if (t2 !== 'TBD' && !standings[t2]) standings[t2] = { played: 0, won: 0, lost: 0, tied: 0, nr: 0, points: 0, runsFor: 0, oversFor: 0, runsAgainst: 0, oversAgainst: 0, nrr: 0 };
+
+            if (t1 === 'TBD' || t2 === 'TBD') return;
+
+            const inn1 = m.innings[0];
+            const inn2 = m.innings[1];
+            
+            // Batting first team
+            const team1Bat = (inn1.battingTeam === t1) ? inn1 : inn2;
+            const team1Bowl = (inn1.bowlingTeam === t1) ? inn1 : inn2;
+            
+            // Batting second team
+            const team2Bat = (inn1.battingTeam === t2) ? inn1 : inn2;
+            const team2Bowl = (inn1.bowlingTeam === t2) ? inn1 : inn2;
+
+            if (!team1Bat || !team2Bat) return;
+
+            standings[t1].played++;
+            standings[t2].played++;
+
+            // Win/Loss Calculation
+            let result = m.resultText || '';
+            if (result.includes(t1) && result.includes('won')) {
+                standings[t1].won++; standings[t1].points += 2;
+                standings[t2].lost++;
+            } else if (result.includes(t2) && result.includes('won')) {
+                standings[t2].won++; standings[t2].points += 2;
+                standings[t1].lost++;
+            } else if (result.toLowerCase().includes('tie') || result.toLowerCase().includes('drawn')) {
+                standings[t1].tied++; standings[t1].points += 1;
+                standings[t2].tied++; standings[t2].points += 1;
+            } else if (result.toLowerCase().includes('no result') || result.toLowerCase().includes('abandoned')) {
+                standings[t1].nr++; standings[t1].points += 1;
+                standings[t2].nr++; standings[t2].points += 1;
+            } else {
+                // Fallback check if resultText is weird
+                if (team1Bat.runs > team2Bat.runs) { standings[t1].won++; standings[t1].points += 2; standings[t2].lost++; }
+                else if (team2Bat.runs > team1Bat.runs) { standings[t2].won++; standings[t2].points += 2; standings[t1].lost++; }
+                else { standings[t1].tied++; standings[t2].tied++; standings[t1].points += 1; standings[t2].points += 1; }
+            }
+
+            // NRR Calculation Helpers
+            const getOvers = (balls, isAllOut, maxOvers) => {
+                if (isAllOut) return maxOvers;
+                return Math.floor(balls / 6) + (balls % 6) / 6;
+            };
+
+            const t1AllOut = team1Bat.wickets >= m.playersPerSide - 1 || team1Bat.isAllOut;
+            const t2AllOut = team2Bat.wickets >= m.playersPerSide - 1 || team2Bat.isAllOut;
+
+            // Update runs and overs
+            standings[t1].runsFor += team1Bat.runs;
+            standings[t1].oversFor += getOvers(team1Bat.balls, t1AllOut, m.overs);
+            standings[t1].runsAgainst += team2Bat.runs;
+            standings[t1].oversAgainst += getOvers(team2Bat.balls, t2AllOut, m.overs);
+
+            standings[t2].runsFor += team2Bat.runs;
+            standings[t2].oversFor += getOvers(team2Bat.balls, t2AllOut, m.overs);
+            standings[t2].runsAgainst += team1Bat.runs;
+            standings[t2].oversAgainst += getOvers(team1Bat.balls, t1AllOut, m.overs);
+        });
+    }
+
+    // Calculate NRR
+    const teamsArr = Object.keys(standings).map(team => {
+        const s = standings[team];
+        if (s.oversFor > 0 && s.oversAgainst > 0) {
+            s.nrr = (s.runsFor / s.oversFor) - (s.runsAgainst / s.oversAgainst);
+        }
+        return { name: team, ...s };
+    });
+
+    // Sort by points, then NRR
+    teamsArr.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return b.nrr - a.nrr;
+    });
+
+    let html = `
+    <div style="background:rgba(255,255,255,0.03); border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08)">
+        <table style="width:100%; border-collapse:collapse; text-align:center; font-size:13px">
+            <thead>
+                <tr style="background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:11px; text-transform:uppercase; letter-spacing:1px">
+                    <th style="padding:12px 16px; text-align:left">Team</th>
+                    <th style="padding:12px 8px">P</th>
+                    <th style="padding:12px 8px">W</th>
+                    <th style="padding:12px 8px">L</th>
+                    <th style="padding:12px 8px">PTS</th>
+                    <th style="padding:12px 16px; text-align:right">NRR</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    teamsArr.forEach((t, i) => {
+        const isTop4 = i < 4;
+        const color = isTop4 ? 'var(--c-primary)' : 'var(--c-text)';
+        const bg = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
+        
+        html += `
+            <tr style="background:${bg}; border-bottom:1px solid rgba(255,255,255,0.05)">
+                <td style="padding:12px 16px; text-align:left; font-weight:800; color:${color}">
+                    ${i + 1}. ${t.name}
+                </td>
+                <td style="padding:12px 8px; opacity:0.8">${t.played}</td>
+                <td style="padding:12px 8px; color:#00e676; font-weight:700">${t.won}</td>
+                <td style="padding:12px 8px; color:#ff1744; font-weight:700">${t.lost}</td>
+                <td style="padding:12px 8px; font-weight:900; font-size:15px">${t.points}</td>
+                <td style="padding:12px 16px; text-align:right; font-weight:700; color:${t.nrr >= 0 ? '#38bdf8' : '#ff8a65'}">
+                    ${t.nrr > 0 ? '+' : ''}${t.nrr.toFixed(3)}
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    </div>
+    <div style="font-size:11px; opacity:0.5; margin-top:12px; text-align:center;">
+        * NRR formula: (Total Runs Scored / Total Overs Faced) - (Total Runs Conceded / Total Overs Bowled).
+    </div>
+    `;
+
+    container.innerHTML = html;
+}
+
 function renderTournamentTeams() {
     const t = getActiveRosterRoot();
     if (!t) return;
@@ -3231,19 +3469,10 @@ function onRosterPhotoFileSelected(e) {
         // If the input contains a name but not a player object, create on first upload
         if (!player && pendingRosterName) {
             player = DB.addPlayer({ name: pendingRosterName, photo: imageData, role: 'Player' });
-        } else if (!player && existingValue) {
-             player = DB.addPlayer({ name: existingValue, photo: imageData, role: 'Player' });
         }
-
-        // If we found an existing player, update their photo
-        if (player) {
-            // Use a shallow copy to update, preventing reference mutation in the same UI cycle
-            let updatePayload = { ...player, photo: imageData };
-            if (DB.updatePlayer) {
-                player = DB.updatePlayer(updatePayload);
-            } else {
-                player = DB.addPlayer(updatePayload);
-            }
+        
+        if (player && pendingRosterSlotToRegister !== null) {
+            localStorage.setItem('cricpro_photo_' + player.playerId, imageData);
             assignRosterSlot(pendingRosterSlotToRegister, player);
         }
 
@@ -3253,176 +3482,243 @@ function onRosterPhotoFileSelected(e) {
     reader.readAsDataURL(file);
 }
 
+function assignRosterSlot(idx, playerOrId) {
+    const t = getActiveRosterRoot();
+    if (!t || !editingTeamName) return;
+    if (!t.rosters) t.rosters = {};
+    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    t.rosters[editingTeamName][idx] = typeof playerOrId === 'string' ? playerOrId : playerOrId.playerId;
+    saveActiveRosterRoot(t);
+    openRosterEditor(editingTeamName);
+}
+
 function openRosterEditor(teamName) {
     const t = getActiveRosterRoot();
     if (!t) return;
     
-    window._isEditingRoster = true; // Block intrusive refreshes
     editingTeamName = teamName || (t.teams && t.teams.length ? t.teams[0] : null);
     if (!editingTeamName) return;
 
-    if (!t.rosters) t.rosters = {};
-    if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+    const overlay = document.getElementById('full-screen-roster-overlay');
+    if (!overlay) return;
     
-    const roster = t.rosters[editingTeamName];
-    // Ensure at least 11 slots are shown
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; 
+
+    // Load Team Details
+    const teamLogo = DB.getTeamPhoto(editingTeamName, t.id);
+    const teamNameInput = document.getElementById('fsr-team-name-input');
+    const teamLogoImg = document.getElementById('fsr-team-logo');
+    const captainInput = document.getElementById('fsr-captain-input');
+    const coachInput = document.getElementById('fsr-coach-input');
+    const headerEl = document.getElementById('fsr-team-header');
+
+    if (teamNameInput) teamNameInput.value = editingTeamName;
+    if (teamLogoImg) teamLogoImg.src = teamLogo;
+
+    // Load extended team details from tournament
+    t.teamConfigs = t.teamConfigs || {};
+    const config = t.teamConfigs[editingTeamName] || {};
+    if (captainInput) captainInput.value = config.captain || '';
+    if (coachInput) coachInput.value = config.coach || '';
+
+    if (headerEl) {
+        headerEl.innerHTML = `
+            <div style="font-weight:950; font-size:24px; color:#fff">${editingTeamName.toUpperCase()}</div>
+            <div style="font-size:11px; font-weight:700; color:var(--c-primary); text-transform:uppercase; letter-spacing:2px">SQUAD MANAGEMENT</div>
+        `;
+    }
+
+    renderFSRosters();
+}
+
+function closeFullScreenRoster() {
+    const overlay = document.getElementById('full-screen-roster-overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function renderFSRosters() {
+    const t = getActiveRosterRoot();
+    if (!t || !editingTeamName) return;
+
+    const roster = (t.rosters && t.rosters[editingTeamName]) ? t.rosters[editingTeamName] : [];
     const slotCount = Math.max(11, roster.length);
+    const grid = document.getElementById('fsr-players-grid');
+    if (!grid) return;
+
+    let html = '';
     
-    const listEl = document.getElementById('tm-teams-list');
-    if (!listEl) return;
-
-    let inputsHtml = '';
-    const allPlayers = DB.getPlayers();
-    let datalistOptions = allPlayers.map(p => `<option value="${escapeHTML(p.name)}">`).join('');
-
     for (let i = 0; i < slotCount; i++) {
         const slotValue = roster[i] || '';
         const player = resolveRosterPlayer(slotValue);
-        const displayName = player ? player.name : slotValue;
+        const displayName = player ? player.name : (slotValue || '');
         const photo = player ? playerPhotoSrc(player) : DEFAULT_PLAYER_PHOTO;
         const isRegistered = !!player;
 
-        inputsHtml += `
-            <div class="roster-slot" style="display:flex; align-items:center; gap:12px; margin-bottom:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:16px; border:1px solid ${isRegistered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}; transition:all 0.2s">
-                <div style="width:24px; font-size:11px; font-weight:900; color:rgba(255,255,255,0.2)">${(i + 1).toString().padStart(2, '0')}</div>
-                <div style="position:relative; width:48px; height:48px; flex-shrink:0; cursor:pointer;" onclick="onRosterPhotoClick(${i})">
-                    <img id="roster-photo-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:12px; border:1px solid rgba(255,255,255,0.1)" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'">
-                    <div style="position:absolute; bottom:-4px; right:-4px; background:var(--c-primary); width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white; border:2px solid #000">📷</div>
+        html += `
+            <div class="card fsr-player-card" style="padding:20px; background:rgba(255,255,255,0.03); border:1px solid ${isRegistered ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)'}; border-radius:24px; display:flex; gap:15px; align-items:center; transition:0.3s">
+                <div style="position:relative; width:70px; height:70px; flex-shrink:0; cursor:pointer" onclick="onFSRPlayerPhotoClick(${i})">
+                    <img id="fsr-p-img-${i}" src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:18px; border:2px solid rgba(255,255,255,0.1)" onerror="this.src='${DEFAULT_PLAYER_PHOTO}'">
+                    <div style="position:absolute; bottom:-4px; right:-4px; background:var(--c-primary); width:20px; height:20px; border-radius:50%; border:2px solid #000; font-size:10px; color:white; display:flex; align-items:center; justify-content:center">📷</div>
                 </div>
-                <div style="flex:1; display:flex; flex-direction:column; gap:4px">
-                    <div style="display:flex; align-items:center; gap:8px">
-                        <input id="roster-name-${i}" type="text" class="form-input roster-player-input" list="roster-players-list"
-                               value="${escapeHTML(displayName)}" placeholder="Player name..." 
-                               oninput="onRosterInputChanged(${i}, this.value)"
-                               onblur="saveRoster('${escapeHTML(editingTeamName)}', true)"
-                               onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
-                               style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; height:38px; font-size:16px; font-weight:800; padding:0 10px; color:#fff" autocomplete="off" />
-                        <button type="button" class="btn btn-sm btn-ghost" style="font-size:16px; padding:4px; opacity:0.5" title="Advanced Edit" onclick="event.stopPropagation(); onRosterSlotClick(${i})">⚙️</button>
-                    </div>
-                    <div id="roster-info-${i}" style="font-size:9px; font-weight:700; color:${isRegistered ? 'var(--c-blue)' : 'rgba(255,255,255,0.3)'}; text-transform:uppercase; letter-spacing:0.5px">
-                        ${isRegistered ? '✅ Linked Profile' : '🆕 New Entry'}
+                <div style="flex:1">
+                    <div style="font-size:10px; color:var(--c-muted); font-weight:900; text-transform:uppercase; margin-bottom:4px">PLAYER ${(i+1)}</div>
+                    <input type="text" class="form-input fsr-p-name-input" 
+                           data-idx="${i}" value="${escapeHTML(displayName)}" 
+                           placeholder="Enter name..." 
+                           style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:10px; height:44px; font-size:16px; font-weight:800; color:#fff" />
+                    <div style="margin-top:6px; font-size:9px; font-weight:900; color:${isRegistered ? '#3b82f6' : 'rgba(255,255,255,0.3)'}">
+                        ${isRegistered ? '✅ VERIFIED PROFILE' : '🆕 NEW ENTRY'}
                     </div>
                 </div>
             </div>
         `;
     }
-
-    listEl.innerHTML = `
-        <datalist id="roster-players-list">
-            ${datalistOptions}
-        </datalist>
-        <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; background:rgba(255,255,255,0.02); padding:15px; border-radius:20px; border:1px solid rgba(255,255,255,0.05)">
-            <div>
-                <div style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--c-primary); font-weight:900; margin-bottom:4px">Roster Editor</div>
-                <div style="font-weight:950; color:#fff; font-size:22px; letter-spacing:-0.5px">${editingTeamName}</div>
-                <div style="font-size:11px; opacity:0.5; margin-top:2px">Official Match Squad (11 Players)</div>
-            </div>
-            <button class="btn btn-sm btn-ghost" onclick="window._isEditingRoster=false; renderTournamentTeams()" style="font-size:11px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.2)">← Back</button>
-        </div>
-
-        <div class="roster-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; padding-bottom:10px">
-            ${inputsHtml}
-        </div>
-        
-        <button class="btn btn-sm btn-ghost" style="width:100%; border:1px dashed rgba(255,255,255,0.1); border-radius:18px; height:50px; margin-top:12px; font-weight:700" onclick="addRosterSlot()">➕ Add Reserve Player</button>
-
-        <div style="margin-top:24px; position:sticky; bottom:0; padding:15px; background:linear-gradient(0deg, rgba(7, 11, 20, 1) 0%, rgba(7, 11, 20, 0.9) 70%, rgba(7, 11, 20, 0) 100%); margin: 0 -15px; border-radius: 0 0 25px 25px">
-            <button class="btn btn-primary btn-full shadow-lg" style="height:54px; font-weight:950; font-size:16px; border-radius:18px; text-transform:uppercase; letter-spacing:1px" onclick="saveRoster('${escapeHTML(editingTeamName)}')">💾 Save Complete Roster</button>
-            <input id="roster-photo-file-input" type="file" accept="image/*" style="display:none" onchange="onRosterPhotoFileSelected(event)">
-        </div>
-    `;
+    grid.innerHTML = html;
 }
 
-function addRosterSlot() {
+function onFSRPlayerPhotoClick(idx) {
+    window._pendingRosterSlot = idx;
+    document.getElementById('fsr-player-photo-input').click();
+}
+
+function onFSRPlayerPhotoSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const idx = window._pendingRosterSlot;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 250;
+            const scale = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+            const t = getActiveRosterRoot();
+            if (t && editingTeamName) {
+                if (!t.rosters) t.rosters = {};
+                if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
+                
+                const roster = t.rosters[editingTeamName];
+                const slotValue = roster[idx];
+                let p = resolveRosterPlayer(slotValue);
+                
+                if (!p) {
+                    p = DB.addPlayer({ name: slotValue || 'Player ' + (idx + 1), photo: dataUrl, role: 'Player' });
+                    t.rosters[editingTeamName][idx] = p.playerId;
+                } else {
+                    localStorage.setItem('cricpro_photo_' + p.playerId, dataUrl);
+                }
+                
+                const imgEl = document.getElementById(`fsr-p-img-${idx}`);
+                if (imgEl) imgEl.src = dataUrl;
+                saveActiveRosterRoot(t);
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function resolveRosterPlayer(val) {
+    if (!val) return null;
+    const byId = DB.getPlayerById(val);
+    if (byId) return byId;
+    return DB.getPlayers().find(p => p.name && p.name.trim().toLowerCase() === val.trim().toLowerCase()) || null;
+}
+
+function onFSRTeamPhotoSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = (img.height / img.width) * 400;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            const t = getActiveRosterRoot();
+            if (t && editingTeamName) {
+                DB.saveTeamPhoto(editingTeamName, dataUrl, t.id);
+                document.getElementById('fsr-team-logo').src = dataUrl;
+                showToast("🏆 Team logo updated", "success");
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function addRosterSlotFS() {
     const t = getActiveRosterRoot();
     if (!t || !editingTeamName) return;
     if (!t.rosters) t.rosters = {};
     if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
     t.rosters[editingTeamName].push('');
-    saveActiveRosterRoot(t); // Auto-save new slot
-    openRosterEditor(editingTeamName);
+    renderFSRosters();
 }
 
-window.onRosterInputChanged = function(idx, val) {
-    const cleanVal = val.trim();
-    const infoEl = document.getElementById(`roster-info-${idx}`);
-    const imgEl = document.getElementById(`roster-photo-${idx}`);
-    
+function saveRosterFromFS() {
     const t = getActiveRosterRoot();
-    // Immediate state persistence
-    if (t && editingTeamName) {
-        if (!t.rosters) t.rosters = {};
-        if (!t.rosters[editingTeamName]) t.rosters[editingTeamName] = [];
-        t.rosters[editingTeamName][idx] = cleanVal;
-        
-        // DEBOUNCED AUTO-SAVE TO DB
-        clearTimeout(window._rosterSyncTimer);
-        window._rosterSyncTimer = setTimeout(() => {
-            saveActiveRosterRoot(t);
-            console.log("💾 Roster Auto-saved");
-        }, 800);
+    if (!t || !editingTeamName) return;
+
+    // 1. Save Team Details (Captain, Coach)
+    const newTeamName = document.getElementById('fsr-team-name-input').value.trim();
+    const captain = document.getElementById('fsr-captain-input').value.trim();
+    const coach = document.getElementById('fsr-coach-input').value.trim();
+
+    t.teamConfigs = t.teamConfigs || {};
+    t.teamConfigs[editingTeamName] = { captain, coach };
+
+    // Handle Team Rename
+    if (newTeamName && newTeamName !== editingTeamName) {
+        if (t.teams) {
+            const idx = t.teams.indexOf(editingTeamName);
+            if (idx !== -1) {
+                t.teams[idx] = newTeamName;
+                t.rosters[newTeamName] = t.rosters[editingTeamName];
+                delete t.rosters[editingTeamName];
+                t.teamConfigs[newTeamName] = t.teamConfigs[editingTeamName];
+                delete t.teamConfigs[editingTeamName];
+                editingTeamName = newTeamName;
+            }
+        }
     }
 
-    if (!cleanVal) {
-        if (infoEl) infoEl.textContent = '';
-        if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
-        return;
-    }
-
-    const p = resolveRosterPlayer(cleanVal);
-    if (p) {
-        if (infoEl) infoEl.textContent = '✅ Registered Player (' + (p.playerId || '') + ')';
-        if (imgEl) imgEl.src = playerPhotoSrc(p);
-    } else {
-        if (infoEl) infoEl.textContent = '🆕 New/Unregistered';
-        if (imgEl) imgEl.src = DEFAULT_PLAYER_PHOTO;
-    }
-};
-
-function saveRoster(teamName, silent = false) {
-    const t = getActiveRosterRoot();
-    if (!t) return;
-    
-    const inputs = document.querySelectorAll('.roster-player-input');
+    // 2. Save Roster Names & Photos
+    const nameInputs = document.querySelectorAll('.fsr-p-name-input');
     const newRoster = [];
-    inputs.forEach(inp => {
-        const nameOrId = inp.value.trim();
-        if (!nameOrId) {
-            newRoster.push('');
-            return;
+    nameInputs.forEach(inp => {
+        const val = inp.value.trim();
+        if (!val) { newRoster.push(''); return; }
+        
+        const p = resolveRosterPlayer(val);
+        if (p) {
+            newRoster.push(p.playerId);
+        } else {
+            const created = DB.addPlayer({ name: val, photo: DEFAULT_PLAYER_PHOTO, role: 'Player' });
+            newRoster.push(created.playerId);
         }
-
-        const byId = DB.getPlayerById(nameOrId);
-        if (byId) {
-            newRoster.push(byId.playerId);
-            return;
-        }
-
-        const byName = DB.getPlayers().find(p => p.name && p.name.trim().toLowerCase() === nameOrId.toLowerCase());
-        if (byName) {
-            newRoster.push(byName.playerId);
-            return;
-        }
-
-        // Create/Update player entry
-        const created = DB.addPlayer({
-            name: nameOrId,
-            photo: DEFAULT_PLAYER_PHOTO,
-            role: 'Player'
-        });
-        newRoster.push(created.playerId);
     });
+    t.rosters[editingTeamName] = newRoster;
     
-    if (!t.rosters) t.rosters = {};
-    t.rosters[teamName] = newRoster;
-    t.lastUpdated = Date.now(); // Ensure sync prioritizes local edits
-    
+    t.lastUpdated = Date.now();
     saveActiveRosterRoot(t);
-    if (!silent) {
-        window._isEditingRoster = false;
-        showToast('Roster saved for ' + teamName, 'success');
-        renderTournamentTeams();
-    }
+    showToast("✅ Squad Synced & Broadcasted!", "success");
+    
+    setTimeout(closeFullScreenRoster, 800);
+    renderTournamentTeams();
 }
 
 
@@ -4065,8 +4361,26 @@ function renderBroadcastController(match) {
                                 <option value="theme1">Classic Scoreboard (Default)</option>
                                 <option value="theme2">Modern Photo Bar</option>
                                 <option value="theme3">Detailed Data View</option>
+                                <option value="theme4">IPL Style (Score Bar 2)</option>
                             </select>
                         </div>
+
+                        <!-- SUB-MODES FOR MODE 4 -->
+                        <div id="submode-controls" style="display:none; background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 12px; border: 1px dashed rgba(59, 130, 246, 0.2);">
+                            <label style="font-size:9px; font-weight:900; color:#3b82f6; text-transform:uppercase; display:block; margin-bottom:8px; letter-spacing:1px;">Score Bar 2 - Dynamic Modes</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                <button class="b-btn b-btn-slate" style="min-height:40px; padding:5px;" onclick="Broadcast.setOverlaySubMode(1)">
+                                    <div class="b-btn-title" style="font-size:9px; text-align:center;">TOURNEY</div>
+                                </button>
+                                <button class="b-btn b-btn-slate" style="min-height:40px; padding:5px;" onclick="Broadcast.setOverlaySubMode(2)">
+                                    <div class="b-btn-title" style="font-size:9px; text-align:center;">CRR</div>
+                                </button>
+                                <button class="b-btn b-btn-slate" style="min-height:40px; padding:5px;" onclick="Broadcast.setOverlaySubMode(3)">
+                                    <div class="b-btn-title" style="font-size:9px; text-align:center;">CHASING</div>
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -4181,6 +4495,21 @@ function renderBroadcastController(match) {
                     </div>
                 </div>
 
+                <!-- TEAM ROSTER EDITOR -->
+                <div class="b-card" style="margin-bottom:0; border:1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05);">
+                    <div class="b-section-title" style="color: #60a5fa;">📋 TEAM ROSTERS</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <button class="b-btn b-btn-slate" style="min-height:50px; border-color:rgba(255,255,255,0.1)" onclick="openFullScreenRoster(0)">
+                            <div class="b-btn-title" style="font-size:10px">${match.team1}</div>
+                            <div class="b-btn-sub">EDIT ROSTER</div>
+                        </button>
+                        <button class="b-btn b-btn-slate" style="min-height:50px; border-color:rgba(255,255,255,0.1)" onclick="openFullScreenRoster(1)">
+                            <div class="b-btn-title" style="font-size:10px">${match.team2}</div>
+                            <div class="b-btn-sub">EDIT ROSTER</div>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- PROMO / NEXT MATCH -->
                 <div class="b-card" style="margin-bottom:0">
                     <div class="b-section-title">📺 PROMOTIONS</div>
@@ -4227,6 +4556,15 @@ function renderBroadcastController(match) {
     window.addEventListener('resize', scalePreview);
     setTimeout(scalePreview, 300);
     setInterval(scalePreview, 1500);
+
+    // Submode visibility logic
+    const themeSelect = document.getElementById('scorebar-style-select');
+    const submodeContainer = document.getElementById('submode-controls');
+    if (themeSelect && submodeContainer) {
+        themeSelect.addEventListener('change', function() {
+            submodeContainer.style.display = (this.value === 'theme4') ? 'block' : 'none';
+        });
+    }
 
 
     // Dynamic Live Sync Function
@@ -4750,4 +5088,206 @@ window.savePlayerProfile = function() {
     
     // Re-render embedded scorecard if we are viewing it
     renderEmbeddedScorecard(currentMatch.currentInnings);
+};
+
+// ============================================================
+//  FULL SCREEN ROSTER MANAGEMENT (FSR)
+// ============================================================
+let _fsrCurrentTeamIndex = 0; // 0 or 1
+let _fsrActivePhotoTarget = null; // id of player slot or 'team'
+
+window.openFullScreenRoster = function(teamIndex) {
+    const m = currentMatch;
+    if (!m) return;
+    
+    _fsrCurrentTeamIndex = teamIndex;
+    window._isEditingRoster = true;
+    
+    const teamName = teamIndex === 0 ? m.team1 : m.team2;
+    const overlay = document.getElementById('full-screen-roster-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    
+    // Header
+    const header = document.getElementById('fsr-team-header');
+    if (header) {
+        const logo = DB.getTeamPhoto(teamName, m.tournamentId);
+        header.innerHTML = `
+            <img src="${logo}" style="width:40px; height:40px; border-radius:10px; object-fit:cover; border:2px solid rgba(255,255,255,0.1)">
+            <div>
+                <div style="font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px">Editing Roster</div>
+                <div style="font-size:18px; font-weight:900; color:#fff">${teamName.toUpperCase()}</div>
+            </div>
+        `;
+    }
+    
+    // Config Card
+    document.getElementById('fsr-team-name-input').value = teamName;
+    document.getElementById('fsr-team-logo').src = DB.getTeamPhoto(teamName, m.tournamentId);
+    
+    const roster = (m.rosters && m.rosters[teamIndex]) || [];
+    const grid = document.getElementById('fsr-players-grid');
+    grid.innerHTML = '';
+    
+    // Populating existing players
+    if (roster.length > 0) {
+        roster.forEach(p => addRosterSlotFS(p.name, p.id, p.photo));
+    } else {
+        // Default 11 slots if empty
+        for (let i = 1; i <= 11; i++) {
+            addRosterSlotFS('', '', '');
+        }
+    }
+};
+
+window.closeFullScreenRoster = function() {
+    window._isEditingRoster = false;
+    const overlay = document.getElementById('full-screen-roster-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+window.addRosterSlotFS = function(name = '', id = '', photo = '') {
+    const grid = document.getElementById('fsr-players-grid');
+    const slotCount = grid.children.length;
+    const slotId = 'fsr-slot-' + Date.now() + '-' + slotCount;
+    
+    const playerPhoto = photo || DB.getPlayerPhoto(id);
+    
+    const div = document.createElement('div');
+    div.className = 'fsr-player-card';
+    div.id = slotId;
+    div.style = "background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:24px; padding:20px; display:flex; gap:16px; align-items:center; transition:0.2s";
+    
+    div.innerHTML = `
+        <div style="position:relative; width:80px; height:80px; flex-shrink:0; cursor:pointer" onclick="triggerFSRPhoto('${slotId}')">
+            <img class="fsr-p-photo" src="${playerPhoto}" style="width:100%; height:100%; object-fit:cover; border-radius:16px; background:rgba(0,0,0,0.2)">
+            <div style="position:absolute; bottom:-4px; right:-4px; background:#3b82f6; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; border:3px solid #0a0a0a">📷</div>
+        </div>
+        <div style="flex:1">
+            <input type="text" class="fsr-p-name form-input" placeholder="Player Name" value="${name}" style="background:transparent; border:none; border-bottom:2px solid rgba(255,255,255,0.05); border-radius:0; padding:8px 0; font-size:18px; font-weight:800; margin-bottom:8px" list="db-players-list">
+            <input type="text" class="fsr-p-id form-input" placeholder="ID (Optional)" value="${id}" style="background:transparent; border:none; border-radius:0; padding:4px 0; font-size:11px; font-weight:700; color:rgba(255,255,255,0.3)">
+        </div>
+        <button onclick="this.parentElement.remove()" style="background:rgba(244,63,94,0.1); border:none; color:#f43f5e; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; font-weight:900">×</button>
+    `;
+    
+    grid.appendChild(div);
+};
+
+window.triggerFSRPhoto = function(slotId) {
+    _fsrActivePhotoTarget = slotId;
+    document.getElementById('fsr-player-photo-input').click();
+};
+
+window.onFSRPlayerPhotoSelected = function(event) {
+    const file = event.target.files[0];
+    if (!file || !_fsrActivePhotoTarget) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const slot = document.getElementById(_fsrActivePhotoTarget);
+        if (slot) {
+            const img = slot.querySelector('.fsr-p-photo');
+            if (img) img.src = e.target.result;
+            
+            // If there's an ID, save it to DB immediately for consistency
+            const pId = slot.querySelector('.fsr-p-id').value;
+            if (pId) DB.savePlayerPhoto(pId, e.target.result);
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
+window.onFSRTeamPhotoSelected = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('fsr-team-logo').src = e.target.result;
+        const teamName = document.getElementById('fsr-team-name-input').value;
+        const m = currentMatch;
+        DB.saveTeamPhoto(teamName, e.target.result, m ? m.tournamentId : '');
+    };
+    reader.readAsDataURL(file);
+};
+
+window.saveRosterFromFS = function() {
+    const m = currentMatch;
+    if (!m) return;
+    
+    const teamName = document.getElementById('fsr-team-name-input').value;
+    const grid = document.getElementById('fsr-players-grid');
+    const players = [];
+    
+    Array.from(grid.children).forEach(slot => {
+        const name = slot.querySelector('.fsr-p-name').value.trim();
+        if (name) {
+            const id = slot.querySelector('.fsr-p-id').value.trim();
+            const photo = slot.querySelector('.fsr-p-photo').src;
+            players.push({ name, id, photo });
+            
+            // Ensure photo is saved to DB if it's a data URL
+            if (id && photo.startsWith('data:')) {
+                DB.savePlayerPhoto(id, photo);
+            }
+        }
+    });
+    
+    m.rosters = m.rosters || {};
+    m.rosters[_fsrCurrentTeamIndex] = players;
+    
+    // Update team name if changed
+    if (_fsrCurrentTeamIndex === 0) m.team1 = teamName;
+    else m.team2 = teamName;
+    
+    DB.saveMatch(m);
+    showToast('🚀 Roster Synced Successfully!', 'success');
+    closeFullScreenRoster();
+    
+    // Trigger UI refresh
+    if (typeof renderScoring === 'function') renderScoring();
+    if (typeof renderBroadcastController === 'function') renderBroadcastController();
+    
+    // Push update to broadcast overlays
+    if (typeof sendBroadcast === 'function') sendBroadcast('FORCE_UPDATE');
+};
+
+window.publishPlayerProfileToBroadcast = function() {
+    const pId = currentPlayerProfileId;
+    if (!pId) return showToast('No player profile selected', 'error');
+    
+    const p = DB.getPlayerById(pId);
+    if (!p) return showToast('Player data not found', 'error');
+    
+    // Get latest stats
+    const m = currentMatch;
+    let stats = { runs: 0, balls: 0, sixes: 0, wickets: 0 };
+    
+    if (m) {
+        m.innings.forEach(inn => {
+            if (!inn) return;
+            const b = inn.batsmen.find(bx => bx.playerId === pId);
+            if (b) {
+                stats.runs += (b.runs || 0);
+                stats.balls += (b.balls || 0);
+                stats.sixes += (b.sixes || 0);
+            }
+            const bl = inn.bowlers.find(blx => blx.playerId === pId);
+            if (bl) {
+                stats.wickets += (bl.wickets || 0);
+            }
+        });
+    }
+
+    const payload = {
+        name: p.name,
+        profile: { ...p, photo: DB.getPlayerPhoto(pId) },
+        stats: stats
+    };
+    
+    if (typeof sendBroadcast === 'function') {
+        // Send as striker profile by default (it uses the same graphic)
+        sendBroadcast('SHOW_STRIKER_PROFILE', payload);
+        showToast('📺 Publishing Profile to Broadcast...', 'success');
+        closeModal('modal-player-profile');
+    }
 };

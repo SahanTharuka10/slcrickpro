@@ -101,6 +101,14 @@ const Broadcast = {
         showToast('📅 Next Match Published!', 'success');
     },
 
+    setOverlayMode(mode) {
+        this.send('SET_OVERLAY_MODE', { mode });
+    },
+
+    setOverlaySubMode(subMode) {
+        this.send('SET_OVERLAY_SUBMODE', { subMode });
+    },
+
     /**
      * Show Current Run Rate graphic
      */
@@ -168,12 +176,12 @@ const Broadcast = {
         if (btn && txt) {
             if (isVisible) {
                 txt.innerText = '👁 LIVE SCOREBAR (ON)';
-                btn.className = 'b-btn b-btn-emerald';
-                btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.5)';
+                btn.className = 'btn btn-green btn-full';
+                btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.3)';
             } else {
                 txt.innerText = '👁 LIVE SCOREBAR (OFF)';
-                btn.className = 'b-btn b-btn-red';
-                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.5)';
+                btn.className = 'btn btn-red btn-full';
+                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.3)';
             }
         }
         if (checkbox) {

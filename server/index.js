@@ -38,17 +38,25 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Pre-flight: handle OPTIONS for ALL routes explicitly
-app.options('*', cors(corsOptions));
+// Pre-flight: handled by cors middleware and manual fallback below
+// app.options('*', cors(corsOptions));
 
 // Hardcoded CORS safety net (catches any edge cases cors() misses)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   // If origin header is present, reflect it; otherwise allow all with wildcard
+  // Security & Permissions Headers
   res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
+  
+  // Content Security Policy: Relaxed enough for the app's needs but providing basic protection
+  res.setHeader('Content-Security-Policy', "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: ws: wss:;");
+
+  // Relax Permissions-Policy to allow unload events if needed (though we modernization is preferred)
+  // res.setHeader('Permissions-Policy', 'unload=*'); 
+  
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -389,15 +397,30 @@ app.get('/tv/matches/:matchId/light', async (req, res) => {
   const { matchId } = req.params;
   try {
     await ensureDB();
-    // Try direct PK lookup first
+    console.log(`📡 [TV] Light score request for ${matchId}`);
+    
+    // 1. Direct PK lookup
     let row = await Match.findByPk(matchId);
     
-    // Fallback: search within JSON data if PK fails (handles sync edge cases)
+    // 2. Fallback: Search by ID string in DB column (handles different dialect behaviors)
     if (!row) {
       row = await Match.findOne({ where: { id: matchId } });
     }
 
-    if (!row) return res.status(404).json({ error: 'Match not found' });
+    // 3. Last Resort: Search within all matches (expensive but only happens on sync lag)
+    if (!row) {
+      const all = await Match.findAll();
+      row = all.find(r => {
+          let d = r.data;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) {} }
+          return r.id === matchId || (d && d.id === matchId);
+      });
+    }
+
+    if (!row) {
+        console.warn(`⚠️ [TV] Match ${matchId} NOT FOUND in database.`);
+        return res.status(404).json({ error: 'Match not found' });
+    }
     
     let m = row.data || row.dataValues?.data || {};
     if (typeof m === 'string') {
@@ -418,6 +441,7 @@ app.get('/tv/matches/:matchId/light', async (req, res) => {
       fullMatch: m 
     });
   } catch (e) {
+    console.error(`❌ [TV] Error fetching light score for ${matchId}:`, e);
     res.status(500).json({ error: 'Failed to fetch light score' });
   }
 });
@@ -705,20 +729,30 @@ app.post('/sync/match', async (req, res) => {
     }
     */
 
-    const dataCopy = { ...data };
-    if (dataCopy.scoringPassword) {
-      dataCopy.scoring_password = await bcrypt.hash(dataCopy.scoringPassword, 10);
-      dataCopy.isLocked = true;
-      delete dataCopy.scoringPassword;
-    }
+    try {
+      const dataCopy = { ...data };
+      if (dataCopy.scoringPassword) {
+        dataCopy.scoring_password = await bcrypt.hash(dataCopy.scoringPassword, 10);
+        dataCopy.isLocked = true;
+        delete dataCopy.scoringPassword;
+      }
 
-    await Match.upsert({ id: data.id, data: dataCopy, scoring_password: dataCopy.scoring_password });
-    emitUpdate('match', data.id, dataCopy);
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('/sync/match error', e);
-    res.status(500).json({ error: e.message || 'Failed to sync match' });
-  }
+      // SQLite Upsert fix: Use findOne + create/update for better reliability
+      let [match, created] = await Match.findOrCreate({
+        where: { id: data.id },
+        defaults: { id: data.id, data: dataCopy, scoring_password: dataCopy.scoring_password }
+      });
+
+      if (!created) {
+        await match.update({ data: dataCopy, scoring_password: dataCopy.scoring_password || match.scoring_password });
+      }
+
+      emitUpdate('match', data.id, dataCopy);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('❌ [SERVER] /sync/match error:', e);
+      res.status(500).json({ error: 'Database error', details: e.message });
+    }
 });
 
 app.post('/sync/tournament', async (req, res) => {

@@ -73,7 +73,6 @@
             </div>
 
             <!-- Tournament section (hidden by default) -->
-            <div id="tournament-setup-section" style="display:none" class="card" style="margin-bottom:20px">
                 <div id="new-tournament-form">
                     <div class="grid-2">
                         <div class="form-group">
@@ -307,12 +306,47 @@
             function switchScoringTab(tabId) {
                 document.querySelectorAll('.scoring-tab-panel').forEach(p => p.style.display = 'none');
                 document.querySelectorAll('.setup-tab-btn').forEach(b => b.classList.remove('active'));
-                
                 document.getElementById('panel-' + tabId).style.display = 'block';
                 document.getElementById('tab-btn-' + tabId).classList.add('active');
+                if (tabId === 'scorecard' && typeof renderEmbeddedScorecard === 'function') renderEmbeddedScorecard();
+                if (tabId === 'hotkeys') {
+                    _refreshBroadcastPreview();
+                    if (typeof renderBroadcastMatchList === 'function') renderBroadcastMatchList();
+                }
+            }
+
+            function _refreshBroadcastPreview() {
+                const iframe = document.getElementById('broadcast-preview-iframe');
+                if (!iframe) return;
+                const mId = (typeof currentMatch !== 'undefined' && currentMatch) ? currentMatch.id : null;
+                const tId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.tournamentId)
+                    ? currentMatch.tournamentId
+                    : ((typeof currentTournament !== 'undefined' && currentTournament) ? currentTournament.id : null);
+                let src = '../pages/overlay.html?preview=true';
+                if (mId) src += '&match=' + encodeURIComponent(mId);
+                else if (tId) src += '&tournament=' + encodeURIComponent(tId);
+                iframe.src = src;
+
+                // Update header indicators
+                if (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.innings) {
+                    const inn = currentMatch.innings[currentMatch.currentInnings || 0];
+                    if (inn) {
+                        const overs = inn.balls ? (Math.floor(inn.balls/6) + '.' + (inn.balls%6)) : '0.0';
+                        const scoreEl = document.getElementById('bm-score-indicator');
+                        const vsEl = document.getElementById('bm-vs-indicator');
+                        if (scoreEl) scoreEl.textContent = (inn.runs||0) + '/' + (inn.wickets||0) + ' (' + overs + ')';
+                        if (vsEl) vsEl.textContent = currentMatch.team1 + ' vs ' + currentMatch.team2;
+                        const t1lbl = document.getElementById('btn-team1-label');
+                        const t2lbl = document.getElementById('btn-team2-label');
+                        if (t1lbl) t1lbl.textContent = currentMatch.team1 || 'TEAM A';
+                        if (t2lbl) t2lbl.textContent = currentMatch.team2 || 'TEAM B';
+                    }
+                }
                 
-                if(tabId === 'scorecard' && typeof renderEmbeddedScorecard === 'function') {
-                    renderEmbeddedScorecard();
+                // Hide or show the fallback label
+                const noMatchLabel = document.getElementById('preview-no-match');
+                if (noMatchLabel) {
+                    noMatchLabel.style.display = (mId || tId) ? 'none' : 'flex';
                 }
             }
         </script>
@@ -538,120 +572,348 @@
         </div> <!-- End panel-scorecard -->
 
         <!-- TAB 3: HOTKEYS -->
-        <div class="scoring-tab-panel" id="panel-hotkeys" style="display:none; max-width: 1300px; margin: 0 auto; padding: 24px;">
-            <div class="scorer-layout" style="grid-template-columns: 1fr; max-width:800px; margin: 0 auto;">
-                <!-- BROADCAST CONTROL PANEL (Master UI) -->
-                <div class="card" id="card-broadcast" style="margin-top:20px; border: 2px solid #7c4dff; background: rgba(124,77,255,0.03); box-shadow: 0 10px 30px rgba(124,77,255,0.1)">
-                    <div class="card-head" style="color:#7c4dff; font-weight:950; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(124,77,255,0.2)">
-                        <span>📡 BROADCAST MASTER CONTROL</span>
-                        <span style="font-size:10px; background:#7c4dff; color:#fff; padding:2px 8px; border-radius:10px; letter-spacing:1px">PRO V4.0</span>
+        <div class="scoring-tab-panel" id="panel-hotkeys" style="display:none; max-width: 1400px; margin: 0 auto; padding: 16px;">
+            <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end;">
+                <div>
+                    <div style="font-size:12px; color:var(--c-muted); font-weight:800; letter-spacing:2px">REMOTE STATION</div>
+                    <div style="font-size:24px; font-weight:950; letter-spacing:1px; line-height:1.2">BROADCAST MASTER</div>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="background:rgba(255,255,255,0.05); border:1px solid var(--c-border); padding:8px 16px; border-radius:20px; font-weight:800; font-size:14px" id="bm-score-indicator">
+                        0/0 (0.0)
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:16px; padding-top:12px">
-                        
-                        <!-- Auto Animation Toggle -->
-                        <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center">
-                            <div>
-                                <div style="font-size:12px; font-weight:900; color:#fff">Auto-Graphics</div>
-                                <div style="font-size:10px; color:rgba(255,255,255,0.5)">Pop-up on boundary/wicket</div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="auto-animation-toggle" checked onchange="updateAutoAnimation(this.checked)" />
-                                <span class="toggle-knob"></span>
-                            </label>
-                        </div>
-
-
-                        <!-- Coming Up Next (NEW) -->
-                        <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.08)">
-                            <div style="font-size:11px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px; margin-bottom:12px; text-transform:uppercase">COMING UP NEXT ARTWORK</div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:12px">
-                                <input type="text" id="next-match-teama" placeholder="Team A" 
-                                    style="width: 100%; box-sizing: border-box; background:#fff; color:#000; border:none; border-radius:20px; padding:10px; font-weight:700; font-size:13px; text-align:center" />
-                                <input type="text" id="next-match-teamb" placeholder="Team B" 
-                                    style="width: 100%; box-sizing: border-box; background:#fff; color:#000; border:none; border-radius:20px; padding:10px; font-weight:700; font-size:13px; text-align:center" />
-                            </div>
-                            <button class="btn btn-primary btn-full btn-sm broadcast-btn-standard" onclick="broadcastNextMatch();" 
-                                style="background: linear-gradient(90deg, #FF8F00, #FF6F00); color:#fff; font-weight:900; border:none; height:42px; border-radius:30px; box-shadow:0 10px 20px rgba(255,143,0,0.15); font-size:14px; letter-spacing:0.5px">
-                                🎨 Publish Next Match Animation
-                            </button>
-                        </div>
-
-
-
-                        <!-- ─── INSTANT TRIGGERS (Click to Send Boundary/Wicket Animation) ─── -->
-                        <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:12px; border:1px solid rgba(255,193,7,0.2)">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-                                <div style="font-size:11px; font-weight:900; color:var(--c-amber); letter-spacing:1px; text-transform:uppercase">⚡ INSTANT VISUAL TRIGGERS</div>
-                            </div>
-                            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px">
-                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('FOUR')" 
-                                    style="background:rgba(255,193,7,0.15); color:#ffc107; border:1px solid #ffc107; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
-                                    onmouseover="this.style.background='#ffc107'; this.style.color='#000'"
-                                    onmouseout="this.style.background='rgba(255,193,7,0.15)'; this.style.color='#ffc107'">4</button>
-                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('SIX')" 
-                                    style="background:rgba(124,77,255,0.15); color:#7c4dff; border:1px solid #7c4dff; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
-                                    onmouseover="this.style.background='#7c4dff'; this.style.color='#fff'"
-                                    onmouseout="this.style.background='rgba(124,77,255,0.15)'; this.style.color='#7c4dff'">6</button>
-                                <button class="broadcast-btn-standard" onclick="triggerVisualBigEvent('WICKET')" 
-                                    style="background:rgba(255,23,68,0.15); color:#ff1744; border:1px solid #ff1744; border-radius:8px; font-weight:900; height:45px; font-size:18px; cursor:pointer; transition:all 0.2s"
-                                    onmouseover="this.style.background='#ff1744'; this.style.color='#fff'"
-                                    onmouseout="this.style.background='rgba(255,23,68,0.15)'; this.style.color='#ff1744'">W</button>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:10px; color:var(--c-muted); opacity:0.8; font-weight:700">
-                                <span id="hk-team1-name">TEAM A</span>
-                                <span style="color:rgba(255,255,255,0.2)">VS</span>
-                                <span id="hk-team2-name" style="text-align:right">TEAM B</span>
-                            </div>
-                        </div>
-
-                        <div style="background:linear-gradient(135deg, rgba(124,77,255,0.05), rgba(0,230,118,0.05)); border-radius:12px; padding:12px; border:1px solid rgba(124,77,255,0.2)">
-                            <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:#7c4dff; margin-bottom:10px; text-transform:uppercase">📺 Visual Graphics Controls</div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
-                                <button class="broadcast-btn-standard" onclick="broadcastTeamCard(0)"
-                                    style="background:rgba(21,101,192,0.1); border:1px solid rgba(21,101,192,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#7ecbff; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 1 CARD</div>
-                                    <div style="font-size:9px; opacity:0.6">Quick stats</div>
-                                </button>
-                                <button class="broadcast-btn-standard" onclick="broadcastTeamCard(1)"
-                                    style="background:rgba(69,39,160,0.1); border:1px solid rgba(69,39,160,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#b39ddb; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-                                    <div style="font-size:11px; font-weight:900">🛡️ TEAM 2 CARD</div>
-                                    <div style="font-size:9px; opacity:0.6">Quick stats</div>
-                                </button>
-                                <button class="broadcast-btn-standard" onclick="broadcastCurrentBatters();"
-                                    style="background:rgba(46,125,50,0.1); border:1px solid rgba(46,125,50,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#69f0ae; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-                                    <div style="font-size:11px; font-weight:900">🏏 BOTH BATTERS</div>
-                                    <div style="font-size:9px; opacity:0.6">Crease info</div>
-                                </button>
-                                <button class="broadcast-btn-standard" onclick="broadcastStrikerProfile();"
-                                    style="background:rgba(198,40,40,0.1); border:1px solid rgba(198,40,40,0.3); border-radius:8px; padding:10px; cursor:pointer; color:#ff8a80; text-align:left; transition:0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-                                    <div style="font-size:11px; font-weight:900">⚡ STRIKER PROFILE</div>
-                                    <div style="font-size:9px; opacity:0.6">Detailed card</div>
-                                </button>
-                                <button class="broadcast-btn-standard" onclick="broadcastPartnership();"
-                                    style="grid-column: span 2; background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:12px; cursor:pointer; color:#FFD700; text-align:center; transition:0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.3)">
-                                    <div style="font-size:13px; font-weight:950; letter-spacing:1px">🤝 BOTH BATTERS PARTNERSHIP</div>
-                                    <div style="font-size:10px; opacity:0.7">Trigger cinematic pair graphic</div>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn btn-primary broadcast-btn-standard" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #e61b4d 0%, #ff6d3b 100%); border:none; box-shadow: 0 4px 15px rgba(230,27,77,0.2); border-radius:10px" onclick="Broadcast.showRunsNeeded()">
-                                🚀 RUNS<br>NEEDED
-                            </button>
-                            <button class="btn btn-primary broadcast-btn-standard" style="height:65px; font-size:13px; font-weight:900; line-height:1.2; background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border:none; box-shadow: 0 4px 15px rgba(0,200,83,0.2); border-radius:10px" onclick="Broadcast.showCRR()">
-                                📈 CURRENT<br>RUN RATE
-                            </button>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px">
-                            <button class="btn btn-red btn-full btn-sm broadcast-btn-standard" style="font-weight:900; letter-spacing:1px; height:42px; border-radius:10px; text-transform:uppercase" onclick="Broadcast.stopAll()">⏹ STOP ALL OVERLAYS</button>
-                            <button class="btn btn-ghost btn-full btn-sm broadcast-btn-standard" style="font-weight:700; border-color:var(--c-amber); color:var(--c-amber); border-radius:10px; height:42px" onclick="location.reload()">🔄 RESET</button>
-                        </div>
+                    <div style="background:rgba(0, 200, 83, 0.15); color:#00e676; border:1px solid rgba(0, 200, 83, 0.3); padding:8px 16px; border-radius:20px; font-weight:800; font-size:12px">
+                        LIVE • <span id="bm-vs-indicator">A vs B</span>
                     </div>
-                </div> <!-- End Broadcast card -->
-
+                </div>
             </div>
+
+            <div class="broadcast-layout" style="gap:16px; align-items: start;">
+                <!-- LEFT COLUMN -->
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- MASTER CONTROL -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">🎮 MASTER CONTROL</div>
+                        <button class="btn btn-red btn-full" style="height:54px; font-size:16px; font-weight:900; border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; padding:0 20px" onclick="Broadcast.stopAll()">
+                            <div style="display:flex; align-items:center; gap:8px"><div style="width:12px; height:12px; background:#fff; border-radius:2px"></div> STOP ALL</div>
+                            <div style="font-size:10px; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px">ESC</div>
+                        </button>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <button class="btn btn-ghost btn-sm" style="border-radius:10px; height:42px; font-weight:800" onclick="location.reload()">🔌 RECONNECT</button>
+                            <button class="btn btn-green btn-sm" style="border-radius:10px; height:42px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px" onclick="copyObsLink()"><span style="font-size:16px">🔗</span> OBS URL</button>
+                        </div>
+                    </div>
+
+                    <!-- SCOREBAR CONTROL -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">⚙️ SCOREBAR CONTROL</div>
+                        <button class="btn btn-green btn-full" id="btn-toggle-scorebar" style="height:54px; font-size:15px; font-weight:900; border-radius:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; padding:0 20px" onclick="Broadcast.toggleScorebar()">
+                            <div id="txt-toggle-scorebar">👁 LIVE SCOREBAR (ON)</div>
+                            <div style="font-size:10px; background:rgba(0,0,0,0.2); padding:4px 8px; border-radius:6px">S+V</div>
+                        </button>
+                        
+                        <div class="form-group" style="margin-bottom:0">
+                            <label class="form-label" style="font-size:10px; letter-spacing:1px; opacity:0.8">ACTIVE THEME</label>
+                            <select class="form-select" id="broadcast-theme-select" onchange="changeBroadcastTheme()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; font-size:14px; font-weight:700">
+                                <option value="theme1">Classic Scoreboard (Default)</option>
+                                <option value="theme2">Scorecard 2 (Modern)</option>
+                                <option value="theme3">Manual Input Scorecard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- MANUAL INPUT SETTINGS (Shows only when Theme 3 is selected) -->
+                    <div class="card" id="manual-input-section" style="display:none; border: 1px solid rgba(124,77,255,0.4); background: rgba(124,77,255,0.05);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px; color:#7c4dff">✍️ MANUAL OVERLAY DATA</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px">
+                            <input type="text" id="man-t1" class="form-input" placeholder="Team 1" style="font-size:12px" />
+                            <input type="text" id="man-t2" class="form-input" placeholder="Team 2" style="font-size:12px" />
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-bottom:8px">
+                            <input type="number" id="man-runs" class="form-input" placeholder="Runs" style="font-size:12px; font-weight:800" />
+                            <input type="number" id="man-wkts" class="form-input" placeholder="Wkts" style="font-size:12px; font-weight:800" />
+                            <input type="number" id="man-overs" class="form-input" placeholder="Overs" step="0.1" style="font-size:12px; font-weight:800" />
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px">
+                            <input type="text" id="man-bat1" class="form-input" placeholder="Striker (R/B)" style="font-size:12px" />
+                            <input type="text" id="man-bat2" class="form-input" placeholder="Non-Str (R/B)" style="font-size:12px" />
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:12px">
+                            <input type="text" id="man-bowl" class="form-input" placeholder="Bowler (O/R/W)" style="font-size:12px" />
+                            <input type="text" id="man-target" class="form-input" placeholder="Target/CRR" style="font-size:12px" />
+                        </div>
+                        <button class="btn btn-primary btn-full btn-sm" style="border-radius:8px; font-weight:800; background:#7c4dff; border:none" onclick="pushManualOverlayData()">🚀 Push to Live Stream</button>
+                    </div>
+
+                    <!-- QUICK TRIGGERS -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">⚡ QUICK TRIGGERS</div>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px">
+                            <button class="btn btn-ghost" onclick="triggerVisualBigEvent('FOUR')" style="border-color:#2962ff; color:#82b1ff; height:45px; font-size:18px; font-weight:900; border-radius:10px">4</button>
+                            <button class="btn btn-ghost" onclick="triggerVisualBigEvent('SIX')" style="border-color:#7c4dff; color:#b388ff; height:45px; font-size:18px; font-weight:900; border-radius:10px">6</button>
+                            <button class="btn btn-ghost" onclick="triggerVisualBigEvent('WICKET')" style="border-color:#d50000; color:#ff8a80; height:45px; font-size:18px; font-weight:900; border-radius:10px">W</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MIDDLE COLUMN -->
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- PREVIEW -->
+                    <div style="background:rgba(0,0,0,0.4); border-radius:16px; padding:12px; border:1px solid rgba(255,255,255,0.08)">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                            <div style="display:flex; align-items:center; gap:6px">
+                                <div style="width:8px; height:8px; background:#ff1744; border-radius:50%; box-shadow:0 0 10px #ff1744; animation: pulse-red 1.5s infinite"></div>
+                                <span style="font-size:12px; font-weight:900; letter-spacing:1px">REAL-TIME OUTPUT PREVIEW</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <span style="font-size:10px; color:var(--c-muted); font-weight:700">1920×1080</span>
+                                <button onclick="_refreshBroadcastPreview()" style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:var(--c-muted); font-size:10px; padding:3px 8px; cursor:pointer; font-weight:700">↺ REFRESH</button>
+                            </div>
+                        </div>
+                        <div id="iframe-wrapper" style="position:relative; width:100%; aspect-ratio:16/9; background: repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 40px), #0a0a1a; border-radius:10px; overflow:hidden; border:2px solid rgba(255,255,255,0.08); box-shadow:0 0 30px rgba(0,0,0,0.8)">
+                            <iframe id="broadcast-preview-iframe" src="../pages/overlay.html?preview=true" style="position:absolute; top:0; left:0; width:1920px; height:1080px; transform-origin: top left; border:none; pointer-events:none; background:transparent;"></iframe>
+                            <!-- Fallback label when no match loaded -->
+                            <div id="preview-no-match" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:2">
+                                <div style="font-size:32px;margin-bottom:8px;opacity:0.15">📺</div>
+                                <div style="font-size:11px;font-weight:700;opacity:0.2;letter-spacing:2px">SELECT A MATCH TO PREVIEW</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:10px; padding:0 2px">
+                            <div style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:800; color:#00e676">
+                                <div style="width:5px; height:5px; background:#00e676; border-radius:50%"></div> LIVE
+                            </div>
+                            <div style="font-size:10px; font-weight:800; color:var(--c-muted)">⚡ ZERO LATENCY</div>
+                            <div style="font-size:10px; font-weight:800; color:var(--c-muted)">🖥️ OBS READY</div>
+                        </div>
+                    </div>
+                    <style>@keyframes pulse-red { 0%,100%{box-shadow:0 0 6px #ff1744}50%{box-shadow:0 0 16px #ff1744} }</style>
+
+                    <!-- CINEMATIC PRODUCTIONS -->
+                    <div class="card" style="border: 1px solid rgba(124,77,255,0.2); background: rgba(124,77,255,0.03);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px; color:#b388ff">🎬 CINEMATIC PRODUCTIONS</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                            <button class="btn btn-primary" style="background:#2962ff; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.send('SHOW_STRIKER_PROFILE')">
+                                <div style="font-size:18px">⚡</div>
+                                <div style="font-size:12px; font-weight:900">STRIKER</div>
+                                <div style="font-size:9px; opacity:0.7">S+H</div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#00c853; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.send('SHOW_BATTER_PROFILES')">
+                                <div style="font-size:18px">🏏</div>
+                                <div style="font-size:12px; font-weight:900">BATTERS</div>
+                                <div style="font-size:9px; opacity:0.7">S+P</div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#ff8f00; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.send('SHOW_PARTNERSHIP')">
+                                <div style="font-size:18px">🤝</div>
+                                <div style="font-size:12px; font-weight:900">PARTNER</div>
+                                <div style="font-size:9px; opacity:0.7">S+N</div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#7c4dff; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.send('SHOW_BOWLER_PROFILE')">
+                                <div style="font-size:18px">⚾</div>
+                                <div style="font-size:12px; font-weight:900">BOWLER</div>
+                                <div style="font-size:9px; opacity:0.7">S+L</div>
+                            </button>
+                            <button class="btn btn-ghost" style="background:#111; border-color:#333; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="broadcastTeamCard(0)">
+                                <div style="font-size:18px">🛡️</div>
+                                <div style="font-size:12px; font-weight:900" id="btn-team1-label">TEAM A</div>
+                                <div style="font-size:9px; opacity:0.7">CARD</div>
+                            </button>
+                            <button class="btn btn-ghost" style="background:#111; border-color:#333; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="broadcastTeamCard(1)">
+                                <div style="font-size:18px">🛡️</div>
+                                <div style="font-size:12px; font-weight:900" id="btn-team2-label">TEAM B</div>
+                                <div style="font-size:9px; opacity:0.7">CARD</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- TOURNAMENT MATCHES (Quick Switcher) -->
+                    <div class="card" style="border: 1px solid rgba(0,230,118,0.2); background: rgba(0,0,0,0.2); max-height:220px; overflow:hidden; display:flex; flex-direction:column;">
+                        <div class="card-head" style="font-size:11px; margin-bottom:8px; color:#00e676; display:flex; justify-content:space-between; align-items:center; flex-shrink:0">
+                            <span>📅 MATCHES</span>
+                            <button onclick="openTournamentMatchesModal(currentMatch && currentMatch.tournamentId || (currentTournament && currentTournament.id))" style="background:none;border:none;color:var(--c-muted);font-size:10px;cursor:pointer;font-weight:800;padding:0">VIEW ALL →</button>
+                        </div>
+                        <div id="bm-match-list" style="overflow-y:auto; flex:1; padding-right:4px">
+                            <div style="padding:16px;text-align:center;opacity:0.4;font-size:11px">Loading matches...</div>
+                        </div>
+                    </div>
+
+                    <!-- PLAYER PHOTOS -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">📸 PLAYER PHOTOS</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:6px">
+                                <img id="bm-photo-striker" src="../assets/default-player.svg" style="width:60px; height:60px; border-radius:8px; border:2px solid #2962ff; object-fit:cover; background:rgba(41,98,255,0.1); cursor:pointer;" onclick="uploadPlayerPhoto('striker')" title="Click to upload Striker photo" />
+                                <div style="font-size:10px; font-weight:800; color:#82b1ff">STRIKER</div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:6px">
+                                <img id="bm-photo-nonstriker" src="../assets/default-player.svg" style="width:60px; height:60px; border-radius:8px; border:2px solid #ff1744; object-fit:cover; background:rgba(255,23,68,0.1); cursor:pointer;" onclick="uploadPlayerPhoto('nonstriker')" title="Click to upload Non-Striker photo" />
+                                <div style="font-size:10px; font-weight:800; color:#ff8a80">NON-STR</div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:6px">
+                                <img id="bm-photo-bowler" src="../assets/default-player.svg" style="width:60px; height:60px; border-radius:8px; border:2px solid #7c4dff; object-fit:cover; background:rgba(124,77,255,0.1); cursor:pointer;" onclick="uploadPlayerPhoto('bowler')" title="Click to upload Bowler photo" />
+                                <div style="font-size:10px; font-weight:800; color:#b388ff">BOWLER</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATA OVERLAYS -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">📊 DATA OVERLAYS</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <button class="btn btn-primary" style="background:#2962ff; border:none; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:flex-start; padding-left:16px; gap:8px" onclick="Broadcast.showRunsNeeded()">
+                                <span style="font-size:16px">🎯</span>
+                                <div style="text-align:left"><div style="font-weight:900; font-size:13px">NEEDED</div><div style="font-size:9px; opacity:0.7">S+R</div></div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#00c853; border:none; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:flex-start; padding-left:16px; gap:8px" onclick="Broadcast.showCRR()">
+                                <span style="font-size:16px">📈</span>
+                                <div style="text-align:left"><div style="font-weight:900; font-size:13px">RRATE</div><div style="font-size:9px; opacity:0.7">S+C</div></div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#7c4dff; border:none; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:flex-start; padding-left:16px; gap:8px" onclick="Broadcast.showScorecard()">
+                                <span style="font-size:16px">📋</span>
+                                <div style="text-align:left"><div style="font-weight:900; font-size:13px">CARD</div><div style="font-size:9px; opacity:0.7">S+S</div></div>
+                            </button>
+                            <button class="btn btn-primary" style="background:#ff8f00; border:none; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:flex-start; padding-left:16px; gap:8px" onclick="Broadcast.showSummary()">
+                                <span style="font-size:16px">🏆</span>
+                                <div style="text-align:left"><div style="font-weight:900; font-size:13px">SUMRY</div><div style="font-size:9px; opacity:0.7">S+T</div></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PROMOTIONS -->
+                    <div class="card" style="border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                        <div class="card-head" style="font-size:11px; margin-bottom:12px">📣 PROMOTIONS</div>
+                        <div style="display:flex; gap:8px; margin-bottom:12px">
+                            <input type="text" id="next-match-teama" class="form-input" placeholder="TEAM A" style="font-size:11px; text-align:center" />
+                            <input type="text" id="next-match-teamb" class="form-input" placeholder="TEAM B" style="font-size:11px; text-align:center" />
+                        </div>
+                        <button class="btn btn-primary btn-full" style="background:#2962ff; border:none; height:45px; border-radius:10px; font-weight:900; letter-spacing:1px; font-size:13px" onclick="Broadcast.publishNextMatch()">
+                            NEXT MATCH PREVIEW
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                // Make iframe fully fit the wrapper
+                const iframeWrap = document.getElementById('iframe-wrapper');
+                const iframe = document.getElementById('broadcast-preview-iframe');
+                if (iframeWrap && iframe) {
+                    new ResizeObserver(entries => {
+                        for (let entry of entries) {
+                            const w = entry.contentRect.width;
+                            iframe.style.transform = `scale(${w / 1920})`;
+                        }
+                    }).observe(iframeWrap);
+                }
+
+                function changeBroadcastTheme() {
+                    const themeSelect = document.getElementById('broadcast-theme-select');
+                    const manualSection = document.getElementById('manual-input-section');
+                    if (themeSelect.value === 'theme3') {
+                        manualSection.style.display = 'block';
+                    } else {
+                        manualSection.style.display = 'none';
+                    }
+                    Broadcast.changeOverlayTheme(themeSelect.value);
+                }
+                
+                function pushManualOverlayData() {
+                    const data = {
+                        team1: document.getElementById('man-t1').value,
+                        team2: document.getElementById('man-t2').value,
+                        runs: document.getElementById('man-runs').value || 0,
+                        wickets: document.getElementById('man-wkts').value || 0,
+                        overs: document.getElementById('man-overs').value || 0,
+                        striker: document.getElementById('man-bat1').value,
+                        nonStriker: document.getElementById('man-bat2').value,
+                        bowler: document.getElementById('man-bowl').value,
+                        target: document.getElementById('man-target').value
+                    };
+                    Broadcast.send('SYNC_SCORE', { match: { id: 'manual-match', isManual: true, manualData: data } });
+                }
+                
+                
+                function copyObsLink() {
+                    // Build URL with live match/tournament ID so OBS renders the correct overlay
+                    const mId = (typeof currentMatch !== 'undefined' && currentMatch) ? currentMatch.id : null;
+                    const tId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.tournamentId)
+                        ? currentMatch.tournamentId
+                        : ((typeof currentTournament !== 'undefined' && currentTournament) ? currentTournament.id : null);
+                    
+                    let url = window.location.origin + '/pages/overlay.html';
+                    if (mId) url += '?match=' + encodeURIComponent(mId);
+                    else if (tId) url += '?tournament=' + encodeURIComponent(tId);
+
+                    navigator.clipboard.writeText(url).then(() => {
+                        showToast('✅ OBS URL Copied! (' + (mId || tId || 'no match') + ')', 'success');
+                    }).catch(() => {
+                        // Fallback: show in a prompt
+                        prompt('Copy this OBS URL:', url);
+                    });
+                }
+
+                function broadcastTeamCard(teamIdx) {
+                    Broadcast.send('SHOW_TEAM_CARD', { teamIndex: teamIdx });
+                }
+
+                // ── Compact Match List inside Broadcast Station ──────────────────
+                function renderBroadcastMatchList() {
+                    const container = document.getElementById('bm-match-list');
+                    if (!container) return;
+
+                    const t = (typeof currentTournament !== 'undefined') ? currentTournament : null;
+                    const activeId = (typeof currentMatch !== 'undefined' && currentMatch) ? currentMatch.id : null;
+
+                    if (!t || !t.matches || t.matches.length === 0) {
+                        container.innerHTML = '<div style="padding:16px;text-align:center;opacity:0.4;font-size:12px">No tournament matches found</div>';
+                        return;
+                    }
+
+                    let html = '';
+                    t.matches.forEach((mId, idx) => {
+                        const m = DB.getMatch(mId);
+                        if (!m) return;
+                        const isActive = mId === activeId;
+                        const status = m.status || 'scheduled';
+                        const statusColor = status === 'live' ? '#00e676' : status === 'completed' ? '#7c4dff' : '#ffc107';
+                        const statusDot = `<span style="width:8px;height:8px;border-radius:50%;background:${statusColor};display:inline-block;flex-shrink:0"></span>`;
+                        const inn = m.innings && m.innings[m.currentInnings || 0];
+                        const scoreStr = inn ? `${inn.runs||0}/${inn.wickets||0}` : '--';
+
+                        html += `
+                        <div onclick="switchBroadcastMatch('${mId}')" style="
+                            display:flex; align-items:center; gap:10px; padding:10px 12px;
+                            border-radius:10px; cursor:pointer; margin-bottom:6px;
+                            background: ${isActive ? 'rgba(0,230,118,0.1)' : 'rgba(255,255,255,0.03)'};
+                            border: 1px solid ${isActive ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.07)'};
+                            transition: background 0.2s;">
+                            ${statusDot}
+                            <div style="flex:1; min-width:0">
+                                <div style="font-weight:800; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${m.team1||'TBD'} vs ${m.team2||'TBD'}</div>
+                                <div style="font-size:10px; opacity:0.5; margin-top:2px">Match ${idx+1} · ${status.toUpperCase()}</div>
+                            </div>
+                            <div style="font-weight:900; font-size:13px; font-family:'JetBrains Mono',monospace; color:${isActive ? '#00e676' : 'var(--c-muted)'}">${scoreStr}</div>
+                            ${isActive ? '<div style="font-size:9px;background:#00e676;color:#000;padding:2px 6px;border-radius:6px;font-weight:900">LIVE</div>' : ''}
+                        </div>`;
+                    });
+                    container.innerHTML = html || '<div style="padding:16px;text-align:center;opacity:0.4">No matches</div>';
+                }
+
+                function switchBroadcastMatch(matchId) {
+                    const m = DB.getMatch(matchId);
+                    if (!m) { showToast('Match not found', 'error'); return; }
+                    if (m.status === 'scheduled') { showToast('Match not started yet', 'error'); return; }
+                    // Switch current match and refresh the broadcast preview
+                    if (typeof currentMatch !== 'undefined') {
+                        window.currentMatch = m;
+                    }
+                    _refreshBroadcastPreview();
+                    renderBroadcastMatchList();
+                    showToast('🎬 Switched to: ' + m.team1 + ' vs ' + m.team2, 'success');
+                }
+            </script>
         </div> <!-- End panel-hotkeys -->
     </div> <!-- End screen-scoring -->
 
@@ -876,12 +1138,18 @@
             
             <div class="tab-bar" style="margin-bottom: 16px;">
                 <button class="tab-btn active" id="tm-tab-matches" onclick="switchTournamentTab('matches')">Matches</button>
+                <button class="tab-btn" id="tm-tab-standings" onclick="switchTournamentTab('standings')">Points Table</button>
                 <button class="tab-btn" id="tm-tab-teams" onclick="switchTournamentTab('teams')">Team Rosters</button>
             </div>
 
             <!-- Matches Panel -->
             <div id="tm-panel-matches">
                 <div id="tm-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+
+            <!-- Standings Panel -->
+            <div id="tm-panel-standings" style="display:none">
+                <div id="tm-standings-table" style="max-height:50vh;overflow-y:auto;"></div>
             </div>
 
             <!-- Teams Panel -->
@@ -1205,89 +1473,23 @@
             <hr style="margin:20px 0">
 
             <div class="modal-actions" style="flex-direction:column;gap:10px">
-                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('scorecard')">Show Scorecard</button>
-                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('batsman-stats')">Show Batsman Stats</button>
-                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('bowler-stats')">Show Bowler Stats</button>
-                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('match-summary')">Show Match Summary</button>
-                <button class="btn btn-secondary btn-full" onclick="sendBroadcastCommand('hide-all')">Hide All Overlays</button>
+                <div style="width:100%; font-size:10px; font-weight:900; color:var(--c-primary); letter-spacing:2px; margin-bottom:5px; text-align:center">SCOREBAR 2 MODES (THEME 4)</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; width:100%">
+                    <button class="btn btn-primary btn-sm" onclick="Broadcast.setOverlaySubMode(1)" style="font-size:10px">1. TOURNEY</button>
+                    <button class="btn btn-primary btn-sm" onclick="Broadcast.setOverlaySubMode(2)" style="font-size:10px">2. RUNRATE</button>
+                    <button class="btn btn-primary btn-sm" onclick="Broadcast.setOverlaySubMode(3)" style="font-size:10px">3. CHASING</button>
+                </div>
+                
+                <hr style="width:100%; border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0">
+
+                <button class="btn btn-secondary btn-full" onclick="Broadcast.showScorecard()">Show Scorecard</button>
+                <button class="btn btn-secondary btn-full" onclick="Broadcast.showSummary()">Show Match Summary</button>
+                <button class="btn btn-secondary btn-full" onclick="Broadcast.stopAll()">Hide All Overlays</button>
             </div>
 
             <div class="modal-actions" style="margin-top:20px">
                 <button class="btn btn-ghost btn-full" onclick="closeModal('modal-broadcast-control')">Close</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Select Mode Modal -->
-    <div class="modal-overlay" id="modal-select-mode" style="display:none">
-        <div class="modal-box" style="max-width:440px; text-align:center">
-            <div style="font-size:56px; margin-bottom:12px">🏏</div>
-            <div class="modal-title">Select Scoring Mode</div>
-            <div class="modal-sub">How would you like to open this match?</div>
-
-            <div style="display:grid; grid-template-columns:1fr; gap:16px; margin:24px 0">
-                <button class="btn btn-primary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-scorer" onclick="closeModal('modal-select-mode')">
-                    <span style="font-size:24px">📱</span>
-                    <div style="text-align:left">
-                        <div style="font-weight:900">Score & Entry</div>
-                        <div style="font-size:11px; font-weight:400; opacity:0.7">Ball-by-ball Dashboard</div>
-                    </div>
-                </button>
-
-                <button class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:12px; height:70px; font-size:18px" id="mode-btn-hotkey" onclick="closeModal('modal-select-mode'); renderBroadcastController(currentMatch);">
-                    <span style="font-size:24px">⌨️</span>
-                    <div style="text-align:left">
-                        <div style="font-weight:900">Broadcast Station</div>
-                        <div style="font-size:11px; font-weight:400; opacity:0.7">Hotkey & Visual Master Control</div>
-                    </div>
-                </button>
-            </div>
-
-            <button class="btn btn-ghost btn-full" onclick="closeModal('modal-select-mode')">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Toss Result Modal (Mandatory for Scheduled Matches) -->
-    <div class="modal-overlay" id="modal-toss-result" style="display:none">
-        <div class="modal-box" style="max-width:440px; text-align:center">
-            <div style="font-size:64px; margin-bottom:12px">🪙</div>
-            <div class="modal-title">Match Toss Result</div>
-            <div class="modal-sub" id="toss-match-teams">Team A vs Team B</div>
-
-            <div style="margin:24px 0; text-align:left">
-                <label class="form-label">Who won the toss?</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px">
-                    <button class="btn btn-ghost toss-team-btn" id="toss-winner-t1" onclick="selectTossWinner('team1')">Team 1</button>
-                    <button class="btn btn-ghost toss-team-btn" id="toss-winner-t2" onclick="selectTossWinner('team2')">Team 2</button>
-                </div>
-
-                <label class="form-label">Decision?</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
-                    <button class="btn btn-ghost toss-dec-btn" id="toss-dec-bat" onclick="selectTossDecision('bat')">🏏 Bat First</button>
-                    <button class="btn btn-ghost toss-dec-btn" id="toss-dec-bowl" onclick="selectTossDecision('field')">⚽ Bowl First</button>
-                </div>
-            </div>
-
-            <button class="btn btn-primary btn-full" style="height:54px" onclick="finalizeTossAndStartLive()">▶ Start Match Scoring</button>
-        </div>
-    </div>
-
-    <!-- Test Match 3rd Innings Selection Modal -->
-    <div class="modal-overlay" id="modal-test-innings-select" style="display:none">
-        <div class="modal-box" style="max-width:440px; text-align:center">
-            <div style="font-size:56px; margin-bottom:12px">🏏</div>
-            <div class="modal-title">3rd Innings Selection</div>
-            <div class="modal-sub">End of 2nd Innings. Choose who bats next.</div>
-
-            <div style="display:grid; grid-template-columns:1fr; gap:12px; margin:24px 0">
-                <button class="btn btn-primary" style="height:60px" id="test-btn-standard" onclick="finalizeTestInningsSelection(false)">
-                    Standard Rotation
-                </button>
-                <button class="btn btn-secondary" style="height:60px; display:none" id="test-btn-followon" onclick="finalizeTestInningsSelection(true)">
-                    Enforce Follow-On
-                </button>
-            </div>
-            <p style="font-size:12px; opacity:0.6" id="test-innings-hint"></p>
         </div>
     </div>
 
@@ -1318,9 +1520,14 @@
             </div>
 
             <div style="padding: 20px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;" id="pp-view-actions">
-                    <button class="btn btn-ghost" style="border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.05);" onclick="enablePlayerProfileEdit()">✏️ Edit</button>
-                    <button class="btn btn-primary" style="border-radius: 12px; font-weight: 800; background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; box-shadow: 0 4px 15px rgba(0,210,255,0.3);" onclick="closeModal('modal-player-profile')">Close</button>
+                <div style="display:flex; flex-direction:column; gap:12px;" id="pp-view-actions">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <button class="btn btn-ghost" style="border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.05);" onclick="enablePlayerProfileEdit()">✏️ Edit</button>
+                        <button class="btn btn-primary" style="border-radius: 12px; font-weight: 800; background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; box-shadow: 0 4px 15px rgba(0,210,255,0.3);" onclick="closeModal('modal-player-profile')">Close</button>
+                    </div>
+                    <button class="btn btn-primary" style="border-radius: 12px; font-weight: 900; background: linear-gradient(135deg, #7c4dff, #ff1744); border: none; height:45px; font-size:13px; box-shadow: 0 8px 20px rgba(124,77,255,0.4);" onclick="publishPlayerProfileToBroadcast()">
+                        📺 PUBLISH TO BROADCAST
+                    </button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; display:none;" id="pp-edit-actions">
                     <button class="btn btn-ghost" style="border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.05);" onclick="document.getElementById('pp-photo-upload').click()">📷 Photo</button>
@@ -1330,11 +1537,78 @@
         </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <!-- Full Screen Roster Management -->
+    <div id="full-screen-roster-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background:var(--c-bg); flex-direction:column; overflow-y:auto; font-family:'Outfit',sans-serif">
+        <div class="bg-canvas" style="position:fixed; z-index:-1"><div class="bg-orb orb1"></div><div class="bg-orb orb3"></div></div>
+        
+        <header style="position:sticky; top:0; z-index:100; background:rgba(3,7,18,0.8); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.05); padding:20px 30px">
+            <div style="max-width:1400px; margin:0 auto; display:flex; justify-content:space-between; align-items:center">
+                <div style="display:flex; align-items:center; gap:24px">
+                    <button class="back-btn" onclick="closeFullScreenRoster()">
+                        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+                        Exit Editor
+                    </button>
+                    <div style="height:30px; width:1px; background:rgba(255,255,255,0.1)"></div>
+                    <div id="fsr-team-header" style="display:flex; align-items:center; gap:20px">
+                        <!-- Dynamic Content -->
+                    </div>
+                </div>
+                <div style="display:flex; gap:12px">
+                    <button class="btn btn-primary" onclick="saveRosterFromFS()" style="padding:10px 30px; font-weight:900; border-radius:12px; letter-spacing:1px">🚀 SYNC & BROADCAST</button>
+                </div>
+            </div>
+        </header>
+
+        <main style="max-width:1400px; margin:0 auto; padding:40px 24px; width:100%">
+            <!-- Team Settings Card -->
+            <div class="card" style="margin-bottom:40px; padding:30px; background:rgba(255,255,255,0.02); border-radius:30px; border:1px solid rgba(255,255,255,0.05)">
+                <div style="font-size:12px; font-weight:900; color:var(--c-primary); letter-spacing:3px; margin-bottom:20px">TEAM CONFIGURATION</div>
+                <div class="grid-2" style="gap:40px">
+                    <div style="display:flex; gap:24px; align-items:center">
+                        <div style="position:relative; width:120px; height:120px; cursor:pointer" onclick="document.getElementById('fsr-team-photo-input').click()">
+                            <img id="fsr-team-logo" src="../assets/default-team.svg" style="width:100%; height:100%; object-fit:cover; border-radius:24px; border:3px solid rgba(255,255,255,0.1)">
+                            <div style="position:absolute; bottom:-8px; right:-8px; background:var(--c-primary); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border:4px solid #000">📷</div>
+                        </div>
+                        <div style="flex:1">
+                            <label class="form-label">Display Team Name</label>
+                            <input type="text" class="form-input" id="fsr-team-name-input" style="font-size:24px; font-weight:950; height:60px" />
+                        </div>
+                    </div>
+                    <div class="grid-2" style="gap:20px">
+                        <div>
+                            <label class="form-label">Team Captain</label>
+                            <input type="text" class="form-input" id="fsr-captain-input" placeholder="Captain name..." style="height:60px" />
+                        </div>
+                        <div>
+                            <label class="form-label">Team Coach / Manager</label>
+                            <input type="text" class="form-input" id="fsr-coach-input" placeholder="Name..." style="height:60px" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px; padding:0 10px">
+                <div>
+                    <h2 style="font-size:32px; font-weight:950; letter-spacing:-1px">Match Squad</h2>
+                    <p style="color:var(--c-muted); font-size:14px">Official 11 players + substitutes</p>
+                </div>
+                <button class="btn btn-ghost" onclick="addRosterSlotFS()" style="border:1px dashed rgba(255,255,255,0.2); border-radius:12px; padding:10px 20px">+ Add Player Slot</button>
+            </div>
+
+            <div id="fsr-players-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px">
+                <!-- Player Slots -->
+            </div>
+        </main>
+        
+        <input id="fsr-player-photo-input" type="file" accept="image/*" style="display:none" onchange="onFSRPlayerPhotoSelected(event)">
+        <input id="fsr-team-photo-input" type="file" accept="image/*" style="display:none" onchange="onFSRTeamPhotoSelected(event)">
+    </div>
+
 
     <datalist id="db-players-list"></datalist>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="../js/db.js"></script>

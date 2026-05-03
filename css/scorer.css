@@ -320,8 +320,13 @@
     padding: 24px;
 }
 
+.broadcast-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr 1fr;
+}
+
 @media (max-width: 1000px) {
-    .scorer-layout {
+    .scorer-layout, .broadcast-layout {
         grid-template-columns: 1fr;
         padding: 12px;
         gap: 12px;
