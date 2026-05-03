@@ -924,7 +924,9 @@ function syncToDB(type, data) {
 
     // Security check: Only skip if NOT on localhost AND the tournament is explicitly locked AND we have no valid token.
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (!isLocal && type === 'match' && data && data.tournamentId && !token) {
+    const isScoringPage = window.location.pathname.includes('score-match.html');
+    
+    if (!isLocal && !isScoringPage && type === 'match' && data && data.tournamentId && !token) {
         const tournament = (DB && DB.getTournament) ? DB.getTournament(data.tournamentId) : null;
         const locked = tournament && (tournament.scoringPassword || tournament.password || tournament.isLocked);
         if (locked) {

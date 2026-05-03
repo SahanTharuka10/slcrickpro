@@ -5,7 +5,7 @@ let currentPopupView = null;
 let latestSocketScore = null;
 let latestSocketScoreTime = 0; 
 let isScorebarVisible = true;
-let currentOverlayMode = 1;
+let currentOverlayMode = 4; // Default to Mode 4 (Scorebar 2)
 let currentSubMode = 1;
 
 if (typeof OVERLAY_DEFAULT_PLAYER_PHOTO === 'undefined') {
@@ -306,9 +306,10 @@ function toggleBroadcastSummary(tId) {
 }
 
 function showBigEventGraphic(data) {
+    if (!data || !data.event) return;
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
-    el.innerHTML = `<div style="background:#e61b4d; color:white; padding:40px 100px; border-radius:100px; font-size:80px; font-weight:950; letter-spacing:10px;">${data.event.toUpperCase()}</div>`;
+    el.innerHTML = `<div style="background:#e61b4d; color:white; padding:40px 100px; border-radius:100px; font-size:80px; font-weight:950; letter-spacing:10px;">${(data.event || 'EVENT').toUpperCase()}</div>`;
     document.body.appendChild(el);
     gsap.fromTo(el, { scale: 0, opacity: 0, rotation: -20 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.8, ease: 'back.out(1.7)' });
     setTimeout(() => gsap.to(el, { scale: 1.5, opacity: 0, duration: 0.5, onComplete: () => el.remove() }), 5000);
@@ -322,7 +323,7 @@ function showStrikerProfileLeft(data, label = 'BATSMAN') {
     el.innerHTML = `<div style="background:#0f172a; border-left:8px solid #00e676; padding:30px; border-radius:0 30px 30px 0; color:white; width:350px;">
         <div style="font-size:12px; color:#00e676; letter-spacing:3px; margin-bottom:15px;">${label}</div>
         <img src="${photo}" style="width:100%; height:300px; object-fit:cover; border-radius:15px; margin-bottom:20px;">
-        <div style="font-size:32px; font-weight:950;">${data.playerName.toUpperCase()}</div>
+        <div style="font-size:32px; font-weight:950;">${(data.playerName || 'PLAYER').toUpperCase()}</div>
         <div style="font-size:18px; opacity:0.7;">${data.playerRuns || 0} (${data.playerBalls || 0})</div>
     </div>`;
     document.body.appendChild(el);

@@ -228,11 +228,15 @@
         /* Full Scorecard (Balanced Columns) */
         .full-scorecard-overlay {
             top: 20px; left: 20px; right: 20px; bottom: 20px;
-            background: #fdfdfd; 
-            color: #111;
+            background: rgba(15, 23, 42, 0.95); 
+            color: #fff;
             padding: 30px;
             display: flex;
             flex-direction: column;
+            border-radius: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
         }
         .fs-header { text-align: center; margin-bottom: 20px; background: #1b1642; color: #fff; padding: 15px; border-radius: 12px; }
         .fs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; flex: 1; min-height: 0; }
