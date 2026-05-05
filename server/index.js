@@ -82,6 +82,9 @@ app.get('/', (req,res) => res.sendFile(path.join(__dirname,'..','index.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'..','pages','admin.html')));
 app.get(['/admin_2003', '/admin-portal', '/admin/match-entry'], (req,res) => res.redirect('/admin'));
 
+// Dedicated Master Overlay Route (Transparent OBS Source)
+app.get('/overlay/live', (req,res) => res.sendFile(path.join(__dirname,'..','pages','overlay.html')));
+
 
 // ─── Admin Login ─────────────────────────────────────────────────
 // Simple PIN-based login. Username can be anything. 
@@ -446,6 +449,92 @@ app.get('/tv/matches/:matchId/light', async (req, res) => {
   }
 });
 
+// Master URL Endpoint: Automatically fetch the active match
+app.get('/api/active-match', async (req, res) => {
+  try {
+    await ensureDB();
+    const { tournamentId } = req.query;
+    const rows = await Match.findAll();
+    
+    let activeMatch = null;
+    let latestTime = 0;
+    
+    // 1. Prioritize 'live' matches
+    for (const row of rows) {
+      let m = row.data || row.dataValues?.data || {};
+      if (typeof m === 'string') {
+        try { m = JSON.parse(m); } catch(e) { m = {}; }
+      }
+      
+      if (tournamentId && m.tournamentId !== tournamentId) continue;
+      
+      if (m.status === 'live') {
+        if (!activeMatch || (m.lastUpdated || 0) > latestTime) {
+          activeMatch = m;
+          latestTime = m.lastUpdated || 0;
+        }
+      }
+    }
+    
+    // 2. Fallback to setup/paused matches
+    if (!activeMatch) {
+      for (const row of rows) {
+        let m = row.data || row.dataValues?.data || {};
+        if (typeof m === 'string') {
+          try { m = JSON.parse(m); } catch(e) { m = {}; }
+        }
+        
+        if (tournamentId && m.tournamentId !== tournamentId) continue;
+        
+        if (m.status !== 'completed') {
+          if (!activeMatch || (m.lastUpdated || 0) > latestTime) {
+            activeMatch = m;
+            latestTime = m.lastUpdated || 0;
+          }
+        }
+      }
+    }
+    
+    // 3. Last Resort: Just get the newest completed match
+    if (!activeMatch) {
+      for (const row of rows) {
+        let m = row.data || row.dataValues?.data || {};
+        if (typeof m === 'string') {
+          try { m = JSON.parse(m); } catch(e) { m = {}; }
+        }
+        
+        if (tournamentId && m.tournamentId !== tournamentId) continue;
+        
+        if (!activeMatch || (m.lastUpdated || 0) > latestTime) {
+          activeMatch = m;
+          latestTime = m.lastUpdated || 0;
+        }
+      }
+    }
+    
+    if (!activeMatch) {
+      return res.status(404).json({ error: 'No matches found' });
+    }
+    
+    const inn = activeMatch.innings ? activeMatch.innings[activeMatch.currentInnings || 0] : null;
+    res.json({
+      id: activeMatch.id || activeMatch.matchId,
+      status: activeMatch.status,
+      score: inn ? {
+        runs: inn.runs || 0,
+        wickets: inn.wickets || 0,
+        balls: inn.balls || 0,
+        battingTeam: inn.battingTeam,
+        bowlingTeam: inn.bowlingTeam
+      } : null,
+      fullMatch: activeMatch
+    });
+  } catch (e) {
+    console.error('❌ [API] Error fetching active match:', e);
+    res.status(500).json({ error: 'Failed to fetch active match' });
+  }
+});
+
 app.get('/players', async (req, res) => {
   try {
     const dbOk = await ensureDB();
@@ -752,6 +841,10 @@ app.post('/sync/match', async (req, res) => {
     } catch (e) {
       console.error('❌ [SERVER] /sync/match error:', e);
       res.status(500).json({ error: 'Database error', details: e.message });
+    }
+    } catch (e) {
+      console.error('❌ [SERVER] /sync/match outer error:', e);
+      res.status(500).json({ error: 'Sync error', details: e.message });
     }
 });
 

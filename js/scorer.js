@@ -5,11 +5,15 @@
 
 // ── Shared Utility: also defined in overlay.js for TV page ──
 function getShortName(fullName) {
-    if (!fullName) return '';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 0) return '';
-    if (parts.length === 1) return parts[0].substring(0, 3).toUpperCase();
-    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+    if (!fullName || typeof fullName !== 'string') return '';
+    try {
+        const parts = fullName.trim().split(' ');
+        if (parts.length === 0) return '';
+        if (parts.length === 1) return parts[0].substring(0, 3).toUpperCase();
+        return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+    } catch (e) {
+        return '';
+    }
 }
 
 let currentMatch = null;
@@ -1537,6 +1541,9 @@ function uploadPlayerPhoto(role) {
         p = idx !== null && idx !== undefined ? inn.batsmen[idx] : null;
     } else if (role === 'bowler') {
         p = inn.currentBowlerIdx !== null && inn.currentBowlerIdx !== undefined ? inn.bowlers[inn.currentBowlerIdx] : null;
+    } else if (role === 'guest') {
+        // Special case for guest: create a temporary player object
+        p = { name: document.getElementById('guest-name')?.value || 'Special Guest', playerId: 'GUEST_' + Date.now() };
     }
 
     if (!p) {
@@ -1560,12 +1567,12 @@ function uploadPlayerPhoto(role) {
         reader.onload = (ev) => {
             DB.savePlayerPhoto(p.playerId, ev.target.result);
             DB.saveMatch(currentMatch); // Save the dummy ID if it was generated
-            showToast('✅ Photo saved for ' + p.name, 'success');
-            renderScoring();
+            showToast('✅ Photo updated & synced!', 'success');
+            if (typeof renderCurrentState === 'function') renderCurrentState();
             
-            // Re-render broadcast overlay if it's open
-            if (typeof Broadcast !== 'undefined' && Broadcast.send) {
-                // Send a silent sync to update overlay
+            // Sync to remote if broadcast active
+            if (typeof Broadcast !== 'undefined') {
+                Broadcast.send('SYNC_PLAYER_PHOTO', { playerId: p.playerId, photo: ev.target.result });
                 Broadcast.send('SYNC_SCORE', { match: currentMatch });
             }
         };
@@ -3963,7 +3970,36 @@ function broadcastStrikerProfile() {
     }
     
     const age = p.dob ? calculateAge(p.dob) : "";
-    sendBroadcast('SHOW_STRIKER_PROFILE', { name: strikerName, profile: p, stats, age });
+    sendBroadcast('SHOW_STRIKER_PROFILE', { 
+        playerName: strikerName, 
+        playerPhoto: p.photo || playerPhotoSrc(p), 
+        playerRuns: stats.runs, 
+        playerBalls: stats.balls,
+        playerSixes: stats.sixes || 0,
+        age: age
+    });
+}
+
+function broadcastNonStrikerProfile() {
+    const m = currentMatch;
+    if (!m) return;
+    const inn = m.innings[m.currentInnings];
+    if (!inn) return;
+    // Non-striker is whichever batter ISN'T the striker
+    const [b0, b1] = getOnCreaseBatterNames(inn);
+    const nonStrikerName = (inn.strikerIdx === 0) ? b1 : b0;
+    if (!nonStrikerName) return;
+    let p = resolvePlayerProfileForBatter(inn, nonStrikerName) || {};
+    if (window.__photo_nonstriker) p.photo = window.__photo_nonstriker;
+    const stats = inn.batsmen.find(x => x.name === nonStrikerName) || { runs:0, balls:0, fours:0, sixes:0 };
+    sendBroadcast('SHOW_NON_STRIKER_PROFILE', {
+        playerName: nonStrikerName,
+        playerPhoto: p.photo || playerPhotoSrc(p),
+        playerRuns: stats.runs,
+        playerBalls: stats.balls,
+        playerSixes: stats.sixes || 0
+    });
+    showToast('🛡️ Non-Striker Profile Published!', 'success');
 }
 
 function broadcastBowlerProfile() {
@@ -4001,15 +4037,11 @@ function broadcastBowlerProfile() {
     }
     
     sendBroadcast('SHOW_BOWLER_PROFILE', { 
-        name: bowler.name, 
-        profile: p, 
-        stats: {
-            overs: formatOvers(bowler.balls, m.ballsPerOver),
-            maidens: bowler.maidens || 0,
-            runs: bowler.runs || 0,
-            wickets: bowler.wickets || 0,
-            econ: formatEcon(bowler.runs, bowler.balls, m.ballsPerOver)
-        }
+        playerName: bowler.name, 
+        playerPhoto: p.photo || playerPhotoSrc(p), 
+        playerRuns: bowler.wickets || 0,  // val1 = wickets
+        playerBalls: bowler.runs || 0,    // val2 = runs conceded
+        playerSixes: formatOvers(bowler.balls, m.ballsPerOver) // val3 = overs (as string)
     });
 }
 
@@ -4426,6 +4458,10 @@ function renderBroadcastController(match) {
                             <div class="b-btn-title">⚡ STRIKER</div>
                             <div class="b-btn-sub">S+B</div>
                         </button>
+                        <button class="b-btn" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;" onclick="broadcastNonStrikerProfile()">
+                            <div class="b-btn-title">🛡️ NON-STR</div>
+                            <div class="b-btn-sub">S+N</div>
+                        </button>
                         <button class="b-btn b-btn-emerald" onclick="broadcastCurrentBatters()">
                             <div class="b-btn-title">🏏 BATTERS</div>
                             <div class="b-btn-sub">S+P</div>
@@ -4435,19 +4471,16 @@ function renderBroadcastController(match) {
                             <div class="b-btn-sub">S+H</div>
                         </button>
                         <button class="b-btn b-btn-purple" onclick="broadcastBowlerProfile()">
-                            <div class="b-btn-title">🛡️ BOWLER</div>
+                            <div class="b-btn-title">⚾ BOWLER</div>
                             <div class="b-btn-sub">S+L</div>
                         </button>
                         <button class="b-btn b-btn-black" onclick="broadcastTeamCard(0)">
                             <div class="b-btn-title">👕 ${getShortName(match.team1)}</div>
                             <div class="b-btn-sub">S+K</div>
                         </button>
-                        <button class="b-btn b-btn-black" onclick="broadcastTeamCard(1)">
-                            <div class="b-btn-title">👕 ${getShortName(match.team2)}</div>
-                            <div class="b-btn-sub">S+J</div>
-                        </button>
                     </div>
                 </div>
+
             </div>
 
             <!-- RIGHT COLUMN: MATCH DATA & PHOTOS -->
@@ -4770,7 +4803,8 @@ function setupIntegratedHotkeys() {
 
         const key = e.key.toUpperCase();
         const code = e.code;
-        const isMasterControl = document.querySelector('.broadcast-controller-content') !== null;
+        const isMasterControl = document.body.classList.contains('broadcast-controller-active') || 
+                               (document.getElementById('panel-hotkeys') && document.getElementById('panel-hotkeys').style.display !== 'none');
 
         // Standard Production Triggers
         if (!e.shiftKey && !e.ctrlKey && !e.altKey) {

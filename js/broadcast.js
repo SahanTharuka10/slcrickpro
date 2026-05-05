@@ -126,7 +126,171 @@ const Broadcast = {
      */
     stopAll() {
         this.send('STOP_OVERLAY');
+        // Specific command to clear stay-on overlays like Team Cards
+        this.send('CLEAR_STAY_OVERLAYS');
         showToast('⏹ All Overlays Cleared', 'default');
+    },
+
+    /**
+     * Show Striker Profile
+     */
+    broadcastStrikerProfile() {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const inn = m.innings[m.currentInnings];
+        if (!inn || !inn.currentBatsmenIdx) return showToast('No innings active', 'error');
+        const strikerIdx = inn.currentBatsmenIdx[inn.strikerIdx];
+        const striker = inn.batsmen[strikerIdx];
+        if (!striker) return showToast('No striker found', 'error');
+
+        this.send('SHOW_STRIKER_PROFILE', {
+            playerName: striker.name,
+            playerRuns: striker.runs,
+            playerBalls: striker.balls,
+            playerPhoto: DB.getPlayerPhoto(striker.playerId)
+        });
+        showToast('⚡ Striker Profile Published!', 'success');
+    },
+
+    /**
+     * Show Non-Striker Profile
+     */
+    broadcastNonStrikerProfile() {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const inn = m.innings[m.currentInnings];
+        if (!inn || !inn.currentBatsmenIdx) return showToast('No innings active', 'error');
+        const nonStrikerIdx = inn.currentBatsmenIdx[inn.strikerIdx === 0 ? 1 : 0];
+        const nonStriker = inn.batsmen[nonStrikerIdx];
+        if (!nonStriker) return showToast('No non-striker found', 'error');
+
+        this.send('SHOW_NON_STRIKER_PROFILE', {
+            playerName: nonStriker.name,
+            playerRuns: nonStriker.runs,
+            playerBalls: nonStriker.balls,
+            playerPhoto: DB.getPlayerPhoto(nonStriker.playerId)
+        });
+        showToast('🛡️ Non-Striker Profile Published!', 'success');
+    },
+
+    /**
+     * Show Both Batters
+     */
+    broadcastCurrentBatters() {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const inn = m.innings[m.currentInnings];
+        if (!inn || !inn.currentBatsmenIdx) return showToast('No innings active', 'error');
+        const b1 = inn.batsmen[inn.currentBatsmenIdx[0]];
+        const b2 = inn.batsmen[inn.currentBatsmenIdx[1]];
+        if (!b1 && !b2) return showToast('No batters found', 'error');
+
+        const profiles = [];
+        if (b1) profiles.push({ name: b1.name, stats: { runs: b1.runs, balls: b1.balls }, profile: { photo: DB.getPlayerPhoto(b1.playerId) } });
+        if (b2) profiles.push({ name: b2.name, stats: { runs: b2.runs, balls: b2.balls }, profile: { photo: DB.getPlayerPhoto(b2.playerId) } });
+
+        this.send('SHOW_BATTER_PROFILES', { profiles });
+        showToast('🏏 Batters Published!', 'success');
+    },
+
+    /**
+     * Show Partnership
+     */
+    broadcastPartnership() {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const inn = m.innings[m.currentInnings];
+        if (!inn || !inn.partnerships || inn.partnerships.length === 0) return showToast('No partnership data', 'error');
+        
+        const currentPartnership = inn.partnerships[inn.partnerships.length - 1];
+        const b1 = inn.batsmen[inn.currentBatsmenIdx[0]];
+        const b2 = inn.batsmen[inn.currentBatsmenIdx[1]];
+
+        this.send('SHOW_PARTNERSHIP', {
+            player1: b1 ? b1.name : 'TBD',
+            player1Photo: b1 ? DB.getPlayerPhoto(b1.playerId) : '',
+            player2: b2 ? b2.name : 'TBD',
+            player2Photo: b2 ? DB.getPlayerPhoto(b2.playerId) : '',
+            runs: currentPartnership.runs,
+            balls: currentPartnership.balls,
+            wicketNumber: inn.wickets + 1,
+            battingTeam: inn.battingTeam
+        });
+        showToast('🤝 Partnership Published!', 'success');
+    },
+
+    /**
+     * Show Bowler Profile
+     */
+    broadcastBowlerProfile() {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const inn = m.innings[m.currentInnings];
+        if (!inn || inn.currentBowlerIdx == null) return showToast('No bowler active', 'error');
+        const bowler = inn.bowlers[inn.currentBowlerIdx];
+        if (!bowler) return showToast('No bowler found', 'error');
+
+        this.send('SHOW_BOWLER_PROFILE', {
+            playerName: bowler.name,
+            playerRuns: bowler.wickets,  // Using playerRuns for wickets in profile left
+            playerBalls: bowler.runs,    // Using playerBalls for runs in profile left
+            playerPhoto: DB.getPlayerPhoto(bowler.playerId)
+        });
+        showToast('⚾ Bowler Profile Published!', 'success');
+    },
+
+
+    /**
+     * Show Team Card (squad card with player photos)
+     */
+    broadcastTeamCard(teamIdx) {
+        if (!window.currentMatch || !window.DB) return showToast('No active match', 'error');
+        const m = window.currentMatch;
+        const teamName = teamIdx === 0 ? m.team1 : m.team2;
+        if (!teamName) return showToast('Team not found', 'error');
+
+        // Try to get squad from tournament or match
+        let players = [];
+        const tourn = window.currentTournament;
+        if (tourn && tourn.teams) {
+            const teamObj = tourn.teams.find(t => t.name === teamName);
+            if (teamObj && teamObj.players) {
+                players = teamObj.players.map(p => ({
+                    name: p.name || p,
+                    role: p.role || 'Player',
+                    photo: p.id ? DB.getPlayerPhoto(p.id) : (DB.getPlayerPhoto((p.name||p).replace(/\s+/g,'_').toUpperCase()) || '')
+                }));
+            }
+        }
+        if (players.length === 0 && m.innings) {
+            const inn = m.innings.find(i => i.battingTeam === teamName || i.bowlingTeam === teamName);
+            if (inn) {
+                const allPlayers = [...(inn.batsmen||[]), ...(inn.bowlers||[])];
+                const seen = new Set();
+                allPlayers.forEach(p => {
+                    if (p && p.name && !seen.has(p.name)) {
+                        seen.add(p.name);
+                        players.push({ name: p.name, role: p.role || 'Player', photo: DB.getPlayerPhoto(p.playerId) || '' });
+                    }
+                });
+            }
+        }
+
+        const logo = DB.getTeamPhoto(teamName, m.tournamentId) || '';
+        this.send('SHOW_TEAM_CARD', { teamName, teamLogo: logo, players });
+        showToast(`🛡️ ${teamName} Squad Card Published!`, 'success');
+    },
+
+    /**
+     * Show Special Guest Overlay
+     */
+    broadcastSpecialGuest(photoUrl, name) {
+        if (!name) {
+            showToast('Please enter guest name', 'error');
+            return;
+        }
+        this.send('SHOW_SPECIAL_GUEST', { photo: photoUrl, name: name });
+        showToast('👤 Special Guest Published!', 'success');
     },
 
     /**

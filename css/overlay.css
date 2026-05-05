@@ -19,14 +19,9 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Preview mode: show dark broadcast-style background */
+/* Preview mode: show subtle broadcast-style background for browser testing */
 body.preview-mode {
-    background: #050510 !important;
-    background-image:
-        radial-gradient(ellipse at 20% 80%, rgba(124,77,255,0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(41,98,255,0.06) 0%, transparent 50%),
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 60px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 60px) !important;
+    background: transparent !important;
 }
 
 /* ─── Main Scoreboard Bar ─────────────────────────────────── */
@@ -418,7 +413,8 @@ body.preview-mode {
     align-items: center;
     padding: 0 20px;
     gap: 15px;
-    background: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
 }
 .m2-logo-box {
     width: 60px; height: 60px; background: #fff; border-radius: 10px;
@@ -501,7 +497,8 @@ body.preview-mode {
    OVERLAY MODE 3: DETAILED DATA VIEW
    ============================================================ */
 #overlay-container.mode-3 {
-    background: #0f172a;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(15px);
     height: 80px;
     border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.1);
@@ -531,23 +528,21 @@ body.preview-mode {
 .m3-recent span.w { color: #f43f5e; }
 
 /* ============================================================
-   OVERLAY MODE 4: IPL STYLE SCORE BAR (SCORE BAR 2)
+   OVERLAY MODE 4: WIDE LIGHT THEME SCORE BAR (UNO STYLE)
    ============================================================ */
 #overlay-container.mode-4 {
     position: fixed;
-    bottom: 0;
+    bottom: 0 !important;
+    top: auto !important;
+    height: auto !important;
     left: 0;
     width: 100%;
-    height: 90px;
-    background: linear-gradient(90deg, #06113c 0%, #172774 50%, #06113c 100%);
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-    border-top: 2px solid rgba(255,255,255,0.1);
-    color: #fff;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: center;
     padding: 0;
     margin: 0;
-    border-radius: 0;
+    font-family: 'Outfit', sans-serif;
     z-index: 12000;
     animation: slideUpMode4 0.6s cubic-bezier(0.2, 1, 0.3, 1) forwards;
 }
@@ -558,254 +553,260 @@ body.preview-mode {
 }
 
 .m4-bar-wrapper {
+    width: 98%;
+    max-width: 1900px;
+    height: 70px;
+    background: #f1f5f9; /* Light grey theme */
     display: flex;
-    width: 100%;
-    height: 100%;
     align-items: center;
     justify-content: space-between;
+    border-radius: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    margin-bottom: 20px; /* Sits slightly above bottom */
+    border: 2px solid #e2e8f0;
 }
 
-.m4-logo {
-    width: 100px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.05);
-    position: relative;
-}
-
-.m4-logo.left { border-right: 1px solid rgba(255,255,255,0.1); }
-.m4-logo.right { border-left: 1px solid rgba(255,255,255,0.1); }
-
-.m4-logo img {
-    max-width: 70%;
-    max-height: 70%;
-    object-fit: contain;
-    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5));
-}
-
-.m4-section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0 30px;
-    height: 100%;
-    border-right: 1px solid rgba(255,255,255,0.1);
-}
-
-.m4-score-section {
-    background: rgba(0,0,0,0.2);
-    min-width: 220px;
-    text-align: center;
-}
-
-#overlay-container.mode-4 {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100px;
-    background: transparent;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 20px;
-    font-family: 'Outfit', sans-serif;
-}
-
-.m4-bar-wrapper {
-    width: 95%;
-    max-width: 1800px;
-    height: 80px;
-    background: linear-gradient(180deg, rgba(6, 17, 60, 0.95) 0%, rgba(2, 6, 23, 1) 100%);
-    backdrop-filter: blur(20px);
-    border-top: 2px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    position: relative;
-}
-
-.m4-logo {
-    width: 100px;
+/* Logos */
+.m4-logo-box {
+    width: 60px;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    padding: 10px;
+    padding: 0 10px;
 }
 
-.m4-logo img {
-    max-width: 100%;
-    max-height: 100%;
+.m4-logo-circle {
+    width: 50px;
+    height: 50px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+}
+
+.m4-logo-circle img {
+    max-width: 80%;
+    max-height: 80%;
     object-fit: contain;
-    filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
 }
 
-.m4-section {
-    height: 100%;
+/* Batsmen Section */
+.m4-batsmen {
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 25px;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.m4-score-section {
-    min-width: 200px;
-    background: rgba(0, 0, 0, 0.3);
-    text-align: center;
-}
-
-.m4-team-name {
-    font-size: 14px;
-    font-weight: 850;
-    color: #ffd700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-}
-
-.m4-main-score {
-    font-size: 42px;
-    font-weight: 950;
-    line-height: 1;
-    margin: 2px 0;
-    color: #fff;
-    text-shadow: 0 0 20px rgba(255,255,255,0.2);
-}
-
-.m4-overs {
-    font-size: 13px;
-    opacity: 0.6;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-
-.m4-players-section {
-    flex: 1.5;
-    background: rgba(255, 255, 255, 0.02);
+    padding: 0 20px;
+    height: 100%;
 }
 
 .m4-player {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    width: 100%;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.3;
 }
 
-.m4-player.active .name {
-    color: #00e676;
-    text-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
-}
-
-.m4-player .name {
-    font-weight: 900;
-    font-size: 16px;
+.m4-pname {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-.m4-player .score {
-    font-weight: 950;
-    font-size: 20px;
+.striker-mark {
+    color: #1e293b;
+    font-size: 10px;
+    width: 14px;
+    display: inline-block;
 }
 
-.m4-player .score small {
-    font-size: 12px;
-    opacity: 0.5;
-    margin-left: 5px;
+.m4-pruns {
+    width: 40px;
+    text-align: right;
+    font-size: 18px;
+    font-weight: 950;
+}
+
+.m4-pballs {
+    width: 30px;
+    text-align: right;
+    font-size: 13px;
+    color: #64748b;
     font-weight: 700;
 }
 
-.m4-striker-photo {
-    width: 55px;
-    height: 55px;
-    border-radius: 50%;
-    border: 2px solid #00e676;
-    object-fit: cover;
-    box-shadow: 0 0 20px rgba(0,230,118,0.3);
+/* Center Dark Pill */
+.m4-center-pill {
+    background: linear-gradient(180deg, #1e1b4b 0%, #17173b 100%);
+    color: #fff;
+    height: 90px;
+    min-width: 420px;
+    border-radius: 45px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    z-index: 10;
+    margin: -10px 0; /* Pops out of the bar */
+    border: 2px solid rgba(255,255,255,0.1);
 }
 
-.m4-info-section {
-    flex: 1;
-    text-align: center;
-    background: rgba(0,0,0,0.2);
-}
-
-.m4-info-item .label {
-    font-size: 11px;
+.m4-pill-top {
+    font-size: 9px;
+    color: #6366f1;
     font-weight: 900;
-    color: #38bdf8;
     letter-spacing: 2px;
     margin-bottom: 2px;
 }
 
-.m4-info-item .value {
-    font-size: 22px;
-    font-weight: 950;
-    color: #fff;
-}
-
-.m4-bowler-section {
-    flex: 1.2;
-    border-right: none;
-}
-
-.m4-bowler-info {
+.m4-pill-mid {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 12px;
 }
 
-.m4-bowler-info .name {
-    font-size: 15px;
+.m4-teams {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.m4-teams .v {
+    font-size: 11px;
+    color: #818cf8;
+    margin: 0 4px;
+}
+
+.m4-score-box {
+    background: #e11d48;
+    color: #fff;
+    padding: 2px 14px;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: 950;
+    box-shadow: 0 4px 10px rgba(225, 29, 72, 0.4);
+}
+
+.m4-phase-box {
+    background: #0ea5e9;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 900;
 }
 
-.m4-bowler-info .score {
-    font-size: 22px;
+.m4-overs {
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.m4-pill-bot {
+    font-size: 10px;
+    color: #818cf8;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+/* Bowler Section */
+.m4-bowler-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 20px;
+    height: 100%;
+}
+
+.m4-bowler-stats {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-right: 15px;
+}
+
+.m4-bname {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+    text-transform: uppercase;
+}
+
+.m4-bwickets {
+    font-size: 18px;
     font-weight: 950;
-    color: #38bdf8;
+    color: #1e293b;
 }
 
-.m4-bowler-info .score small {
-    font-size: 13px;
-    color: #fff;
-    opacity: 0.5;
+.m4-bovers {
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
 }
 
+/* Recent Balls */
 .m4-recent-balls {
     display: flex;
-    gap: 8px;
-    justify-content: flex-end;
+    gap: 6px;
 }
 
 .m4-ball {
-    width: 28px;
-    height: 28px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-weight: 950;
-    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 11px;
+    font-weight: 900;
+    color: #1e293b;
+    background: #f8fafc;
 }
 
-.m4-ball.w { background: #e11d48; border-color: #f43f5e; color: #fff; }
-.m4-ball.b { background: #ffd700; color: #000; border-color: #facc15; }
-.m4-ball.six { background: #7c4dff; border-color: #a855f7; color: #fff; }
+.m4-ball.w {
+    background: #e11d48;
+    color: #fff;
+    border-color: #e11d48;
+}
 
+.m4-ball.run {
+    border-color: #64748b;
+    color: #1e293b;
+}
+
+.m4-ball.boundary {
+    background: #1e293b;
+    color: #fff;
+    border-color: #1e293b;
+}
+
+.m4-ball.six {
+    background: #1e293b;
+    color: #fff;
+    border-color: #1e293b;
+}
+
+/* Wicket Flash Animation */
 @keyframes m4WicketFlash {
-    0%   { background: rgba(0,0,0,0.3); }
-    30%  { background: rgba(230,27,77,0.9); box-shadow: 0 0 30px rgba(230,27,77,0.8); }
-    70%  { background: rgba(230,27,77,0.9); box-shadow: 0 0 30px rgba(230,27,77,0.8); }
-    100% { background: rgba(0,0,0,0.3); box-shadow: none; }
+    0%   { background: linear-gradient(180deg, #1e1b4b 0%, #17173b 100%); }
+    30%  { background: linear-gradient(180deg, #e11d48 0%, #be123c 100%); box-shadow: 0 0 30px rgba(225, 29, 72, 0.8); }
+    70%  { background: linear-gradient(180deg, #e11d48 0%, #be123c 100%); box-shadow: 0 0 30px rgba(225, 29, 72, 0.8); }
+    100% { background: linear-gradient(180deg, #1e1b4b 0%, #17173b 100%); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
 }
 
 .m4-wicket-flash {
