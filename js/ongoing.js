@@ -232,7 +232,7 @@ async function scoreMatchRedirect(id) {
     const needsPassword = (target.isLocked || target.scoringPassword || target.password);
     
     if (needsPassword && !grants[id]) {
-        const password = prompt("🔐 This match is protected. Enter the Scoring Password to continue:");
+        const password = await showInputModal("🔐 This match is protected. Enter the Scoring Password to continue:", "");
         if (password === null) return; // User cancelled
         
         const res = await DB.handshake(id, password);

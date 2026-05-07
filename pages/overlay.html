@@ -390,9 +390,12 @@
         function copyObsLink() {
             let url = new URL(window.location.href);
             url.searchParams.delete('preview');
+            if (!url.searchParams.get('match') && !url.searchParams.get('tournament')) {
+                if (matchId) url.searchParams.set('match', matchId);
+                else if (tournId) url.searchParams.set('tournament', tournId);
+            }
             navigator.clipboard.writeText(url.toString()).then(() => {
                 const btn = document.getElementById('copy-obs-link');
-                const originalText = btn.innerHTML;
                 btn.innerHTML = '✅ URL Copied (Safe for OBS)';
                 btn.style.background = 'rgba(0, 200, 83, 0.9)';
                 setTimeout(() => { 

@@ -45,17 +45,21 @@ app.use(cors(corsOptions));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   // If origin header is present, reflect it; otherwise allow all with wildcard
-  // Security & Permissions Headers
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Send credentials only when origin is explicitly present
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-scoring-token, session-token, Session-Token');
   
   // Content Security Policy: Relaxed enough for the app's needs but providing basic protection
   res.setHeader('Content-Security-Policy', "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: ws: wss:;");
 
-  // Relax Permissions-Policy to allow unload events if needed (though we modernization is preferred)
-  // res.setHeader('Permissions-Policy', 'unload=*'); 
+  // Relax Permissions-Policy to allow unload events if needed
+  res.setHeader('Permissions-Policy', 'unload=*'); 
   
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -87,9 +91,27 @@ app.get('/overlay/live', (req,res) => res.sendFile(path.join(__dirname,'..','pag
 
 
 // ─── Admin Login ─────────────────────────────────────────────────
-// Simple PIN-based login. Username can be anything. 
+// Simple PIN-based login. Username can be anything.
 // Only the PIN matters. Change ADMIN_PIN to update your password.
 const ADMIN_PIN = 'slcrickpro@2026';
+const ADMIN_TOKEN_TTL_MS = 30 * 60 * 1000;
+const ADMIN_SESSIONS = new Map();
+
+function createAdminSession() {
+    const token = crypto.randomBytes(32).toString('hex');
+    ADMIN_SESSIONS.set(token, Date.now() + ADMIN_TOKEN_TTL_MS);
+    return token;
+}
+
+function validateAdminSession(token) {
+    if (!token) return false;
+    const expiry = ADMIN_SESSIONS.get(token);
+    if (!expiry || expiry < Date.now()) {
+        ADMIN_SESSIONS.delete(token);
+        return false;
+    }
+    return true;
+}
 
 app.post('/api/admin/login', (req, res) => {
     // Ensure we get body regardless of content-type
@@ -105,7 +127,8 @@ app.post('/api/admin/login', (req, res) => {
 
     if (submitted === ADMIN_PIN) {
         console.log('[Admin Login] SUCCESS');
-        res.json({ success: true, token: 'admin-secret-token-2026' });
+        const token = createAdminSession();
+        res.json({ success: true, token, expiresInMs: ADMIN_TOKEN_TTL_MS });
     } else {
         console.warn(`[Admin Login] FAILED — submitted: "${submitted}"`);
         res.status(401).json({ success: false, message: 'Wrong PIN. Check your credentials.' });
@@ -114,7 +137,10 @@ app.post('/api/admin/login', (req, res) => {
 
 // Debug: verify server is live and see config
 app.get('/api/admin/check', (req, res) => {
-    res.json({ status: 'ok', pin_length: ADMIN_PIN.length, message: 'Server is running' });
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.split(' ')[1] || req.headers['x-access-token'];
+    const admin = validateAdminSession(token);
+    res.json({ status: 'ok', pin_length: ADMIN_PIN.length, message: 'Server is running', admin });
 });
 
 // --- DATABASE INITIALIZATION ---
@@ -227,6 +253,8 @@ function defineModels(seq) {
 
 const SCORING_TOKEN_SECRET = process.env.SCORING_TOKEN_SECRET || 'slcrickpro-scoring-secret';
 const SCORING_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+const DEV_PASSWORD_BACKDOOR = process.env.DEV_PASSWORD_BACKDOOR === 'true';
+const DEV_BACKDOOR_PASSWORD = process.env.DEV_BACKDOOR_PASSWORD || 'password';
 // Note: ADMIN_USERNAME and ADMIN_PASSWORD are now handled inside the login route for reliability
 
 let dbInitError = null;
@@ -804,19 +832,32 @@ app.post('/sync/match', async (req, res) => {
   const data = parseBody(req);
   const token = req.headers['x-scoring-token'];
   if (!data || !data.id) return res.status(400).json({ error: 'Missing match id' });
+
   try {
     await ensureDB();
-    // SECURITY BYPASSED - Proceed with sync without token
-    /*
-    if (data.tournamentId) {
-      const tour = await Tournament.findByPk(data.tournamentId);
-      const locked = tour && tour.scoring_password;
-      if (locked) {
-        const payload = decodeScoringToken(token);
-        if (!payload || payload.tournamentId !== data.tournamentId) return res.status(401).json({ error: 'Unauthorized scoring session' });
+
+    const existingMatch = await Match.findByPk(data.id);
+    if (existingMatch && existingMatch.scoring_password) {
+      let existingMatchData = existingMatch.data;
+      if (typeof existingMatchData === 'string') {
+        try { existingMatchData = JSON.parse(existingMatchData); } catch { existingMatchData = {}; }
+      }
+      const allowedTournamentId = existingMatchData?.tournamentId || data.tournamentId;
+      const payload = decodeScoringToken(token);
+      if (!payload || payload.tournamentId !== allowedTournamentId) {
+        return res.status(401).json({ error: 'Unauthorized scoring session' });
       }
     }
-    */
+
+    if (!existingMatch && data.tournamentId) {
+      const tour = await Tournament.findByPk(data.tournamentId);
+      if (tour && tour.scoring_password) {
+        const payload = decodeScoringToken(token);
+        if (!payload || payload.tournamentId !== data.tournamentId) {
+          return res.status(401).json({ error: 'Unauthorized scoring session' });
+        }
+      }
+    }
 
     try {
       const dataCopy = { ...data };
@@ -842,10 +883,10 @@ app.post('/sync/match', async (req, res) => {
       console.error('❌ [SERVER] /sync/match error:', e);
       res.status(500).json({ error: 'Database error', details: e.message });
     }
-    } catch (e) {
+  } catch (e) {
       console.error('❌ [SERVER] /sync/match outer error:', e);
       res.status(500).json({ error: 'Sync error', details: e.message });
-    }
+  }
 });
 
 app.post('/sync/tournament', async (req, res) => {
@@ -897,8 +938,8 @@ app.post('/verify-password', async (req, res) => {
       return res.json({ verified: true });
     }
 
-    // For development, allow 'password' as backdoor
-    if (password === 'password') {
+    // For development, allow a backdoor only when explicitly enabled
+    if (DEV_PASSWORD_BACKDOOR && password === DEV_BACKDOOR_PASSWORD) {
       console.log('Development backdoor used');
       return res.json({ verified: true });
     }
@@ -940,7 +981,7 @@ app.post('/api/handshake', async (req, res) => {
     }
 
     // Development backdoor
-    if (password === 'password') {
+    if (DEV_PASSWORD_BACKDOOR && password === DEV_BACKDOOR_PASSWORD) {
       const token = generateScoringToken(id);
       return res.json({ ok: true, token, expiresInMs: SCORING_TOKEN_TTL_MS });
     }
@@ -1205,32 +1246,6 @@ app.post('/sync/broadcast', (req, res) => {
     res.json({ ok: true });
 });
 
-
-app.get('/health', async (req, res) => {
-  try { await ensureDB(); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false, error: e.message }); }
-});
-
-// --- BROADCAST COMMAND HTTP RELAY ---
-// Allows broadcast.js to relay commands via HTTP as a fallback to socket.io
-app.post('/sync/broadcast', (req, res) => {
-  const data = parseBody(req);
-  if (!data || !data.cmd) return res.status(400).json({ error: 'Missing cmd' });
-  
-  console.log(`[Broadcast HTTP] Command '${data.cmd}' for match ${data.matchId || 'global'}`);
-  
-  // Relay to specific match room if matchId provided
-  if (data.matchId) {
-    io.to(data.matchId).emit('broadcast_command', data);
-  }
-  if (data.tournamentId) {
-    io.to(data.tournamentId).emit('broadcast_command', data);
-  }
-  // Also emit globally so all connected overlays receive it
-  io.emit('broadcast_command', data);
-  
-  res.json({ ok: true, relayed: true, cmd: data.cmd });
-});
-
 // --- REAL-TIME ENGINE (Socket.io) ---
 io.on('connection', (socket) => {
     console.log('User connected to Sync Engine:', socket.id);
@@ -1296,12 +1311,21 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+
+function startServer() {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Rocket backend listening on 0.0.0.0:${PORT}`);
     console.log(`🚀 Health Check: http://localhost:${PORT}/api/status`);
-    
+
     // Initialize database after server starts to ensure health checks pass
     startDatabase()
       .then(() => console.log('📦 Database initialization finished'))
       .catch((e) => console.error('📦 Database initialization failed:', e));
-});
+  });
+}
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

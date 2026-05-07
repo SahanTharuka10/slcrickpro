@@ -631,8 +631,8 @@ async function openTournamentHub(id) {
     switchTournamentTab('matches');
 }
 
-function promptTournamentLogin() {
-    const tId = prompt('Enter Tournament ID:');
+async function promptTournamentLogin() {
+    const tId = await showInputModal('Enter Tournament ID:', '');
     if (tId) openTournamentHub(tId.trim());
 }
 
@@ -792,12 +792,12 @@ window.confirmMatchTeamEdit = function(matchId, teamSlot, newName) {
     showToast(`Team ${teamSlot} updated!`, 'success');
 };
 
-window.promptMatchTeamManual = function(matchId, teamSlot) {
+window.promptMatchTeamManual = async function(matchId, teamSlot) {
     document.getElementById('match-team-select-modal').remove();
     const m = DB.getMatch(matchId);
     if (!m) return;
     const oldName = teamSlot === 1 ? m.team1 : m.team2;
-    const newName = prompt(`Enter Team ${teamSlot} name:`, oldName === 'TBD' ? '' : oldName);
+    const newName = await showInputModal(`Enter Team ${teamSlot} name:`, oldName === 'TBD' ? '' : oldName);
     if (newName !== null) {
         confirmMatchTeamEdit(matchId, teamSlot, newName.trim() || 'TBD');
     }
@@ -3415,7 +3415,7 @@ function resolveRosterPlayer(entry) {
 let pendingRosterSlotToRegister = null;
 let pendingRosterName = null;
 
-function onRosterSlotClick(idx) {
+async function onRosterSlotClick(idx) {
     const t = getActiveRosterRoot();
     if (!t || !editingTeamName) return;
 
@@ -3423,7 +3423,7 @@ function onRosterSlotClick(idx) {
     const currentVal = roster[idx] || '';
     const currentPlayer = resolveRosterPlayer(currentVal);
 
-    const namePrompt = prompt(`Enter name for player slot ${idx + 1}:`, currentPlayer?.name || currentVal || '');
+    const namePrompt = await showInputModal(`Enter name for player slot ${idx + 1}:`, currentPlayer?.name || currentVal || '');
     if (namePrompt === null) return;
     const name = namePrompt.trim();
     
@@ -3948,6 +3948,7 @@ function broadcastCurrentBatters() {
         return { name: bName, profile: p, stats };
     });
     sendBroadcast('SHOW_BATTER_PROFILES', { profiles });
+    showToast('🏏 Batters Published!', 'success');
 }
 
 function broadcastStrikerProfile() {
@@ -3978,6 +3979,7 @@ function broadcastStrikerProfile() {
         playerSixes: stats.sixes || 0,
         age: age
     });
+    showToast('⚡ Striker Profile Published!', 'success');
 }
 
 function broadcastNonStrikerProfile() {
@@ -4043,6 +4045,7 @@ function broadcastBowlerProfile() {
         playerBalls: bowler.runs || 0,    // val2 = runs conceded
         playerSixes: formatOvers(bowler.balls, m.ballsPerOver) // val3 = overs (as string)
     });
+    showToast('⚾ Bowler Profile Published!', 'success');
 }
 
 function triggerVisualBigEvent(type) {
@@ -4337,9 +4340,6 @@ function renderBroadcastController(match) {
                 <div style="font-size: 24px; font-weight: 950; letter-spacing: -0.5px; color: #fff;">BROADCAST MASTER</div>
             </div>
             <div style="display:flex; align-items:center; gap:12px">
-                <div id="hotkeyScore" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; border-radius: 12px; color: #3b82f6; font-weight: 900; font-size: 11px; cursor:pointer" title="Switch Match" onclick="openTournamentHub(currentMatch?.tournamentId)">
-                    ${scoreStr}
-                </div>
                 <div style="background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.2); padding: 8px 16px; border-radius: 12px; color: #00e676; font-weight: 900; font-size: 11px;">
                     LIVE • ${match.team1} vs ${match.team2}
                 </div>
@@ -4602,14 +4602,7 @@ function renderBroadcastController(match) {
 
     // Dynamic Live Sync Function
     const updatePreviewSync = (m) => {
-        // 1. Update score badge in header
-        const scoreEl = document.getElementById('hotkeyScore');
-        if (scoreEl && m.innings) {
-            const inn0 = m.innings[m.currentInnings || 0] || { runs:0, wickets:0, balls:0 };
-            scoreEl.innerText = `${inn0.runs}/${inn0.wickets} (${typeof formatOvers === 'function' ? formatOvers(inn0.balls, m.ballsPerOver || 6) : inn0.balls})`;
-        }
-
-        // 2. Sync to iframe preview
+        // 1. Sync to iframe preview
         const frame = document.getElementById('broadcast-preview-frame');
         if (frame && frame.contentWindow) {
             frame.contentWindow.postMessage({ 
@@ -4641,30 +4634,17 @@ function renderBroadcastController(match) {
     }
 
     const syncInterval = setInterval(async () => {
+        // Optimized polling: Only fetch if needed
         if (typeof window.pullGlobalData === 'function') {
             await window.pullGlobalData();
         }
         
-        let activeMatch = DB.getMatch(match.id);
-        
-        // Tournament-wide auto-switch logic
-        const urlParams = new URLSearchParams(window.location.search);
-        const tId = urlParams.get('tournamentId');
-        if (tId && activeMatch && activeMatch.status === 'completed') {
-            const nextLiveMatch = DB.getMatches().find(mx => mx.tournamentId === tId && (mx.status === 'live' || mx.status === 'paused'));
-            if (nextLiveMatch && nextLiveMatch.id !== activeMatch.id) {
-                clearInterval(window._broadcastSyncInterval);
-                currentMatch = nextLiveMatch;
-                renderBroadcastController(nextLiveMatch);
-                return;
-            }
-        }
-        
+        const activeMatch = DB.getMatch(match.id);
         if (activeMatch) {
             currentMatch = activeMatch;
             updatePreviewSync(activeMatch);
         }
-    }, 1000);
+    }, 1500); // Increased interval slightly for performance
     window._broadcastSyncInterval = syncInterval;
 
     // Initial Sync
@@ -4804,29 +4784,37 @@ function setupIntegratedHotkeys() {
         const key = e.key.toUpperCase();
         const code = e.code;
         const isMasterControl = document.body.classList.contains('broadcast-controller-active') || 
+                               document.body.classList.contains('hotkey-panel-active') ||
                                (document.getElementById('panel-hotkeys') && document.getElementById('panel-hotkeys').style.display !== 'none');
 
         // Standard Production Triggers
         if (!e.shiftKey && !e.ctrlKey && !e.altKey) {
+            let handled = true;
             if (key === '4' || code === 'Numpad4') {
                 if (isMasterControl) triggerVisualBigEvent('FOUR');
                 else recordBall({type:'four', runs:4});
             }
-            if (key === '6' || code === 'Numpad6') {
+            else if (key === '6' || code === 'Numpad6') {
                 if (isMasterControl) triggerVisualBigEvent('SIX');
                 else recordBall({type:'six', runs:6});
             }
-            if (key === 'W' || code === 'KeyW') {
+            else if (key === 'W' || code === 'KeyW') {
                 if (isMasterControl) triggerVisualBigEvent('WICKET');
                 else openWicketModal();
             }
-            if (key === '0' || code === 'Numpad0') {
+            else if (key === '0' || code === 'Numpad0') {
                if (!isMasterControl) recordBall({type:'dot', runs:0});
+               else handled = false;
             }
-            if (key === 'Escape') {
+            else if (key === 'Escape') {
                 if (typeof Broadcast !== 'undefined') Broadcast.stopAll();
                 else sendBroadcast('STOP_OVERLAY');
             }
+            else {
+                handled = false;
+            }
+            
+            if (handled) e.preventDefault();
         }
 
         // Advanced Cinematic Triggers (Shift + Key)
@@ -4834,6 +4822,7 @@ function setupIntegratedHotkeys() {
             let handled = true;
             switch(key) {
                 case 'B': broadcastStrikerProfile(); break;
+                case 'N': broadcastNonStrikerProfile(); break;
                 case 'P': broadcastCurrentBatters(); break;
                 case 'H': broadcastPartnership(); break;
                 case 'L': broadcastBowlerProfile(); break;
@@ -4843,6 +4832,7 @@ function setupIntegratedHotkeys() {
                 case 'R': if(typeof Broadcast !== 'undefined') Broadcast.showRunsNeeded(); else sendBroadcast('SHOW_RUNS_BALLS'); break;
                 case 'C': if(typeof Broadcast !== 'undefined') Broadcast.showCRR(); else sendBroadcast('SHOW_CRR'); break;
                 case 'T': if(typeof Broadcast !== 'undefined') Broadcast.showSummary(); else sendBroadcast('SHOW_SUMMARY'); break;
+                case 'V': if(typeof Broadcast !== 'undefined') Broadcast.toggleScorebar(); break;
                 default: handled = false; break;
             }
             if (handled) e.preventDefault();

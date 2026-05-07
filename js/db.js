@@ -83,6 +83,123 @@ window.showToast = function(msg, type = 'default') {
     setTimeout(() => { t.className = 'toast'; }, 3000);
 };
 
+// ── SAFE INPUT MODAL (replaces unsupported prompt()) ──
+window.showInputModal = function(message, defaultValue = '') {
+    return new Promise((resolve) => {
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: Outfit, sans-serif;
+        `;
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            max-width: 400px;
+            min-width: 300px;
+            z-index: 10001;
+        `;
+
+        const title = document.createElement('p');
+        title.textContent = message;
+        title.style.cssText = `
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        `;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = defaultValue;
+        input.style.cssText = `
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: Outfit, sans-serif;
+            box-sizing: border-box;
+            margin-bottom: 16px;
+        `;
+        input.focus();
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        `;
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = `
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: Outfit, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        `;
+        cancelBtn.onmouseover = () => cancelBtn.style.background = '#e0e0e0';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = '#f0f0f0';
+        cancelBtn.onclick = () => {
+            document.body.removeChild(modal);
+            resolve(null);
+        };
+
+        const okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.style.cssText = `
+            padding: 10px 20px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: Outfit, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        `;
+        okBtn.onmouseover = () => okBtn.style.background = '#0056b3';
+        okBtn.onmouseout = () => okBtn.style.background = '#007bff';
+        okBtn.onclick = () => {
+            document.body.removeChild(modal);
+            resolve(input.value);
+        };
+
+        input.onkeypress = (e) => {
+            if (e.key === 'Enter') okBtn.onclick();
+            if (e.key === 'Escape') cancelBtn.onclick();
+        };
+
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(okBtn);
+        box.appendChild(title);
+        box.appendChild(input);
+        box.appendChild(buttonContainer);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+    });
+};
+
 const DB = {
     getCloudURL() {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -709,9 +826,14 @@ const DB = {
 const IS_PRODUCTION = !(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'); 
 const PROD_BACKEND_URL = "https://slcrickpro.onrender.com"; 
 
-let BACKEND_BASE_URL = IS_PRODUCTION 
-    ? PROD_BACKEND_URL 
-    : "http://localhost:3000";
+let BACKEND_BASE_URL;
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    BACKEND_BASE_URL = `http://${window.location.hostname}:${window.location.port || 3000}`;
+} else if (!IS_PRODUCTION && window.location.origin && window.location.origin !== 'null') {
+    BACKEND_BASE_URL = window.location.origin;
+} else {
+    BACKEND_BASE_URL = PROD_BACKEND_URL;
+}
 
 // Clear old cache if in production
 if (IS_PRODUCTION) {
@@ -788,6 +910,7 @@ if (typeof io !== 'undefined') {
             reconnectionDelayMax: 8000,
             timeout: 15000,
             closeOnBeforeunload: false, // Prevent 'unload' related violations
+            allowEIO3: true,
         });
         window._cricproSocket = socket;
 
@@ -838,7 +961,7 @@ if (typeof io !== 'undefined') {
 
         // ── globalUpdate: any change to match or tournament
         socket.on('globalUpdate', (info) => {
-            console.log('🌍 globalUpdate received:', info?.type);
+            if (info && info.type !== 'joined') console.log('🌍 globalUpdate received:', info?.type);
             if (info && info.type === 'match_deleted' && info.id) {
                 const mArr = DB.getMatches().filter(m => m.id !== info.id);
                 DB._secureSet(DB_KEYS.MATCHES, mArr);
@@ -1171,7 +1294,8 @@ let _lastSyncTime = 0;
 const SYNC_DEBOUNCE_MS = 2000; // 2 second debounce
 
 async function syncCloudData(options = {}) {
-    if (!BACKEND_BASE_URL || _isSyncingCloud) return;
+    const backendUrl = BACKEND_BASE_URL || (typeof DB !== 'undefined' ? DB.getCloudURL() : null);
+    if (!backendUrl || _isSyncingCloud) return;
     
     // Debounce: ignore rapid-fire requests (e.g. from globalUpdate flood)
     const now = Date.now();
@@ -1193,10 +1317,10 @@ async function syncCloudData(options = {}) {
 
     try {
         const [mReq, tReq, pReq, tmReq] = await Promise.all([
-            fetch(`${BACKEND_BASE_URL}/sync/matches`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/sync/tournaments`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/players`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
-            fetch(`${BACKEND_BASE_URL}/teams`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false }))
+            fetch(`${backendUrl}/sync/matches`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${backendUrl}/sync/tournaments`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${backendUrl}/players`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false })),
+            fetch(`${backendUrl}/teams`, { signal: AbortSignal.timeout(30000) }).catch(() => ({ ok: false }))
         ]);
 
         // Validate responses before parsing

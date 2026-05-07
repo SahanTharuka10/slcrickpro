@@ -236,7 +236,7 @@ async function scoreAdminMatchRedirect(id) {
     const needsPassword = (m.isLocked || m.scoringPassword || m.password);
     const grants = JSON.parse(localStorage.getItem('cricpro_grants') || '{}');
     if (needsPassword && !grants[id]) {
-        const password = prompt("🔐 This match is protected. Enter the Scoring Password to continue:");
+        const password = await showInputModal("🔐 This match is protected. Enter the Scoring Password to continue:", "");
         if (password === null) return;
         const res = await DB.handshake(id, password);
         if (res.ok) {

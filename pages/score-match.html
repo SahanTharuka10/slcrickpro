@@ -54,17 +54,17 @@
                 <div style="text-align:center;margin-bottom:32px">
                     <div class="hero-badge" style="margin-bottom:16px">Choose Match Type</div>
                 <div class="match-type-selector" id="match-type-selector">
-                    <button class="type-btn active" id="type-single" onclick="selectMatchType('single')">
+                    <button class="type-btn active" id="type-single" data-match-type="single">
                         <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
                         <span class="type-label">Single Match</span>
                         <span class="type-sub">Quick match, no tournament</span>
                     </button>
-                    <button class="type-btn" id="type-tournament" onclick="selectMatchType('tournament')">
+                    <button class="type-btn" id="type-tournament" data-match-type="tournament">
                         <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
                         <span class="type-label">Tournament Match</span>
                         <span class="type-sub">Schedule in a tournament</span>
                     </button>
-                    <button class="type-btn" id="type-instant-nrr" onclick="selectMatchType('instant-nrr')">
+                    <button class="type-btn" id="type-instant-nrr" data-match-type="instant-nrr">
                         <span class="type-icon"><svg style="width:24px;height:24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h3L11 22"/></svg></span>
                         <span class="type-label">Instant NRR</span>
                         <span class="type-sub">Quick calculation tool</span>
@@ -308,9 +308,22 @@
                 document.querySelectorAll('.setup-tab-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById('panel-' + tabId).style.display = 'block';
                 document.getElementById('tab-btn-' + tabId).classList.add('active');
+                
+                const banner = document.querySelector('.score-banner');
+                if (banner) {
+                    banner.style.display = (tabId === 'hotkeys') ? 'none' : 'block';
+                }
+                
                 if (tabId === 'scorecard' && typeof renderEmbeddedScorecard === 'function') renderEmbeddedScorecard();
+                
                 if (tabId === 'hotkeys') {
+                    // Mark body so global hotkey listener knows we are in broadcast mode
+                    document.body.classList.add('hotkey-panel-active');
                     _refreshBroadcastPreview();
+                    
+                    // Initial scaling
+                    setTimeout(scaleBroadcastPreview, 100);
+                    
                     if (typeof renderBroadcastMatchList === 'function') renderBroadcastMatchList();
                     if (window._bmSyncTimer) clearInterval(window._bmSyncTimer);
                     window._bmSyncTimer = setInterval(() => {
@@ -319,9 +332,29 @@
                         if (typeof renderBroadcastMatchList === 'function') renderBroadcastMatchList();
                     }, 2500);
                 } else {
+                    document.body.classList.remove('hotkey-panel-active');
                     if (window._bmSyncTimer) { clearInterval(window._bmSyncTimer); window._bmSyncTimer = null; }
                 }
             }
+
+            function scaleBroadcastPreview() {
+                const frame = document.getElementById('broadcast-preview-iframe');
+                const container = document.getElementById('iframe-wrapper');
+                if (!frame || !container) return;
+                
+                const containerWidth = container.offsetWidth;
+                const scaleVal = containerWidth / 1920;
+                frame.style.transform = `scale(${scaleVal})`;
+                frame.style.width = '1920px';
+                frame.style.height = '1080px';
+                frame.style.transformOrigin = 'top left';
+            }
+
+            window.addEventListener('resize', () => {
+                if (document.getElementById('panel-hotkeys')?.style.display === 'block') {
+                    scaleBroadcastPreview();
+                }
+            });
 
             function _refreshBroadcastPreview() {
                 const iframe = document.getElementById('broadcast-preview-iframe');
@@ -333,18 +366,43 @@
                     ? m.tournamentId
                     : ((typeof currentTournament !== 'undefined' && currentTournament) ? currentTournament.id : null);
                 
-                // If iframe is already on the correct page, just postMessage for sync
-                // Otherwise update the src (initial load)
                 const targetSrc = '../pages/overlay.html?preview=true' + (mId ? '&match=' + encodeURIComponent(mId) : (tId ? '&tournament=' + encodeURIComponent(tId) : ''));
-                if (!iframe.src || !iframe.src.includes('overlay.html')) {
-                    iframe.src = targetSrc;
-                } else {
-                    // Zero latency sync
+                const targetUrl = new URL(targetSrc, window.location.href).href;
+                const previewNoMatch = document.getElementById('preview-no-match');
+
+                if (mId || tId) {
+                    if (previewNoMatch) previewNoMatch.style.display = 'none';
+                } else if (previewNoMatch) {
+                    previewNoMatch.style.display = 'flex';
+                }
+
+                const syncMatchToIframe = (matchPayload) => {
+                    if (!iframe || !iframe.contentWindow) return;
                     iframe.contentWindow.postMessage({
                         type: 'cricpro_broadcast_cmd',
-                        payload: { cmd: 'SYNC_SCORE', data: { match: m } }
+                        payload: { cmd: 'SYNC_SCORE', data: { match: matchPayload } }
                     }, '*');
+                };
+
+                if (!iframe.src || !iframe.src.includes('overlay.html') || iframe.src !== targetUrl) {
+                    iframe._pendingBroadcastMatch = m;
+                    iframe.onload = () => {
+                        if (previewNoMatch) previewNoMatch.style.display = 'none';
+                        if (iframe && iframe.contentWindow && iframe._pendingBroadcastMatch) {
+                            setTimeout(() => syncMatchToIframe(iframe._pendingBroadcastMatch), 50);
+                            iframe._pendingBroadcastMatch = null;
+                        }
+                    };
+                    iframe.src = targetUrl;
+                } else if (iframe.contentWindow) {
+                    if (previewNoMatch) previewNoMatch.style.display = 'none';
+                    // Give the overlay iframe a short moment to attach its message handlers.
+                    setTimeout(() => syncMatchToIframe(m), 100);
+                } else {
+                    iframe._pendingBroadcastMatch = m;
                 }
+
+                scaleBroadcastPreview();
 
                 // Update header indicators
                 if (m && m.innings) {
@@ -722,17 +780,17 @@
                                 <div style="font-size:11px; font-weight:900">NON-STR</div>
                                 <div id="bm-label-nonstriker" style="font-size:8px; opacity:0.6; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">—</div>
                             </button>
-                            <button class="btn btn-primary" style="background:#00c853; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.broadcastCurrentBatters()">
+                            <button class="btn btn-primary" style="background:#00c853; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="broadcastCurrentBatters()">
                                 <div style="font-size:18px">🏏</div>
                                 <div style="font-size:11px; font-weight:900">BATTERS</div>
                                 <div style="font-size:8px; opacity:0.6">BOTH</div>
                             </button>
-                            <button class="btn btn-primary" style="background:#ff8f00; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.broadcastPartnership()">
+                            <button class="btn btn-primary" style="background:#ff8f00; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="broadcastPartnership()">
                                 <div style="font-size:18px">🤝</div>
                                 <div style="font-size:11px; font-weight:900">PARTNER</div>
                                 <div id="bm-label-partner" style="font-size:8px; opacity:0.6">—</div>
                             </button>
-                            <button class="btn btn-primary" style="background:#7c4dff; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="Broadcast.broadcastBowlerProfile()">
+                            <button class="btn btn-primary" style="background:#7c4dff; border:none; height:70px; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px" onclick="broadcastBowlerProfile()">
                                 <div style="font-size:18px">⚾</div>
                                 <div style="font-size:11px; font-weight:900">BOWLER</div>
                                 <div id="bm-label-bowler" style="font-size:8px; opacity:0.6; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">—</div>
@@ -933,8 +991,8 @@
                     navigator.clipboard.writeText(url).then(() => {
                         showToast('✅ OBS URL Copied! (' + (mId || tId || 'no match') + ')', 'success');
                     }).catch(() => {
-                        // Fallback: show in a prompt
-                        prompt('Copy this OBS URL:', url);
+                        // Fallback: show in a toast
+                        showToast('📋 OBS URL: ' + url, 'info');
                     });
                 }
 
@@ -1165,7 +1223,14 @@
                     const m = DB.getMatch(matchId);
                     if (!m) { showToast('Match not found', 'error'); return; }
                     window.currentMatch = m;
+                    
+                    const url = new URL(window.location);
+                    url.searchParams.set('matchId', matchId);
+                    window.history.pushState({}, '', url);
+
                     if (typeof renderScoring === 'function') renderScoring();
+                    if (typeof renderEmbeddedScorecard === 'function') renderEmbeddedScorecard();
+                    
                     _refreshBroadcastPreview();
                     syncBroadcastMasterPhotos(m);
                     renderBroadcastMatchList();
@@ -1900,6 +1965,16 @@
             if (tab === 'hotkeys' && typeof switchScoringTab === 'function') {
                 switchScoringTab('hotkeys');
             }
+            
+            // Attach match type button listeners
+            document.querySelectorAll('[data-match-type]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const matchType = btn.getAttribute('data-match-type');
+                    if (typeof selectMatchType === 'function') {
+                        selectMatchType(matchType);
+                    }
+                });
+            });
         });
     </script>
 </body>

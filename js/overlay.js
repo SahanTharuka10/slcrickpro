@@ -2,6 +2,16 @@ let matchId = null;
 let tournId = null;
 let isMasterOverlay = false;
 
+// ── GSAP Safety Wrapper ──
+if (typeof gsap === 'undefined') {
+    var gsap = {
+        to: function() { return this; },
+        from: function() { return this; },
+        fromTo: function() { return this; }
+    };
+    console.warn('⚠️ GSAP not loaded, using fallback animations');
+}
+
 try {
     const searchStr = window.location.search || '';
     if (searchStr.includes('?')) {
@@ -80,7 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Backend & Socket ──────────────────────────────────
     const baseUrl = window.BACKEND_BASE_URL || (typeof DB !== 'undefined' ? DB.getCloudURL() : "https://slcrickpro.onrender.com");
-    const socket = window._cricproSocket || (typeof io !== 'undefined' ? io(baseUrl, { transports: ['polling', 'websocket'] }) : null);
+    const socket = window._cricproSocket || (typeof io !== 'undefined' ? io(baseUrl, { 
+        transports: ['polling', 'websocket'],
+        closeOnBeforeunload: false
+    }) : null);
 
     if (socket) {
         socket.emit('join_global', {});
@@ -110,7 +123,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function pollServerScore() {
         if (!matchId && !isMasterOverlay) return;
         
-        let targetUrl = '';
+        // If we have local DB and are on localhost, local data is always fresher than server
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocal && typeof DB !== 'undefined') {
+            const localMatch = DB.getMatch(matchId);
+            if (localMatch) {
+                latestSocketScore = { fullMatch: localMatch };
+                renderOverlay();
+                // On localhost, we rely on localStorage/postMessage primarily.
+                // We only poll the server if we are NOT on localhost or if localMatch is missing.
+                return; 
+            }
+        }
         if (isMasterOverlay && !matchId) {
             targetUrl = baseUrl + '/api/active-match' + (tournId ? '?tournamentId=' + tournId : '');
         } else {
@@ -118,7 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         fetch(targetUrl)
-            .then(r => r.ok ? r.json() : null)
+            .then(r => {
+                if (r.status === 404) return null; // Silently handle 404
+                return r.ok ? r.json() : null;
+            })
             .then(data => {
                 if (!data || data.error) return;
                 
@@ -130,8 +157,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
+                // Only update if server data is newer or if we have no local data
+                const serverMatch = data.fullMatch || null;
+                const localMatch = (typeof DB !== 'undefined') ? DB.getMatch(matchId) : null;
+                
+                if (serverMatch && localMatch) {
+                    const serverTime = serverMatch.lastUpdated || 0;
+                    const localTime = localMatch.lastUpdated || 0;
+                    if (serverTime < localTime) return; // Local is newer, don't overwrite
+                }
+
                 latestSocketScore = data.score ? data : (data.fullMatch ? { score: data.fullMatch.innings[data.fullMatch.currentInnings], fullMatch: data.fullMatch } : null);
-                if (latestSocketScore && latestSocketScore.fullMatch && typeof DB !== 'undefined') DB.saveMatch(latestSocketScore.fullMatch);
+                if (latestSocketScore && latestSocketScore.fullMatch && typeof DB !== 'undefined') DB.saveMatch(latestSocketScore.fullMatch, true); // skipCloud to avoid loop
                 renderOverlay();
             }).catch(() => {});
     }
@@ -167,18 +204,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function handleBroadcastCommand(cmd, data = {}) {
-    if (!cmd || !window.gsap) return;
+    if (!cmd) return;
+    const requiresGsap = [
+        'SHOW_RUNS_BALLS', 'SHOW_NEXT_MATCH', 'SHOW_SCORECARD', 'SHOW_SUMMARY',
+        'SHOW_CRR', 'SET_SCOREBAR_VISIBILITY', 'SET_OVERLAY_MODE', 'SET_OVERLAY_SUBMODE',
+        'SHOW_TEAM_CARD', 'SHOW_TEAM_ROSTER', 'SHOW_BIG_EVENT', 'SHOW_STRIKER_PROFILE',
+        'SHOW_NON_STRIKER_PROFILE', 'SHOW_BOWLER_PROFILE', 'SHOW_PARTNERSHIP',
+        'SHOW_BATTER_PROFILES', 'SHOW_GUEST', 'STOP_OVERLAY', 'CLEAR_STAY_OVERLAYS', 'STOP_ALL'
+    ];
+    if (!window.gsap && requiresGsap.includes(cmd)) return;
     
-    if (cmd === 'STOP_OVERLAY' || cmd === 'CLEAR_STAY_OVERLAYS' || cmd === 'STOP_ALL') {
+    if (cmd === 'STOP_OVERLAY' || cmd === 'CLEAR_STAY_OVERLAYS' || cmd === 'STOP_ALL' || cmd === 'STOP_BROADCAST') {
         hideAllBroadcastOverlays();
+        isScorebarVisible = true; // Always ensure scorebar returns
+        renderOverlay();
         return;
     }
     if (cmd === 'FORCE_UPDATE') {
         renderOverlay();
         return;
     }
-    if (cmd === 'TOGGLE_SCOREBAR') {
-        isScorebarVisible = !isScorebarVisible;
+    if (cmd === 'TOGGLE_SCOREBAR' || cmd === 'SET_SCOREBAR_VISIBILITY') {
+        if (cmd === 'SET_SCOREBAR_VISIBILITY') isScorebarVisible = !!data.visible;
+        else isScorebarVisible = !isScorebarVisible;
         renderOverlay();
         return;
     }
@@ -198,7 +246,28 @@ function handleBroadcastCommand(cmd, data = {}) {
             if (data.match) {
                 matchId = data.match.id;
                 latestSocketScore = { fullMatch: data.match };
-                if (typeof DB !== 'undefined') DB.saveMatch(data.match);
+                if (data.match.isManual && data.match.manualData) {
+                    const manual = data.match.manualData;
+                    latestSocketScore.fullMatch.currentInnings = 0;
+                    latestSocketScore.fullMatch.overs = parseInt(manual.overs, 10) || latestSocketScore.fullMatch.overs || 0;
+                    latestSocketScore.fullMatch.ballsPerOver = 6;
+                    latestSocketScore.fullMatch.innings = latestSocketScore.fullMatch.innings || [{
+                        battingTeam: manual.team1 || 'TEAM A',
+                        bowlingTeam: manual.team2 || 'TEAM B',
+                        runs: parseInt(manual.runs, 10) || 0,
+                        wickets: parseInt(manual.wickets, 10) || 0,
+                        balls: parseInt(manual.overs, 10) || 0,
+                        batsmen: [
+                            { name: manual.striker || 'Batter', runs: parseInt(manual.runs, 10) || 0, balls: 0 },
+                            { name: manual.nonStriker || 'Batter', runs: 0, balls: 0 }
+                        ],
+                        bowlers: [{ name: manual.bowler || 'Bowler', wickets: 0, runs: 0, balls: 0 }],
+                        currentBatsmenIdx: [0,1],
+                        strikerIdx: 0,
+                        currentBowlerIdx: 0
+                    }];
+                }
+                if (typeof DB !== 'undefined' && DB.saveMatch) DB.saveMatch(latestSocketScore.fullMatch);
                 renderOverlay();
             }
             break;
@@ -227,13 +296,43 @@ function handleBroadcastCommand(cmd, data = {}) {
 }
 
 function hideAllBroadcastOverlays() {
-    gsap.to('.broadcast-overlay', { opacity: 0, scale: 0.9, duration: 0.4, onComplete: () => {
-        document.querySelectorAll('.broadcast-overlay').forEach(el => el.remove());
-    }});
+    try {
+        const overlays = document.querySelectorAll('.broadcast-overlay');
+        if (overlays.length > 0 && typeof gsap !== 'undefined') {
+            gsap.to('.broadcast-overlay', { opacity: 0, scale: 0.9, duration: 0.4, onComplete: () => {
+                document.querySelectorAll('.broadcast-overlay').forEach(el => {
+                    if (el.id) {
+                        el.style.display = 'none';
+                        // Reset for next GSAP animation
+                        gsap.set(el, { opacity: 1, scale: 1, x: 0, y: 0, clearProps: 'transform,opacity' });
+                    } else {
+                        el.remove();
+                    }
+                });
+            }});
+        } else {
+            overlays.forEach(el => {
+                if (el.id) el.style.display = 'none';
+                else el.remove();
+            });
+        }
+    } catch(err) {
+        console.warn('Error hiding overlays:', err);
+        document.querySelectorAll('.broadcast-overlay').forEach(el => {
+            if (el.id) el.style.display = 'none';
+            else el.remove();
+        });
+    }
 }
 
 function renderOverlay() {
-    const m = (typeof DB !== 'undefined') ? DB.getMatch(matchId) : null;
+    let m = (typeof DB !== 'undefined') ? DB.getMatch(matchId) : null;
+    if (!m && latestSocketScore && latestSocketScore.fullMatch) {
+        m = latestSocketScore.fullMatch;
+        if (!matchId && latestSocketScore.fullMatch.id) {
+            matchId = latestSocketScore.fullMatch.id;
+        }
+    }
     if (!m) return;
     
     const container = document.getElementById('overlay-container');
@@ -259,8 +358,8 @@ function _renderOverlayMode4(m) {
     
     container.className = 'overlay-container mode-4';
 
-    const t1Name = curInn.battingTeam;
-    const t2Name = curInn.bowlingTeam;
+    const t1Name = curInn.battingTeam || m.team1 || 'TEAM A';
+    const t2Name = curInn.bowlingTeam || m.team2 || 'TEAM B';
     const t1Logo = (typeof DB !== 'undefined') ? DB.getTeamPhoto(t1Name, m.tournamentId) : '../assets/default-team.svg';
     const t2Logo = (typeof DB !== 'undefined') ? DB.getTeamPhoto(t2Name, m.tournamentId) : '../assets/default-team.svg';
 
@@ -304,53 +403,123 @@ function _renderOverlayMode4(m) {
     }
     _m4PrevWickets = curInn.wickets;
 
-    container.innerHTML = `
-        <div class="m4-bar-wrapper">
-            <!-- Left Logo -->
-            <div class="m4-logo-box"><div class="m4-logo-circle" style="position:relative; overflow:hidden;">${getShortName(t1Name)}<img src="${t1Logo}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border-radius:16px; z-index:2;" onerror="this.style.display='none'"></div></div>
-            
-            <!-- Batsmen Section -->
-            <div class="m4-batsmen">
-                <div class="m4-player">
-                    <div class="m4-pname"><span class="striker-mark">${curInn.strikerIdx === 0 ? '▶' : '&nbsp;'}</span> ${striker.name || 'Batter'}</div>
-                    <div class="m4-pruns">${striker.runs || 0}</div>
-                    <div class="m4-pballs">${striker.balls || 0}</div>
+    let wrapper = container.querySelector('.m4-bar-wrapper');
+    if (!wrapper) {
+        container.innerHTML = `
+            <div class="m4-bar-wrapper">
+                <div class="m4-logo-box"><div class="m4-logo-circle" style="position:relative; overflow:hidden;"><span id="m4-t1-short"></span><img id="m4-t1-logo" src="" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border-radius:16px; z-index:2;" onerror="this.style.display='none'"></div></div>
+                <div class="m4-batsmen">
+                    <div class="m4-player">
+                        <div class="m4-pname"><span class="striker-mark" id="m4-s1-mark"></span> <span id="m4-s1-name"></span></div>
+                        <div class="m4-pruns" id="m4-s1-runs"></div>
+                        <div class="m4-pballs" id="m4-s1-balls"></div>
+                    </div>
+                    <div class="m4-player">
+                        <div class="m4-pname"><span class="striker-mark" id="m4-s2-mark"></span> <span id="m4-s2-name"></span></div>
+                        <div class="m4-pruns" id="m4-s2-runs"></div>
+                        <div class="m4-pballs" id="m4-s2-balls"></div>
+                    </div>
                 </div>
-                <div class="m4-player">
-                    <div class="m4-pname"><span class="striker-mark">${curInn.strikerIdx === 1 ? '▶' : '&nbsp;'}</span> ${nonStriker.name || 'Batter'}</div>
-                    <div class="m4-pruns">${nonStriker.runs || 0}</div>
-                    <div class="m4-pballs">${nonStriker.balls || 0}</div>
+                <div class="m4-center-pill" id="m4-center-pill">
+                    <div class="m4-pill-top" id="m4-pill-top"></div>
+                    <div class="m4-pill-mid">
+                        <span class="m4-teams" id="m4-teams-text"></span>
+                        <span class="m4-score-box" id="m4-score-text"></span>
+                        <span class="m4-phase-box">LIVE</span>
+                        <span class="m4-overs" id="m4-overs-text"></span>
+                    </div>
+                    <div class="m4-pill-bot" id="m4-pill-bot"></div>
                 </div>
+                <div class="m4-bowler-section">
+                    <div class="m4-bowler-stats">
+                        <div class="m4-bname"><span class="striker-mark">▶</span> <span id="m4-b-name"></span></div>
+                        <div class="m4-bwickets" id="m4-b-wkts"></div>
+                        <div class="m4-bovers" id="m4-b-overs"></div>
+                    </div>
+                    <div class="m4-recent-balls" id="m4-recent-balls"></div>
+                </div>
+                <div class="m4-logo-box" style="width:70px; height:70px;"><div class="m4-logo-circle" style="width:100%; height:100%; position:relative; overflow:hidden; border:3px solid rgba(255,255,255,0.15);"><span id="m4-t2-short">${getShortName(t2Name)}</span><img id="m4-t2-logo" src="${t2Logo}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border-radius:0; z-index:2;" onerror="this.style.display='none'"></div></div>
             </div>
-            
-            <!-- Center Dark Pill -->
-            <div class="m4-center-pill ${flashClass}">
-                <div class="m4-pill-top">${topText}</div>
-                <div class="m4-pill-mid">
-                    <span class="m4-teams">${t1Name || 'TEAM A'} <span class="v">v</span> ${t2Name || 'TEAM B'}</span>
-                    <span class="m4-score-box">${curInn.runs}-${curInn.wickets}</span>
-                    <span class="m4-phase-box">P1</span>
-                    <span class="m4-overs">${formatOvers(curInn.balls, m.ballsPerOver)}</span>
-                </div>
-                <div class="m4-pill-bot">${botText}</div>
-            </div>
-            
-            <!-- Bowler & Recent Balls Section -->
-            <div class="m4-bowler-section">
-                <div class="m4-bowler-stats">
-                    <div class="m4-bname"><span class="striker-mark">▶</span> ${bowler.name || 'Bowler'}</div>
-                    <div class="m4-bwickets">${bowler.wickets || 0}-${bowler.runs || 0}</div>
-                    <div class="m4-bovers">${formatOvers(bowler.balls, m.ballsPerOver)}</div>
-                </div>
-                <div class="m4-recent-balls">
-                    ${recentBalls}
-                </div>
-            </div>
-            
-            <!-- Right Logo -->
-            <div class="m4-logo-box"><div class="m4-logo-circle" style="position:relative; overflow:hidden;">${getShortName(t2Name)}<img src="${t2Logo}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border-radius:16px; z-index:2;" onerror="this.style.display='none'"></div></div>
-        </div>
-    `;
+        `;
+    }
+
+    // Dynamic Style Adjustments for larger fonts
+    const m4wrapper = container.querySelector('.m4-bar-wrapper');
+    if (m4wrapper) {
+        m4wrapper.style.gap = '25px';
+        m4wrapper.style.padding = '0 30px';
+    }
+
+    const nameElements = container.querySelectorAll('.m4-pname');
+    nameElements.forEach(el => {
+        el.style.fontSize = '18px';
+        el.style.fontWeight = '900';
+    });
+
+    // Update values only - no full innerHTML refresh
+    const t1Short = document.getElementById('m4-t1-short');
+    if (t1Short) t1Short.textContent = getShortName(t1Name);
+    
+    const t1Img = document.getElementById('m4-t1-logo');
+    if (t1Img && t1Img.src !== new URL(t1Logo, document.baseURI).href) {
+        t1Img.src = t1Logo;
+        t1Img.style.display = 'block';
+    }
+
+    const s1Mark = document.getElementById('m4-s1-mark');
+    if (s1Mark) s1Mark.innerHTML = curInn.strikerIdx === 0 ? '▶' : '&nbsp;';
+    const s1Name = document.getElementById('m4-s1-name');
+    if (s1Name) s1Name.textContent = striker.name || 'Batter';
+    const s1Runs = document.getElementById('m4-s1-runs');
+    if (s1Runs) s1Runs.textContent = striker.runs || 0;
+    const s1Balls = document.getElementById('m4-s1-balls');
+    if (s1Balls) s1Balls.textContent = striker.balls || 0;
+
+    const s2Mark = document.getElementById('m4-s2-mark');
+    if (s2Mark) s2Mark.innerHTML = curInn.strikerIdx === 1 ? '▶' : '&nbsp;';
+    const s2Name = document.getElementById('m4-s2-name');
+    if (s2Name) s2Name.textContent = nonStriker.name || 'Batter';
+    const s2Runs = document.getElementById('m4-s2-runs');
+    if (s2Runs) s2Runs.textContent = nonStriker.runs || 0;
+    const s2Balls = document.getElementById('m4-s2-balls');
+    if (s2Balls) s2Balls.textContent = nonStriker.balls || 0;
+
+    const pTop = document.getElementById('m4-pill-top');
+    if (pTop) pTop.textContent = topText;
+    const tText = document.getElementById('m4-teams-text');
+    if (tText) tText.innerHTML = `${t1Name || 'TEAM A'} <span class="v">v</span> ${t2Name || 'TEAM B'}`;
+    const sText = document.getElementById('m4-score-text');
+    if (sText) sText.textContent = `${curInn.runs}-${curInn.wickets}`;
+    const oText = document.getElementById('m4-overs-text');
+    if (oText) oText.textContent = formatOvers(curInn.balls, m.ballsPerOver);
+    const pBot = document.getElementById('m4-pill-bot');
+    if (pBot) pBot.textContent = botText;
+
+    const bName = document.getElementById('m4-b-name');
+    if (bName) bName.textContent = bowler.name || 'Bowler';
+    const bWkts = document.getElementById('m4-b-wkts');
+    if (bWkts) bWkts.textContent = `${bowler.wickets || 0}-${bowler.runs || 0}`;
+    const bOvers = document.getElementById('m4-b-overs');
+    if (bOvers) bOvers.textContent = formatOvers(bowler.balls, m.ballsPerOver);
+
+    const rBalls = document.getElementById('m4-recent-balls');
+    if (rBalls) rBalls.innerHTML = recentBalls;
+
+    const t2Short = document.getElementById('m4-t2-short');
+    if (t2Short) t2Short.textContent = getShortName(t2Name);
+    const t2Img = document.getElementById('m4-t2-logo');
+    if (t2Img && t2Img.src !== new URL(t2Logo, document.baseURI).href) {
+        t2Img.src = t2Logo;
+        t2Img.style.display = 'block';
+    }
+
+    if (flashClass) {
+        const centerPill = document.getElementById('m4-center-pill');
+        if (centerPill) {
+            centerPill.classList.add('m4-wicket-flash');
+            setTimeout(() => centerPill.classList.remove('m4-wicket-flash'), 1000);
+        }
+    }
 }
 
 function toggleBroadcastScorecard(mId) {
@@ -422,6 +591,7 @@ function showTeamCardGraphic(data) {
 
     const el = document.createElement('div');
     el.className = 'broadcast-overlay broadcast-team-card';
+    el.style.display = 'block';
     el.style.right = '40px'; el.style.top = '50%'; el.style.transform = 'translateY(-50%)';
     el.style.left = 'auto';
 
@@ -460,6 +630,7 @@ function showGuestGraphic(data) {
 
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'block';
     el.style.left = '40px'; el.style.bottom = '130px';
     el.style.top = 'auto'; el.style.transform = 'none';
 
@@ -491,6 +662,10 @@ function toggleBroadcastSummary(tId) {
 function showRunsBallsGraphic(data) {
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+    el.style.inset = '0';
     el.innerHTML = `<div style="background:linear-gradient(135deg, #2a1458, #110524); border:2px solid #00e676; padding:40px; border-radius:30px; color:white; text-align:center; min-width:400px; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
         <div style="font-size:14px; color:#00e676; letter-spacing:4px; margin-bottom:10px; font-weight:900;">RUNS NEEDED</div>
         <div style="font-size:72px; font-weight:950;">${data.runs}</div>
@@ -507,20 +682,25 @@ function showNextMatchGraphic(data) {
     el.style.display = 'flex';
     el.style.flexDirection = 'column';
     el.style.alignItems = 'center';
-    el.innerHTML = `<div style="background:rgba(15, 23, 42, 0.95); backdrop-filter:blur(10px); padding:40px 60px; border-radius:40px; border:1px solid rgba(255,255,255,0.1); color:white; min-width:800px; display:flex; align-items:center; gap:50px; position:relative;">
+    el.innerHTML = `<div style="background:rgba(15, 23, 42, 0.95); backdrop-filter:blur(10px); padding:40px 60px; border-radius:40px; border:1px solid rgba(255,255,255,0.1); color:white; min-width:800px; display:flex; align-items:center; gap:50px; position:relative; margin-bottom: 250px;">
         <div style="flex:1; text-align:right; font-size:40px; font-weight:950;">${(data.teamA || 'TEAM A').toUpperCase()}</div>
         <div style="background:#e61b4d; color:white; padding:10px 20px; font-weight:950; font-size:24px; border-radius:10px;">VS</div>
         <div style="flex:1; text-align:left; font-size:40px; font-weight:950;">${(data.teamB || 'TEAM B').toUpperCase()}</div>
         <div style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); background:#00e676; color:black; padding:5px 20px; border-radius:20px; font-size:12px; font-weight:900; letter-spacing:2px; white-space:nowrap;">COMING UP NEXT</div>
     </div>`;
     document.body.appendChild(el);
-    gsap.fromTo(el, { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: 'expo.out' });
-    setTimeout(() => gsap.to(el, { scale: 0.8, opacity: 0, duration: 0.6, onComplete: () => el.remove() }), 10000);
+    gsap.fromTo(el, { scale: 0.8, opacity: 0, y: -50 }, { scale: 1, opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
+    setTimeout(() => gsap.to(el, { scale: 0.8, opacity: 0, duration: 0.6, onComplete: () => el.remove() }), 5000);
 }
 
 function showCRRGraphic(data) {
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'flex';
+    el.style.alignItems = 'flex-end';
+    el.style.justifyContent = 'flex-end';
+    el.style.inset = '0';
+    el.style.padding = '40px';
     el.innerHTML = `<div style="background:rgba(0,0,0,0.9); padding:30px 60px; border-radius:100px; border:2px solid #3b82f6; color:white; display:flex; align-items:center; gap:30px; box-shadow:0 0 30px rgba(59,130,246,0.3);">
         <div style="font-size:14px; font-weight:900; color:#3b82f6; letter-spacing:3px;">CURRENT RUN RATE</div>
         <div style="font-size:50px; font-weight:950;">${data.crr || '0.00'}</div>
@@ -535,6 +715,10 @@ function showBigEventGraphic(data) {
     const type = (data.type || data.event || 'EVENT').toUpperCase();
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+    el.style.inset = '0';
     
     let bg = 'linear-gradient(135deg, #2962ff 0%, #00b0ff 100%)'; // Default
     if (type === 'FOUR') bg = 'linear-gradient(135deg, #1a237e 0%, #2962ff 100%)';
@@ -542,20 +726,21 @@ function showBigEventGraphic(data) {
     if (type === 'WICKET') bg = 'linear-gradient(135deg, #b71c1c 0%, #ff1744 100%)';
 
     el.innerHTML = `
-        <div style="background:${bg}; backdrop-filter:blur(20px); color:white; padding:60px 120px; border-radius:30px; border:4px solid rgba(255,255,255,0.2); box-shadow:0 0 100px rgba(0,0,0,0.5); text-align:center;">
-            <div style="font-size:120px; font-weight:950; letter-spacing:15px; text-shadow:0 10px 30px rgba(0,0,0,0.5); line-height:1;">${type}</div>
-            <div style="font-size:24px; font-weight:800; letter-spacing:5px; margin-top:20px; opacity:0.8;">${(data.playerName || '').toUpperCase()}</div>
+        <div style="background:${bg}; backdrop-filter:blur(25px); color:white; padding:50px 100px; border-radius:100px; border:8px solid rgba(255,255,255,0.3); box-shadow:0 0 120px rgba(0,0,0,0.8); text-align:center; transform: skewX(-10deg);">
+            <div style="font-size:140px; font-weight:950; letter-spacing:10px; text-shadow:0 15px 40px rgba(0,0,0,0.6); line-height:1; font-style:italic;">${type}</div>
+            <div style="font-size:32px; font-weight:800; letter-spacing:8px; margin-top:15px; color:rgba(255,255,255,0.9); text-transform:uppercase;">${(data.playerName || '').toUpperCase()}</div>
         </div>
     `;
     document.body.appendChild(el);
-    gsap.fromTo(el, { scale: 0.5, opacity: 0, y: 100 }, { scale: 1, opacity: 1, y: 0, duration: 0.8, ease: 'back.out(1.7)' });
+    gsap.fromTo(el, { scale: 0.2, opacity: 0, rotation: -15 }, { scale: 1.1, opacity: 1, rotation: 0, duration: 0.6, ease: 'back.out(2)' });
+    gsap.to(el, { scale: 1, duration: 0.2, delay: 0.6 });
     
-    // Pulse effect
-    gsap.to(el, { scale: 1.05, duration: 0.4, repeat: 7, yoyo: true });
+    // Quick Pulse
+    gsap.to(el, { scale: 1.03, duration: 0.3, repeat: 5, yoyo: true, delay: 0.8 });
     
     setTimeout(() => {
-        gsap.to(el, { scale: 1.5, opacity: 0, filter: 'blur(20px)', duration: 0.6, onComplete: () => el.remove() });
-    }, 6000);
+        gsap.to(el, { scale: 0, opacity: 0, rotation: 15, duration: 0.5, onComplete: () => el.remove() });
+    }, 4000);
 }
 
 function showStrikerProfileLeft(data, label = 'STRIKER') {
@@ -581,6 +766,7 @@ function showStrikerProfileLeft(data, label = 'STRIKER') {
 
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'block';
     el.style.left = '40px'; el.style.top = '50%'; el.style.transform = 'translateY(-50%)';
 
     el.innerHTML = `
@@ -703,6 +889,11 @@ function showPartnershipGraphicCinema(data) {
 function showTeamRosterGraphic(data) {
     const el = document.createElement('div');
     el.className = 'broadcast-overlay';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'flex-end';
+    el.style.inset = '0';
+    el.style.paddingRight = '40px';
     const playersHtml = (data.players || []).map(p => `
         <div style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.1); font-size:20px; font-weight:700;">${p.toUpperCase()}</div>
     `).join('');
@@ -728,6 +919,7 @@ function showBatterProfilesGraphic(data) {
     el.style.gap = '20px';
 
     const profiles = data.profiles || [];
+    if (!profiles || profiles.length === 0) return;
     
     const html = profiles.map((p, idx) => {
         const isNonStriker = idx === 1;
@@ -776,7 +968,31 @@ function showBatterProfilesGraphic(data) {
 
     el.innerHTML = html;
     document.body.appendChild(el);
-    gsap.fromTo(el.children, { x: -500, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, stagger: 0.2, ease: 'expo.out' });
-    setTimeout(() => gsap.to(el.children, { x: -500, opacity: 0, duration: 0.6, stagger: 0.1, onComplete: () => el.remove() }), 5000);
+    
+    // Safe GSAP animation with null checks
+    try {
+        const cards = Array.from(el.querySelectorAll('div[style*="width:240px"]'));
+        if (cards && cards.length > 0 && typeof gsap !== 'undefined') {
+            gsap.fromTo(cards, { x: -500, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, stagger: 0.2, ease: 'expo.out' });
+            setTimeout(() => {
+                if (el.parentNode) {
+                    gsap.to(cards, { x: -500, opacity: 0, duration: 0.6, stagger: 0.1, onComplete: () => {
+                        if (el.parentNode) el.remove();
+                    }});
+                }
+            }, 5000);
+        } else {
+            // Fallback if GSAP not available
+            setTimeout(() => {
+                if (el.parentNode) el.remove();
+            }, 5000);
+        }
+    } catch(err) {
+        console.warn('GSAP animation error:', err);
+        // Fallback timeout
+        setTimeout(() => {
+            if (el.parentNode) el.remove();
+        }, 5000);
+    }
 }
 

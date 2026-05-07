@@ -9,12 +9,76 @@ const BROADCAST_KEYS = {
 };
 
 const Broadcast = {
+    _buildBroadcastData(cmd, data = {}) {
+        if (data && Object.keys(data).length > 0) return data;
+        if (typeof currentMatch === 'undefined' || !currentMatch) return data;
+
+        const m = currentMatch;
+        const inn = m.innings?.[m.currentInnings || 0];
+        if (!inn) return data;
+
+        const strikerIdx = inn.currentBatsmenIdx ? inn.currentBatsmenIdx[inn.strikerIdx || 0] : null;
+        const nonStrikerIdx = inn.currentBatsmenIdx ? inn.currentBatsmenIdx[inn.strikerIdx === 0 ? 1 : 0] : null;
+        const striker = strikerIdx != null ? inn.batsmen?.[strikerIdx] : null;
+        const nonStriker = nonStrikerIdx != null ? inn.batsmen?.[nonStrikerIdx] : null;
+        const bowler = (inn.currentBowlerIdx != null) ? inn.bowlers?.[inn.currentBowlerIdx] : null;
+
+        const avatar = (player) => {
+            if (!player) return null;
+            return (typeof DB !== 'undefined' && DB.getPlayerPhoto) ? DB.getPlayerPhoto(player.playerId) : null;
+        };
+
+        const makeProfile = (player) => ({
+            playerName: player?.name || 'PLAYER',
+            playerRuns: player?.runs || 0,
+            playerBalls: player?.balls || 0,
+            playerPhoto: avatar(player)
+        });
+
+        switch (cmd) {
+            case 'SHOW_STRIKER_PROFILE':
+                return striker ? makeProfile(striker) : data;
+            case 'SHOW_NON_STRIKER_PROFILE':
+                return nonStriker ? makeProfile(nonStriker) : data;
+            case 'SHOW_BOWLER_PROFILE':
+                return bowler ? {
+                    playerName: bowler.name || 'BOWLER',
+                    playerRuns: bowler.wickets || 0,
+                    playerBalls: bowler.runs || 0,
+                    playerSixes: bowler.overs || 0,
+                    playerPhoto: avatar(bowler)
+                } : data;
+            case 'SHOW_BATTER_PROFILES':
+                return {
+                    profiles: [striker, nonStriker].filter(Boolean).map((player, idx) => ({
+                        playerName: player.name || `BATSMAN ${idx + 1}`,
+                        stats: { runs: player.runs || 0, balls: player.balls || 0, sixes: player.sixes || 0 },
+                        profile: { photo: avatar(player) }
+                    }))
+                };
+            case 'SHOW_PARTNERSHIP':
+                return {
+                    player1: striker?.name || 'STRIKER',
+                    player1Photo: avatar(striker) || OVERLAY_DEFAULT_PLAYER_PHOTO,
+                    player2: nonStriker?.name || 'NON-STRIKER',
+                    player2Photo: avatar(nonStriker) || OVERLAY_DEFAULT_PLAYER_PHOTO,
+                    runs: inn.runs || 0,
+                    balls: inn.balls || 0,
+                    wicketNumber: (m.currentInnings || 0) + 1,
+                    battingTeam: inn.battingTeam || m.team1 || 'TEAM'
+                };
+            default:
+                return data;
+        }
+    },
+
     /**
      * Send a command to the TV Display
      * @param {string} cmd - Command name (e.g., 'SHOW_RUNS_BALLS')
      * @param {object} data - Optional data payload
      */
     send(cmd, data = {}) {
+        data = this._buildBroadcastData(cmd, data);
         const scopeTournamentId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.tournamentId) ||
             (typeof currentTournament !== 'undefined' && currentTournament && currentTournament.id) || null;
         const scopeMatchId = (typeof currentMatch !== 'undefined' && currentMatch && currentMatch.id) || null;
@@ -29,7 +93,7 @@ const Broadcast = {
         localStorage.setItem(BROADCAST_KEYS.COMMAND, JSON.stringify(payload));
         console.log(`📡 Broadcast Sent (Local): ${cmd}`, data);
 
-        // PostMessage to embedded IFRAME preview instantly
+        // PostMessage to embedded IFRAME preview
         const iframes = document.querySelectorAll('iframe');
         iframes.forEach(f => {
             if (f.contentWindow) {
@@ -125,9 +189,8 @@ const Broadcast = {
      * Stop all overlays and return to live score
      */
     stopAll() {
-        this.send('STOP_OVERLAY');
-        // Specific command to clear stay-on overlays like Team Cards
-        this.send('CLEAR_STAY_OVERLAYS');
+        this.send('STOP_ALL');
+        this.syncToggleUI(true);
         showToast('⏹ All Overlays Cleared', 'default');
     },
 
@@ -143,11 +206,12 @@ const Broadcast = {
         const striker = inn.batsmen[strikerIdx];
         if (!striker) return showToast('No striker found', 'error');
 
+        const photo = window.__photo_striker || DB.getPlayerPhoto(striker.playerId);
         this.send('SHOW_STRIKER_PROFILE', {
             playerName: striker.name,
             playerRuns: striker.runs,
             playerBalls: striker.balls,
-            playerPhoto: DB.getPlayerPhoto(striker.playerId)
+            playerPhoto: photo
         });
         showToast('⚡ Striker Profile Published!', 'success');
     },
@@ -164,11 +228,12 @@ const Broadcast = {
         const nonStriker = inn.batsmen[nonStrikerIdx];
         if (!nonStriker) return showToast('No non-striker found', 'error');
 
+        const photo = window.__photo_nonstriker || DB.getPlayerPhoto(nonStriker.playerId);
         this.send('SHOW_NON_STRIKER_PROFILE', {
             playerName: nonStriker.name,
             playerRuns: nonStriker.runs,
             playerBalls: nonStriker.balls,
-            playerPhoto: DB.getPlayerPhoto(nonStriker.playerId)
+            playerPhoto: photo
         });
         showToast('🛡️ Non-Striker Profile Published!', 'success');
     },
@@ -186,8 +251,16 @@ const Broadcast = {
         if (!b1 && !b2) return showToast('No batters found', 'error');
 
         const profiles = [];
-        if (b1) profiles.push({ name: b1.name, stats: { runs: b1.runs, balls: b1.balls }, profile: { photo: DB.getPlayerPhoto(b1.playerId) } });
-        if (b2) profiles.push({ name: b2.name, stats: { runs: b2.runs, balls: b2.balls }, profile: { photo: DB.getPlayerPhoto(b2.playerId) } });
+        if (b1) profiles.push({
+            name: b1.name,
+            stats: { runs: b1.runs, balls: b1.balls },
+            profile: { photo: (inn.strikerIdx === 0 ? window.__photo_striker : window.__photo_nonstriker) || DB.getPlayerPhoto(b1.playerId) }
+        });
+        if (b2) profiles.push({
+            name: b2.name,
+            stats: { runs: b2.runs, balls: b2.balls },
+            profile: { photo: (inn.strikerIdx === 1 ? window.__photo_striker : window.__photo_nonstriker) || DB.getPlayerPhoto(b2.playerId) }
+        });
 
         this.send('SHOW_BATTER_PROFILES', { profiles });
         showToast('🏏 Batters Published!', 'success');
@@ -208,9 +281,9 @@ const Broadcast = {
 
         this.send('SHOW_PARTNERSHIP', {
             player1: b1 ? b1.name : 'TBD',
-            player1Photo: b1 ? DB.getPlayerPhoto(b1.playerId) : '',
+            player1Photo: (inn.strikerIdx === 0 ? window.__photo_striker : window.__photo_nonstriker) || (b1 ? DB.getPlayerPhoto(b1.playerId) : ''),
             player2: b2 ? b2.name : 'TBD',
-            player2Photo: b2 ? DB.getPlayerPhoto(b2.playerId) : '',
+            player2Photo: (inn.strikerIdx === 1 ? window.__photo_striker : window.__photo_nonstriker) || (b2 ? DB.getPlayerPhoto(b2.playerId) : ''),
             runs: currentPartnership.runs,
             balls: currentPartnership.balls,
             wicketNumber: inn.wickets + 1,
@@ -230,11 +303,12 @@ const Broadcast = {
         const bowler = inn.bowlers[inn.currentBowlerIdx];
         if (!bowler) return showToast('No bowler found', 'error');
 
+        const photo = window.__photo_bowler || DB.getPlayerPhoto(bowler.playerId);
         this.send('SHOW_BOWLER_PROFILE', {
             playerName: bowler.name,
             playerRuns: bowler.wickets,  // Using playerRuns for wickets in profile left
             playerBalls: bowler.runs,    // Using playerBalls for runs in profile left
-            playerPhoto: DB.getPlayerPhoto(bowler.playerId)
+            playerPhoto: photo
         });
         showToast('⚾ Bowler Profile Published!', 'success');
     },
@@ -289,7 +363,7 @@ const Broadcast = {
             showToast('Please enter guest name', 'error');
             return;
         }
-        this.send('SHOW_SPECIAL_GUEST', { photo: photoUrl, name: name });
+        this.send('SHOW_GUEST', { photo: photoUrl, name: name });
         showToast('👤 Special Guest Published!', 'success');
     },
 
@@ -317,12 +391,15 @@ const Broadcast = {
         const txt = document.getElementById('txt-toggle-scorebar');
         const checkbox = document.getElementById('scorebar-toggle');
         
-        let newState = true;
+        // Detect current state: if text includes ':ON' or '(ON)' it is currently ON → we want to turn OFF
+        let currentlyOn = true;
         if (txt) {
-            newState = !txt.innerText.includes('ON');
+            const t = txt.innerText || '';
+            currentlyOn = t.includes(': ON') || t.includes('(ON)') || t.includes(':ON');
         } else if (checkbox) {
-            newState = !checkbox.checked;
+            currentlyOn = checkbox.checked;
         }
+        const newState = !currentlyOn;
 
         this.send('SET_SCOREBAR_VISIBILITY', { visible: newState });
         this.syncToggleUI(newState);
@@ -338,14 +415,25 @@ const Broadcast = {
         const checkbox = document.getElementById('scorebar-toggle');
 
         if (btn && txt) {
+            const isBBtn = btn.classList.contains('b-btn'); // Broadcast Controller style
             if (isVisible) {
-                txt.innerText = '👁 LIVE SCOREBAR (ON)';
-                btn.className = 'btn btn-green btn-full';
-                btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.3)';
+                txt.innerText = isBBtn ? 'LIVE SCOREBAR: ON' : '👁 LIVE SCOREBAR (ON)';
+                if (!isBBtn) {
+                    btn.className = 'btn btn-green btn-full';
+                    btn.style.boxShadow = '0 0 10px rgba(0,255,0,0.3)';
+                } else {
+                    btn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                    btn.style.boxShadow = '0 0 15px rgba(0,255,0,0.3)';
+                }
             } else {
-                txt.innerText = '👁 LIVE SCOREBAR (OFF)';
-                btn.className = 'btn btn-red btn-full';
-                btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.3)';
+                txt.innerText = isBBtn ? 'LIVE SCOREBAR: OFF' : '👁 LIVE SCOREBAR (OFF)';
+                if (!isBBtn) {
+                    btn.className = 'btn btn-red btn-full';
+                    btn.style.boxShadow = '0 0 10px rgba(255,0,0,0.3)';
+                } else {
+                    btn.style.background = 'linear-gradient(135deg, #991b1b, #ef4444)';
+                    btn.style.boxShadow = '0 0 15px rgba(255,0,0,0.3)';
+                }
             }
         }
         if (checkbox) {
